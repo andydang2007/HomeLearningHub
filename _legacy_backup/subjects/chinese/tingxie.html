@@ -1,0 +1,543 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>听写大挑战</title>
+
+    <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@600;800;900&display=swap" rel="stylesheet">
+    <script async src="https://www.googletagmanager.com/gtag/js?id=G-M04YCD1PQK"></script>
+    <script>
+        let currentPlayer = localStorage.getItem('currentPlayer') || 'Valerie'; 
+        let currentGrade = localStorage.getItem('currentGrade') || 'P3';
+        
+        window.dataLayer = window.dataLayer || [];
+        function gtag(){dataLayer.push(arguments);}
+        gtag('js', new Date());
+        gtag('config', 'G-M04YCD1PQK');
+    </script>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/hanzi-writer@3.5/dist/hanzi-writer.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
+    <style>
+        :root { --text-main: #1e293b; --text-muted: #64748b; }
+        * { box-sizing: border-box; font-family: 'Nunito', 'Microsoft YaHei', 'Comic Sans MS', sans-serif; -webkit-tap-highlight-color: transparent; }
+        body { background: linear-gradient(135deg, #a1c4fd 0%, #c2e9fb 100%); margin: 0; padding: 15px; color: var(--text-main); display: flex; flex-direction: column; align-items: center; justify-content: center; min-height: 100dvh; overflow: hidden; }
+        .container { width: 100%; max-width: 750px; background: rgba(255,255,255,0.95); padding: 25px; border-radius: 40px; box-shadow: 0 20px 50px rgba(0,0,0,0.1); text-align: center; margin: auto; position: relative; border: 4px solid #ffffff; display: flex; flex-direction: column; max-height: 96dvh; }
+        .screen { display: none; flex: 1; flex-direction: column; width: 100%; overflow: hidden; animation: bounceIn 0.4s cubic-bezier(0.68, -0.55, 0.265, 1.55); }
+        #finish-screen { justify-content: center; overflow-y: auto; }
+        
+        h1 { color: #3b82f6; margin-top: 0; font-size: 32px; margin-bottom: 20px; font-weight: 900; letter-spacing: 1px; text-shadow: 2px 2px 0px #dbeafe; flex: none; }
+        
+        .btn-group { display: flex; gap: 12px; justify-content: center; flex-wrap: wrap; margin-bottom: 15px; flex: none; }
+        .btn-choice { padding: 12px 24px; border-radius: 30px; border: 3px solid #e2e8f0; background: white; cursor: pointer; font-weight: 900; font-size: 18px; color: var(--text-muted); transition: 0.15s; min-width: 100px; box-shadow: 0 4px 0 #e2e8f0; outline: none; }
+        .btn-choice.active { border-color: #3b82f6; background: #eff6ff; color: #1d4ed8; box-shadow: 0 4px 0 #93c5fd; }
+        
+        /* 胶囊选框 */
+        .checkbox-grid { display: flex; flex-wrap: wrap; gap: 10px; justify-content: center; margin-bottom: 20px; padding: 5px; flex: 1; overflow-y: auto; align-content: flex-start; width: 100%; }
+        .checkbox-label { flex: 0 0 calc(20% - 8px); min-width: 65px; padding: 12px 2px; border-radius: 20px; background: #f1f5f9; cursor: pointer; font-weight: 900; font-size: 16px; color: var(--text-muted); transition: all 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275); user-select: none; border: 3px solid transparent; box-shadow: 0 4px 0 #cbd5e1; text-align: center; display: flex; align-items: center; justify-content: center;}
+        .checkbox-label input { display: none; }
+        .checkbox-label:active { transform: translateY(4px); box-shadow: 0 0 0 transparent; }
+        .checkbox-label.selected { background: #a855f7; color: #ffffff; border-color: #9333ea; box-shadow: 0 6px 15px rgba(168, 85, 247, 0.4); transform: scale(1.05); }
+        @media (max-width: 480px) { .checkbox-label { flex: 0 0 calc(25% - 8px); font-size: 14px; } }
+        
+        .action-panel { display: flex; flex-direction: column; gap: 15px; width: 100%; flex: none; margin-top: 10px; }
+        .btn-stacked-row { display: flex; gap: 15px; justify-content: center; width: 100%; }
+        
+        .btn-stacked { flex: 1; padding: 20px 0; border-radius: 25px; font-size: 22px; font-weight: 900; border: none; cursor: pointer; transition: 0.15s; display: flex; align-items: center; justify-content: center; color: white; }
+        .btn-review-stacked { background: #f59e0b; box-shadow: 0 6px 0 #d97706; }
+        .btn-practice-stacked { background: #10b981; box-shadow: 0 6px 0 #059669; }
+        .btn-home { background: #f1f5f9; color: #64748b; font-size: 18px; border: 4px solid #e2e8f0; box-shadow: 0 6px 0 #cbd5e1; width: 100%; border-radius: 25px; padding: 15px 0; font-weight: 900; cursor: pointer; transition: 0.15s;}
+        .btn-home:active, .btn-stacked:active { transform: translateY(6px); box-shadow: 0 0 0 transparent; }
+
+        .progress-container { width: 100%; background: #f1f5f9; height: 16px; border-radius: 10px; margin-bottom: 20px; overflow: hidden; border: 2px solid #e2e8f0; flex: none; }
+        .progress-bar { height: 100%; background: linear-gradient(90deg, #34d399, #10b981); width: 0%; transition: width 0.4s; }
+        .progress-text { font-size: 18px; color: #94a3b8; margin-bottom: 15px; font-weight: 900; flex: none; }
+        
+        .hint-display { font-size: 32px; font-weight: bold; color: #334155; margin-bottom: 15px; min-height: 80px; display: flex; justify-content: center; flex-wrap: wrap; gap: 10px; align-content: center; flex: none; }
+        .hint-unit { cursor: pointer; padding: 10px 18px; border-radius: 20px; border: 4px solid #e2e8f0; background: #fff; min-width: 60px; text-align: center; font-size: 26px; transition: 0.2s; box-shadow: 0 5px 0 #cbd5e1; }
+        .hint-unit.active { color: #ea580c; background: #fff7ed; border-color: #fb923c; transform: scale(1.1); box-shadow: 0 6px 0 #f97316; z-index: 2; }
+        .hint-unit.done { color: #10b981; background: #ecfdf5; border-color: #6ee7b7; box-shadow: 0 0 0 transparent; transform: translateY(5px); }
+        
+        .practice-main { display: flex; flex-direction: column; flex: 1; width: 100%; min-height: 0; }
+        .practice-area { background: #f8fafc; padding: 20px 10px; border-radius: 30px; border: 4px dashed #cbd5e1; margin-bottom: 15px; display: flex; flex-direction: column; align-items: center; justify-content: center; flex: 1; position: relative; overflow: hidden; min-height: 250px;}
+        
+        .hanzi-box { 
+            width: 240px; height: 240px; 
+            border: 4px solid #94a3b8; border-radius: 20px; background-color: white; 
+            background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='100%25' height='100%25'%3E%3Cline x1='0' y1='0' x2='100%25' y2='100%25' stroke='%23cbd5e1' stroke-width='2' stroke-dasharray='6,6'/%3E%3Cline x1='100%25' y1='0' x2='0' y2='100%25' stroke='%23cbd5e1' stroke-width='2' stroke-dasharray='6,6'/%3E%3Cline x1='50%25' y1='0' x2='50%25' y2='100%25' stroke='%23cbd5e1' stroke-width='2' stroke-dasharray='6,6'/%3E%3Cline x1='0' y1='50%25' x2='100%25' y2='50%25' stroke='%23cbd5e1' stroke-width='2' stroke-dasharray='6,6'/%3E%3C/svg%3E");
+            background-size: cover; box-shadow: inset 0 0 20px rgba(0,0,0,0.05); 
+        }
+        
+        .helper-row { display: flex; gap: 15px; margin-top: 15px; justify-content: center; width: 100%; }
+        .btn-helper { font-size: 16px; padding: 10px 20px; border-radius: 20px; font-weight: 900; cursor: pointer; transition: 0.15s; outline: none; display: none; }
+        #peek-btn { background: #fef08a; color: #a16207; border: 3px solid #fde047; box-shadow: 0 5px 0 #facc15; }
+        #skip-char-btn { background: #f1f5f9; color: #64748b; border: 3px solid #e2e8f0; box-shadow: 0 5px 0 #cbd5e1; }
+        
+        .controls-row { display: flex; gap: 12px; width: 100%; height: 65px; flex: none; }
+        .btn-action { border-radius: 20px; border: none; font-weight: 900; font-size: 20px; cursor: pointer; transition: 0.15s; display: flex; align-items: center; justify-content: center; outline: none; }
+        .btn-quit { flex: 1; background: #f1f5f9; color: #64748b; font-size: 16px; border: 3px solid #e2e8f0; box-shadow: 0 5px 0 #cbd5e1; } 
+        .btn-nav { flex: 1.5; background: #38bdf8; color: white; box-shadow: 0 5px 0 #0284c7; } 
+        .btn-action:active { transform: translateY(5px); box-shadow: 0 0 0 transparent; }
+        
+        .btn-nav:disabled { background: #e2e8f0 !important; color: #94a3b8 !important; box-shadow: 0 5px 0 #cbd5e1 !important; cursor: not-allowed; transform: none !important; }
+
+        @keyframes bounceIn { 0% { opacity: 0; transform: scale(0.9); } 100% { opacity: 1; transform: scale(1); } }
+        
+        @media (orientation: landscape) and (min-width: 768px) {
+            .container { max-width: 950px; padding: 35px 40px; height: 95dvh; border-radius: 50px;}
+            .practice-main { flex-direction: row; align-items: flex-start; gap: 30px; }
+            .practice-area { margin-bottom: 0; height: 100%; min-height: 320px; flex: 1; }
+            .hanzi-box { width: 280px; height: 280px; }
+            .practice-main .controls-row { display: grid; grid-template-columns: 1fr 1fr; width: 300px; height: auto; gap: 15px; flex: none; }
+            .practice-main .btn-action { height: 80px; width: 100%; border-radius: 25px; }
+            .practice-main .btn-quit { grid-column: 1 / 3; font-size: 22px; }
+        }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <div id="loading" class="screen" style="display:flex; justify-content:center; align-items:center; padding: 60px 0; font-size: 24px; font-weight: 900; color: #3b82f6;">
+        🌟 题库载入中... 
+    </div>
+
+    <div id="topic-screen" class="screen">
+        <h1 id="topic-header">📝 听写任务</h1>
+        <div id="semester-group" class="btn-group"></div>
+        <div id="topic-list" class="checkbox-grid"></div>
+        <div class="action-panel">
+            <div class="btn-stacked-row">
+                <button class="btn-stacked btn-review-stacked" id="btn-challenge" onclick="startReview()">🔥 挑战</button>
+                <button class="btn-stacked btn-practice-stacked" id="btn-practice" onclick="startPractice()">🚀 练习</button>
+            </div>
+            <button class="btn-home" onclick="window.location.href='index.html'">🏠 返回主页</button>
+        </div>
+    </div>
+
+    <div id="practice-screen" class="screen">
+        <div class="progress-container"><div id="prog-bar" class="progress-bar"></div></div>
+        <div id="prog-text" class="progress-text">1 / 10</div>
+        <div id="hint-area" class="hint-display"></div>
+        <div class="practice-main">
+            <div id="work-area" class="practice-area">
+                <div id="thumb-up" style="position:absolute; font-size:110px; display:none; z-index:10;">👍</div>
+                <div id="draw-target"></div>
+                <div class="helper-row">
+                    <button id="peek-btn" class="btn-helper">👀 看一下</button>
+                    <button id="skip-char-btn" class="btn-helper" onclick="skipCurrentChar()">太简单，跳过 ⏭️</button>
+                </div>
+            </div>
+            <div class="controls-row">
+                <button id="quit-btn" class="btn-action btn-quit" onclick="window.location.href='index.html'">退出 🏠</button>
+                <button id="prev-btn" class="btn-action btn-nav" onclick="moveQuestion(-1)">⬅️ 上一个</button>
+                <button id="next-btn" class="btn-action btn-nav" onclick="moveQuestion(1)">下一个 ➡️</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="finish-screen" class="screen"></div>
+</div>
+
+<script>
+    const SHEET_URL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vQlpdRHnR9ybEHHgX6fouRI-vXOh8KQNLSjsbt0TYh9R3No_9i7QNv_4ELwJZJGQpTe3oZVXaZijaW4/pub?gid=266851979&single=true&output=csv";
+    const SYNC_API_URL = "https://script.google.com/macros/s/AKfycbzbNOgg7deW9uVVyfYGTfKGOtVgNs_9ZfUQ9J_9cYpG2Ufow9KLDICHgsinBXrPJlmz/exec";
+    const LIMIT = 5; 
+
+    let db = {}, curUser = currentGrade, practiceList = [], curIdx = 0;
+    let hzWriter = null, practiceChars = [];
+    let sessionErrors = 0;
+    let currentMode = 'practice';
+
+    function getSGTDateString() {
+        const d = new Date();
+        const utc = d.getTime() + (d.getTimezoneOffset() * 60000);
+        const sgt = new Date(utc + (3600000 * 8));
+        return sgt.getFullYear() + '-' + String(sgt.getMonth() + 1).padStart(2, '0') + '-' + String(sgt.getDate()).padStart(2, '0');
+    }
+
+    async function syncToCloud(payload) {
+        try { fetch(SYNC_API_URL, { method: 'POST', mode: 'no-cors', body: JSON.stringify(payload) }); } catch (e) {}
+    }
+
+    function checkAndIncrementLimit(lessons, mode) {
+        const today = getSGTDateString();
+        const storageKey = `spelling_usage_${today}`;
+        let usage = JSON.parse(localStorage.getItem(storageKey) || "{}");
+        for (let lesson of lessons) {
+            if (!usage[lesson]) usage[lesson] = { practice: 0, challenge: 0 };
+            if (usage[lesson][mode] >= LIMIT) {
+                alert(`「${lesson}」今天练得够多了，休息一下吧！`);
+                return false;
+            }
+        }
+        lessons.forEach(l => usage[l][mode]++);
+        localStorage.setItem(storageKey, JSON.stringify(usage));
+        return true;
+    }
+
+    function unlockPinyinLessons(selArray) {
+        const cnNum = {'一':1,'二':2,'三':3,'四':4,'五':5,'六':6,'七':7,'八':8,'九':9,'十':10,'十一':11,'十二':12,'十三':13,'十四':14,'十五':15,'十六':16,'十七':17,'十八':18,'十九':19,'二十':20};
+        let savedMax = parseInt(localStorage.getItem(`max_lesson_${currentPlayer}`) || "8"); 
+        let updated = false;
+
+        selArray.forEach(lessonName => {
+            let num = NaN;
+            let match = lessonName.match(/第(.+)课/);
+            if (match && cnNum[match[1]]) num = cnNum[match[1]];
+            else {
+                let numMatch = lessonName.match(/\d+/);
+                if (numMatch) num = parseInt(numMatch[0]);
+            }
+            if (!isNaN(num) && num > savedMax) { savedMax = num; updated = true; }
+        });
+
+        if (updated) {
+            localStorage.setItem(`max_lesson_${currentPlayer}`, savedMax);
+            console.log(`✅ 已前置解锁拼音游戏至第 ${savedMax} 课`);
+        }
+    }
+
+    async function syncUserDataFromCloud() {
+        try {
+            const statsResp = await fetch(`${SYNC_API_URL}?type=fetch_user_data&user=${currentPlayer}`);
+            const cloudStats = await statsResp.json();
+            if (cloudStats && Object.keys(cloudStats).length > 0) {
+                localStorage.setItem(`total_days_${currentPlayer}`, cloudStats.userTotalDays);
+                localStorage.setItem(`current_streak_${currentPlayer}`, cloudStats.userStreak);
+                localStorage.setItem(`crystals_${currentPlayer}`, cloudStats.userCrystals);
+                localStorage.setItem(`gold_coins_vault`, cloudStats.vaultCoins); 
+                
+                if (cloudStats.lastCheckinDate) {
+                    let d = new Date(cloudStats.lastCheckinDate);
+                    let sgtStr = d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0') + '-' + String(d.getDate()).padStart(2,'0');
+                    localStorage.setItem(`last_date_${currentPlayer}`, sgtStr);
+                }
+                console.log("✅ 成功从云端同步玩家数据！云端连击数：", cloudStats.userStreak);
+            }
+        } catch (e) {
+            console.log("❌ 云端数据同步失败，将使用本地缓存:", e);
+        }
+    }
+
+    function init() {
+        syncUserDataFromCloud();
+
+        Papa.parse(SHEET_URL + "&t=" + Date.now(), {
+            download: true, header: true, skipEmptyLines: 'greedy',
+            transformHeader: h => h.replace(/^\uFEFF/, '').trim().toUpperCase(),
+            complete: function(results) {
+                results.data.forEach((row, index) => { 
+                    let g = (row['GRADE'] || "").toString().toUpperCase();
+                    let topic = (row['TOPIC'] || row['LESSON'] || "").toString().trim();
+                    let hint = (row['QUESTION'] || row['HINT'] || "").toString().trim();
+                    let ans = (row['CORRECT ANSWER'] || row['ANSWER'] || "").toString().trim();
+
+                    if(!g || (!hint && !ans)) return;
+                    if(!db[g]) db[g] = []; 
+                    
+                    db[g].push({ Topic: topic || "Default", Hint: hint, Answer: ans, isWrong: false, originalIndex: index });
+                });
+                document.getElementById('loading').style.display = 'none';
+                loadTopics();
+            }
+        });
+    }
+
+    function loadTopics() {
+        document.getElementById('topic-header').innerText = `🎈 ${currentPlayer} 的听写 🎈`;
+        let pool = db[curUser] || [];
+        if (pool.length === 0) {
+            document.getElementById('topic-list').innerHTML = `<p style="color:#ef4444; font-weight:900;">⚠️ 找不到 ${curUser} 的数据</p>`;
+            showScreen('topic-screen');
+            return;
+        }
+
+        let topics = [...new Set(pool.map(q => q.Topic))].sort((a,b) => getWeight(a) - getWeight(b));
+        const gradeMap = {'P1': '一', 'P2': '二', 'P3': '三', 'P4': '四', 'P5': '五', 'P6': '六'};
+        let gradeStr = gradeMap[curUser] || curUser;
+        
+        document.getElementById('semester-group').innerHTML = `
+            <button class="btn-choice" onclick="selectSemester('A', this)">📖 ${gradeStr}上</button>
+            <button class="btn-choice" onclick="selectSemester('B', this)">📘 ${gradeStr}下</button>
+        `;
+        
+        const list = document.getElementById('topic-list'); list.innerHTML = '';
+        topics.forEach(t => {
+            const lbl = document.createElement('label');
+            lbl.className = 'checkbox-label';
+            lbl.innerHTML = `<input type="checkbox" value="${t}" onchange="this.parentElement.classList.toggle('selected', this.checked)"> ${t}`;
+            list.appendChild(lbl);
+        });
+        showScreen('topic-screen');
+    }
+
+    function selectSemester(type, btn) {
+        btn.classList.toggle('active');
+        let isActive = btn.classList.contains('active');
+        document.querySelectorAll('#topic-list input').forEach(cb => {
+            let weight = getWeight(cb.value);
+            if (type === 'A' && weight <= 10) { cb.checked = isActive; cb.parentElement.classList.toggle('selected', isActive); }
+            else if (type === 'B' && weight > 10) { cb.checked = isActive; cb.parentElement.classList.toggle('selected', isActive); }
+        });
+    }
+
+    function getWeight(s) {
+        const dict = {'一':1,'二':2,'三':3,'四':4,'五':5,'六':6,'七':7,'八':8,'九':9,'十':10,'十一':11,'十二':12,'十三':13,'十四':14,'十五':15,'十六':16,'十七':17,'十八':18,'十九':19,'二十':20};
+        let m = s.match(/第(.+)课/); if(m && dict[m[1]]) return dict[m[1]];
+        let n = s.match(/\d+/); return n ? parseInt(n[0]) : 999;
+    }
+
+    function startPractice() {
+        let sel = [...document.querySelectorAll('#topic-list input:checked')].map(i => i.value);
+        if(sel.length !== 1) {
+            const btn = document.getElementById('btn-practice');
+            const ot = btn.innerText; 
+            btn.innerText = sel.length === 0 ? "请选择课文🐣" : "练习只能选一课🐣"; 
+            btn.style.background = "#ef4444";
+            setTimeout(() => { btn.innerText = ot; btn.style.background = "#10b981"; }, 2000);
+            return;
+        }
+        if (!checkAndIncrementLimit(sel, 'practice')) return;
+        
+        unlockPinyinLessons(sel);
+        currentMode = 'practice'; 
+        let pool = db[curUser] || [];
+        practiceList = pool.filter(q => sel.includes(q.Topic)).sort((a,b) => a.originalIndex - b.originalIndex);
+        curIdx = 0; sessionErrors = 0; showScreen('practice-screen'); renderQuestion();
+    }
+
+    function startReview() {
+        let sel = [...document.querySelectorAll('#topic-list input:checked')].map(i => i.value);
+        if(sel.length < 2) {
+            const btn = document.getElementById('btn-challenge');
+            const ot = btn.innerText; 
+            btn.innerText = sel.length === 0 ? "请选择课文🐣" : "挑战至少选两课🐣"; 
+            btn.style.background = "#ef4444";
+            setTimeout(() => { btn.innerText = ot; btn.style.background = "#f59e0b"; }, 2000);
+            return;
+        }
+        if (!checkAndIncrementLimit(sel, 'challenge')) return;
+
+        unlockPinyinLessons(sel);
+        currentMode = 'challenge'; 
+        let pool = db[curUser] || [];
+        let filtered = pool.filter(q => sel.includes(q.Topic)).sort(() => 0.5 - Math.random());
+        practiceList = filtered.slice(0, Math.min(10, filtered.length));
+        curIdx = 0; sessionErrors = 0; showScreen('practice-screen'); renderQuestion();
+    }
+
+    function moveQuestion(step) {
+        let target = curIdx + step;
+        if(target >= 0 && target < practiceList.length) { curIdx = target; renderQuestion(); }
+        else if (target >= practiceList.length) { finish(); }
+    }
+
+    function renderQuestion() {
+        const q = practiceList[curIdx];
+        document.getElementById('prog-bar').style.width = `${((curIdx + 1) / practiceList.length) * 100}%`;
+        document.getElementById('prog-text').innerText = `${curIdx + 1} / ${practiceList.length}`;
+        
+        const prevBtn = document.getElementById('prev-btn');
+        if (curIdx === 0) { prevBtn.disabled = true; } else { prevBtn.disabled = false; }
+        
+        document.getElementById('next-btn').innerText = (curIdx === practiceList.length - 1) ? "交卷 ✨" : "下一个 ➡️";
+        
+        document.getElementById('draw-target').innerHTML = '';
+        const skb = document.getElementById('skip-char-btn');
+        const pkb = document.getElementById('peek-btn');
+        skb.style.display = currentMode === 'challenge' ? 'none' : 'block'; 
+        pkb.style.display = currentMode === 'challenge' ? 'none' : 'block'; 
+
+        const word = q.Answer.trim(); const pinyins = q.Hint.trim().split(/\s+/);
+        q.charsData = q.charsData || []; 
+        
+        if (q.charsData.length === 0) {
+            let pIdx = 0;
+            for(let char of word) {
+                let isP = /[，。！？、：；（）《》“”" "]/u.test(char);
+                q.charsData.push({ char, pinyin: isP ? char : (pinyins[pIdx++] || ''), isP, done: isP });
+            }
+        }
+        
+        practiceChars = q.charsData;
+        document.getElementById('hint-area').innerHTML = practiceChars.map((item, i) => {
+            let innerHtml = item.isP ? item.char : (item.done && currentMode !== 'challenge' ? item.char : item.pinyin);
+            return `<div class="hint-unit ${item.done?'done':''}" id="py-${i}" onclick="jumpTo(${i})">${innerHtml}</div>`;
+        }).join('');
+        autoJump();
+    }
+
+    function jumpTo(idx) {
+        if(practiceChars[idx].done) return; 
+        document.querySelectorAll('.hint-unit').forEach((el, i) => el.classList.toggle('active', i === idx));
+        document.getElementById('draw-target').innerHTML = `<div id="hz-box" class="hanzi-box"></div>`;
+        let boxSize = window.innerWidth <= 768 ? 200 : 240;
+        hzWriter = HanziWriter.create('hz-box', practiceChars[idx].char, { width: boxSize, height: boxSize, padding: 15, showOutline: false, showCharacter: false, strokeColor: '#1e293b', drawingColor: '#3b82f6', outlineColor: '#cbd5e1' });
+        hzWriter.quiz({ 
+            onMistake: () => { sessionErrors++; practiceList[curIdx].isWrong = true; },
+            onComplete: () => {
+                showThumb(); practiceChars[idx].done = true;
+                let pyEl = document.getElementById(`py-${idx}`); pyEl.classList.add('done');
+                pyEl.innerText = currentMode === 'challenge' ? practiceChars[idx].pinyin : practiceChars[idx].char;
+                setTimeout(autoJump, 600);
+            }
+        });
+        if (currentMode !== 'challenge') {
+            const peek = document.getElementById('peek-btn');
+            const show = (e) => { if(e) e.preventDefault(); peek.style.transform = 'translateY(5px)'; peek.style.boxShadow = '0 0 0 transparent'; hzWriter.showOutline(); };
+            const hide = (e) => { if(e) e.preventDefault(); peek.style.transform = ''; peek.style.boxShadow = ''; hzWriter.hideOutline(); };
+            peek.onmousedown = peek.ontouchstart = show;
+            peek.onmouseup = peek.onmouseleave = peek.ontouchend = peek.ontouchcancel = hide;
+        }
+    }
+
+    function skipCurrentChar() {
+        let idx = practiceChars.findIndex(i => !i.done);
+        if(idx !== -1) { 
+            sessionErrors++; 
+            practiceChars[idx].done = true; 
+            document.getElementById(`py-${idx}`).classList.add('done'); 
+            autoJump(); 
+        }
+    }
+
+    function autoJump() { let next = practiceChars.findIndex(i => !i.done); if(next !== -1) jumpTo(next); }
+    function showThumb() { const t = document.getElementById('thumb-up'); t.style.display = 'block'; setTimeout(() => t.style.display = 'none', 600); }
+
+    function finish() {
+        let uncompleted = 0;
+        practiceList.forEach(q => {
+            if (q.charsData) {
+                q.charsData.forEach(c => {
+                    if (!c.isP && !c.done) { uncompleted++; q.isWrong = true; }
+                });
+            }
+        });
+
+        if (uncompleted > 0 && currentMode === 'challenge') {
+            if (!confirm(`还有 ${uncompleted} 个字没写哦！确定要直接交卷吗？\n(空着的将被算作错误)`)) return; 
+            sessionErrors += uncompleted; 
+        }
+
+        // 🌟 区分姐姐和妹妹的奖励条件
+        const isValerie = (currentPlayer === 'Valerie' || currentPlayer === 'Velarie');
+        const isPerfect = (sessionErrors === 0 && uncompleted === 0);
+        // 姐姐只要写完（uncompleted === 0）就算成功；妹妹要求全对（isPerfect）
+        const isSuccess = isValerie ? (uncompleted === 0) : isPerfect;
+
+        let earnedCoins = 0;
+        let badgeEarned = false;
+        let newBadgedTopics = [];
+
+        let config = JSON.parse(localStorage.getItem('hub_config') || "{}");
+        let rewardCoinAmount = config.tingxie_reward_coin || 1;
+
+        // 🌟 判断是否给予奖励 (全新每日首胜任务逻辑：不限课文限制，每天可拿一次，必须是挑战模式)
+        if (currentMode === 'challenge' && isSuccess) {
+            let involvedTopics = [...new Set(practiceList.map(q => q.Topic))];
+            let currentDate = getSGTDateString(); 
+            let dailyBadgeKey = `tingxie_daily_challenge_${currentPlayer}_${currentDate}`;
+            
+            // 检查今天是否拿过“每日挑战者”徽章
+            if (!localStorage.getItem(dailyBadgeKey)) {
+                localStorage.setItem(dailyBadgeKey, "true");
+                badgeEarned = true;
+                earnedCoins = rewardCoinAmount; // 每日挑战通关只发一次规定数量的金币
+                newBadgedTopics = involvedTopics; 
+                
+                // 统一合并发送一个全新的每日大徽章
+                syncToCloud({ 
+                    type: 'badge', 
+                    user: currentPlayer, 
+                    subject: '听写', 
+                    icon: '🔥', 
+                    title: '每日挑战者', 
+                    desc: `完成今日挑战《${involvedTopics.join('、')}》` 
+                });
+            }
+
+            // 统一结算更新金币入库
+            if (earnedCoins > 0) {
+                let vault = parseInt(localStorage.getItem('gold_coins_vault') || "0");
+                localStorage.setItem('gold_coins_vault', vault + earnedCoins);
+                syncToCloud({ type: 'coin_update', user: currentPlayer, earned: earnedCoins });
+            }
+        }
+
+        const today = getSGTDateString();
+        let lastDate = localStorage.getItem(`last_date_${currentPlayer}`);
+        let currentStreak = parseInt(localStorage.getItem(`current_streak_${currentPlayer}`) || "0");
+        let totalDays = parseInt(localStorage.getItem(`total_days_${currentPlayer}`) || "0");
+        let crystalEarned = false;
+
+        if (lastDate) {
+            let diff = Math.floor((new Date(today) - new Date(lastDate)) / 864e5);
+            if (diff === 1) currentStreak++; else if (diff > 1) currentStreak = 1; 
+        } else {
+            currentStreak = 1;
+        }
+
+        if (lastDate !== today) {
+            totalDays++; 
+            localStorage.setItem(`last_date_${currentPlayer}`, today);
+            localStorage.setItem(`current_streak_${currentPlayer}`, currentStreak);
+            localStorage.setItem(`total_days_${currentPlayer}`, totalDays);
+
+            let crys = parseInt(localStorage.getItem(`crystals_${currentPlayer}`) || "0");
+
+            if (currentStreak >= 3) {
+                crys += 1;
+                localStorage.setItem(`crystals_${currentPlayer}`, crys);
+                crystalEarned = true;
+            }
+            
+            syncToCloud({ 
+                type: 'crystal_update', user: currentPlayer, 
+                crystalsTotal: crys, totalDays: totalDays, streak: currentStreak,
+                checkinDate: today 
+            });
+        }
+        
+        localStorage.setItem(`last_checkin_date_${currentPlayer}`, today);
+
+        if (isSuccess) {
+            confetti({ particleCount: 250, spread: 100 });
+            new Audio("https://actions.google.com/sounds/v1/foley/cheer_short.ogg").play().catch(()=>{});
+        }
+
+        let html = `<div style="padding:40px 0;"><h1>${isSuccess?'🏆':'💪'}</h1><h2 style="font-size:36px;">${isSuccess?'太厉害了！':'继续加油！'}</h2>`;
+        
+        // 🌟 针对姐姐的额外鼓励提示
+        if (isValerie && isSuccess && !isPerfect) {
+            html += `<div style="color:#d97706; font-weight:800; margin-bottom:10px;">(坚持写完了所有字，非常棒！破例给你发奖励啦！🎉)</div>`;
+        }
+
+        if (badgeEarned) {
+            html += `<div style="background:#fffbeb; padding:15px; border-radius:20px; border:3px solid #fde68a; margin:20px 0;">
+                        <div style="font-size:40px;">🔥</div>
+                        <div style="font-weight:900; color:#d97706;">获得【每日挑战者】徽章</div>
+                        <div style="font-size:16px; color:#92400e; margin: 5px 0;">(${newBadgedTopics.join('、')})</div>
+                        <div style="font-size:20px; color:#b45309; margin-top:10px;">💰 +${earnedCoins} 金币已存入金库</div>
+                     </div>`;
+        } else if (currentMode === 'challenge' && isSuccess) {
+            html += `<div style="color:#94a3b8; margin:20px 0; font-weight:800;">(今天的【每日挑战者】徽章已经拿过啦，明天再来挑战拿奖励吧！)</div>`;
+        }
+
+        if (crystalEarned) {
+             html += `<div style="font-size: 16px; color: #38bdf8; margin-top: 15px; font-weight: 900;">💎 连续打卡${currentStreak}天，水晶 +1！</div>`;
+        }
+        
+        html += `<button class="btn-action btn-quit" style="width:200px; margin:30px auto;" onclick="window.location.href='index.html'">返回主页 🏠</button></div>`;
+        document.getElementById('finish-screen').innerHTML = html; showScreen('finish-screen');
+        
+        if (isSuccess) setTimeout(() => { window.location.href = "https://andydang2007.github.io/game/popballoons.html?ticket=" + Date.now() + "&returnUrl=index.html"; }, 3000);
+    }
+    
+    function showScreen(id) { document.querySelectorAll('.screen').forEach(s => s.style.display='none'); document.getElementById(id).style.display='flex'; }
+    init();
+</script>
+
+</body>
+</html>

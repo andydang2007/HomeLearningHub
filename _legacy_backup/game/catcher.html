@@ -1,0 +1,193 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>P.S.L.E. 星际接接乐</title>
+    <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@800;900&display=swap" rel="stylesheet">
+    <style>
+        * { box-sizing: border-box; user-select: none; -webkit-tap-highlight-color: transparent; touch-action: none; font-family: 'Nunito', sans-serif;}
+        body { margin: 0; overflow: hidden; background: #0f172a; height: 100dvh; }
+        #game-canvas { display: block; width: 100%; height: 100%; }
+        #ui-layer { position: absolute; top: 0; left: 0; width: 100%; padding: 15px; display: flex; justify-content: space-between; pointer-events: none; z-index: 10; }
+        .hud-box { background: rgba(255, 255, 255, 0.1); border: 2px solid rgba(255, 255, 255, 0.2); padding: 8px 15px; border-radius: 20px; backdrop-filter: blur(10px); color: white; font-size: 18px; font-weight: 900; }
+        #overlay { position: absolute; top: 0; left: 0; width: 100vw; height: 100vh; background: rgba(15, 23, 42, 0.85); backdrop-filter: blur(10px); display: flex; justify-content: center; align-items: center; z-index: 200; }
+        .modal { background: white; padding: 30px; border-radius: 35px; text-align: center; max-width: 90%; width: 380px; box-shadow: 0 25px 50px rgba(0,0,0,0.4); }
+        .sle { color: #3b82f6; font-weight: 900; }
+        .btn { padding: 16px; font-size: 20px; font-weight: 900; color: white; background: #10b981; border: none; border-radius: 25px; cursor: pointer; box-shadow: 0 8px 0 #059669; width: 100%; margin-top: 15px; }
+        .combo-text { position: absolute; font-size: 30px; font-weight: 900; pointer-events: none; animation: floatUp 0.8s forwards; z-index: 50; }
+        @keyframes floatUp { 0% { transform: translate(-50%, 0) scale(0.5); opacity: 1; } 100% { transform: translate(-50%, -100px) scale(1.2); opacity: 0; } }
+        @keyframes shake { 0%, 100% { transform: translate(0,0); } 25% { transform: translate(-10px,5px); } 75% { transform: translate(10px,-5px); } }
+        .shake { animation: shake 0.2s infinite; }
+    </style>
+</head>
+<body>
+    <div id="ui-layer">
+        <div class="hud-box">🏆 <span id="ui-level">P1</span></div>
+        <div class="hud-box" id="ui-time">⏳ 30s</div>
+        <div class="hud-box">⭐ <span id="ui-score">0</span>/<span id="ui-target">300</span></div>
+    </div>
+    <canvas id="game-canvas"></canvas>
+    <div id="overlay">
+        <div class="modal">
+            <div style="font-size: 60px;">🛸</div>
+            <h1 style="font-size: 24px;"><span class="sle">P.S.L.E.</span> 星际挑战</h1>
+            <p id="modal-desc">接住星星宝石，避开急速陨石！</p>
+            <button class="btn" id="modal-btn" onclick="startOrNextLevel()">开始 P1 任务</button>
+        </div>
+    </div>
+
+<script>
+    // 1. 防作弊与回跳系统
+    const urlParams = new URLSearchParams(window.location.search);
+    const ticket = urlParams.get('ticket');
+    const returnUrl = urlParams.get('returnUrl') || '../index.html';
+    
+    // 留了后门：只要 URL 里有 ticket，就算过期也放行（方便你手动拼链接测试）
+    // 部署给学生时可以把条件改回严格模式
+    if (!ticket) { 
+        window.location.replace('../index.html'); 
+    }
+
+    const canvas = document.getElementById('game-canvas');
+    const ctx = canvas.getContext('2d');
+    const LEVELS = ['P1', 'P2', 'P3', 'P4', 'P5', 'P6', 'PSLE'];
+    const TARGETS = [300, 700, 1200, 1800, 2500, 3500, 5000];
+    const ITEMS_CFG = [
+        { emoji: '⭐', points: 10, prob: 0.45, type: 'good' },
+        { emoji: '💎', points: 30, prob: 0.20, type: 'good' },
+        { emoji: '🪨', points: -10, prob: 0.20, type: 'bad' },
+        { emoji: '💣', points: -50, prob: 0.15, type: 'bad' }
+    ];
+
+    let state = { level: 0, score: 0, time: 30, active: false, x: 0, items: [], combo: 0 };
+    let timer, animeReq;
+
+    // 修复左上角转圈：显式定义尺寸
+    function resize() {
+        canvas.width = window.innerWidth;
+        canvas.height = window.innerHeight;
+        state.x = canvas.width / 2;
+    }
+    window.addEventListener('resize', resize);
+    resize();
+
+    function startOrNextLevel() {
+        document.getElementById('overlay').style.display = 'none';
+        state.score = 0; state.time = 30; state.active = true; state.items = []; state.combo = 0;
+        updateHUD();
+        timer = setInterval(() => {
+            state.time--;
+            updateHUD();
+            if (state.time <= 0) endLevel();
+        }, 1000);
+        gameLoop();
+    }
+
+    function gameLoop() {
+        if (!state.active) return;
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        
+        // 随机生成
+        if (Math.random() < (0.03 + state.level * 0.005)) {
+            let r = Math.random(), acc = 0, sel = ITEMS_CFG[0];
+            for(let i of ITEMS_CFG){ acc += i.prob; if(r<acc){ sel=i; break; } }
+            
+            // 🌟 核心修改：如果是石头，下坠速度乘以 2.5 倍！
+            let speedMultiplier = 1;
+            if (sel.emoji === '🪨') {
+                speedMultiplier = 2.5; // 陨石急速坠落
+            } else if (sel.emoji === '💣') {
+                speedMultiplier = 1.2; // 炸弹稍微快一点点
+            }
+
+            let baseSpeed = 2 + Math.random() * 2 + state.level;
+            
+            state.items.push({ 
+                x: Math.random()*(canvas.width-40)+20, 
+                y: -50, 
+                ...sel, 
+                s: baseSpeed * speedMultiplier 
+            });
+        }
+
+        // 玩家 (飞船)
+        ctx.font = '60px Arial';
+        ctx.textAlign = 'center';
+        ctx.fillText('🛸', state.x, canvas.height - 80);
+
+        // 物品移动与碰撞
+        for (let i = state.items.length - 1; i >= 0; i--) {
+            let o = state.items[i];
+            o.y += o.s;
+            ctx.font = '40px Arial';
+            ctx.fillText(o.emoji, o.x, o.y);
+
+            // 碰撞判断
+            if (Math.abs(o.x - state.x) < 40 && Math.abs(o.y - (canvas.height-80)) < 40) {
+                if (o.type === 'good') {
+                    state.combo++;
+                    state.score += o.points + (Math.floor(state.combo/5)*5);
+                    showText(o.x, o.y, `+${o.points}`, '#fde047');
+                } else {
+                    state.combo = 0;
+                    state.score = Math.max(0, state.score + o.points);
+                    showText(o.x, o.y, o.points, '#ef4444');
+                    document.body.classList.add('shake');
+                    setTimeout(()=>document.body.classList.remove('shake'), 200);
+                }
+                state.items.splice(i, 1);
+                updateHUD();
+                if (state.score >= TARGETS[state.level]) { endLevel(true); return; }
+                continue;
+            }
+            if (o.y > canvas.height) state.items.splice(i, 1);
+        }
+        animeReq = requestAnimationFrame(gameLoop);
+    }
+
+    function showText(x, y, txt, color) {
+        const div = document.createElement('div');
+        div.className = 'combo-text';
+        div.innerText = txt;
+        div.style.left = x + 'px'; div.style.top = y + 'px';
+        div.style.color = color;
+        document.body.appendChild(div);
+        setTimeout(() => div.remove(), 800);
+    }
+
+    function updateHUD() {
+        document.getElementById('ui-level').innerText = LEVELS[state.level];
+        document.getElementById('ui-score').innerText = state.score;
+        document.getElementById('ui-target').innerText = TARGETS[state.level];
+        document.getElementById('ui-time').innerText = `⏳ ${state.time}s`;
+    }
+
+    function endLevel(win = false) {
+        state.active = false;
+        clearInterval(timer);
+        cancelAnimationFrame(animeReq);
+        document.getElementById('overlay').style.display = 'flex';
+        const btn = document.getElementById('modal-btn');
+        if (win) {
+            if (state.level < 6) {
+                document.getElementById('modal-desc').innerText = `${LEVELS[state.level]} 挑战成功！`;
+                state.level++;
+                btn.innerText = `进入 ${LEVELS[state.level]}`;
+            } else {
+                document.getElementById('modal-desc').innerText = `🎉 恭喜通关 PSLE！你是最棒的！`;
+                btn.innerText = `领取荣誉返回`;
+                btn.onclick = () => window.location.replace(returnUrl);
+            }
+        } else {
+            document.getElementById('modal-desc').innerText = `哎呀，差一点点！别灰心。`;
+            btn.innerText = `返回主页`;
+            btn.onclick = () => window.location.replace(returnUrl);
+        }
+    }
+
+    canvas.addEventListener('touchmove', e => { e.preventDefault(); state.x = e.touches[0].clientX; }, {passive:false});
+    canvas.addEventListener('mousemove', e => state.x = e.clientX);
+</script>
+</body>
+</html>

@@ -1,0 +1,1036 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Pinyin Shooter: Laser Expedition</title>
+    
+    <link rel="apple-touch-icon" href="./pinyinfiles/spaceship2.jpg">
+    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&display=swap" rel="stylesheet">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
+    <script>
+        let currentUser = localStorage.getItem('currentPlayer') || 'Valerie'; 
+        let currentGrade = localStorage.getItem('currentGrade');
+        if (!currentGrade) {
+            currentGrade = (currentUser === 'Venessa' || currentUser === 'P1') ? 'P1' : 'P3';
+        }
+        let isSister = (currentGrade === 'P1' || currentUser === 'Venessa' || currentUser === 'P1');
+    </script>
+    <style>
+        :root {
+            --accent-glow: #00f0ff; 
+            --correct-color: #39ff14; 
+            --wrong-color: #ff003c;   
+        }
+
+        * { box-sizing: border-box; user-select: none; -webkit-tap-highlight-color: transparent; }
+        
+        body { 
+            margin: 0; padding: 0; color: #fff; 
+            font-family: 'Microsoft YaHei', sans-serif;
+            height: 100dvh; display: flex; flex-direction: column; overflow: hidden;
+            background-color: #000;
+            /* 2. 修改星空背景路径 */
+            background-image: url("./pinyinfiles/starspace.png");
+            background-size: cover;
+            background-position: center;
+            background-repeat: no-repeat;
+            transition: box-shadow 0.1s;
+        }
+
+        .sci-fi-text { font-family: 'Orbitron', sans-serif; }
+
+        header {
+            display: flex; justify-content: flex-end; align-items: center;
+            padding: 10px 20px; background: rgba(0, 0, 0, 0.6); backdrop-filter: blur(5px);
+            border-bottom: 2px solid rgba(0, 240, 255, 0.2); z-index: 200; gap: 30px;
+        }
+
+        .hub-btn {
+            margin-right: auto; background: rgba(0, 240, 255, 0.1); 
+            border: 2px solid var(--accent-glow); color: var(--accent-glow); 
+            padding: 8px 16px; border-radius: 10px; font-weight: 900; 
+            cursor: pointer; transition: 0.2s;
+        }
+        .hub-btn:hover { background: rgba(0, 240, 255, 0.3); transform: scale(1.05); }
+
+        .stat-box { display: flex; flex-direction: column; align-items: flex-end; min-width: 80px; }
+        .stat-label { font-size: 12px; color: var(--accent-glow); font-weight: bold; letter-spacing: 2px; }
+        .stat-value { font-size: 28px; font-weight: 900; color: #fff; text-shadow: 0 0 15px var(--accent-glow); }
+        #ui-time { color: #fbbf24; text-shadow: 0 0 15px #fbbf24; }
+
+        #combat-area { flex: 1; position: relative; overflow: hidden; display: flex; align-items: center; }
+        
+        #laser-canvas { 
+            position: absolute; top: 0; left: 0; width: 100%; height: 100%; 
+            pointer-events: none; z-index: 150; 
+        }
+
+        .flash-error { animation: errorFlash 0.3s ease-out; }
+        @keyframes errorFlash {
+            0% { box-shadow: inset 0 0 100px var(--wrong-color); }
+            100% { box-shadow: inset 0 0 0 transparent; }
+        }
+
+        @keyframes shake-screen {
+            0% { transform: translate(2px, 2px); }
+            20% { transform: translate(-4px, 0px); }
+            40% { transform: translate(2px, -2px); }
+            60% { transform: translate(-4px, 2px); }
+            80% { transform: translate(-2px, -2px); }
+            100% { transform: translate(0px, 0px); }
+        }
+        .shake-screen { animation: shake-screen 0.2s; animation-iteration-count: 1; }
+
+        #spaceship-container { 
+            position: absolute; left: 30px; top: 50%; 
+            width: 100px; height: 100px;
+            transform: translateY(-50%) rotate(90deg); 
+            z-index: 100; display: flex; justify-content: center; align-items: center;
+            mix-blend-mode: screen; 
+        }
+        
+        #player-ship-img { width: 100%; height: 100%; object-fit: contain; pointer-events: none; filter: contrast(1.8) brightness(0.8); }
+        #laser-muzzle { position: absolute; top: 0; left: 50%; width: 1px; height: 1px; pointer-events: none; }
+
+        .ship-core {
+            position: absolute; top: 50%; left: -65px; 
+            transform: translate(-50%, -50%) rotate(-90deg); 
+            min-width: 70px; height: 38px; padding: 0 10px;
+            background: rgba(0,0,0,0.8); border: 2px solid var(--accent-glow); border-radius: 4px;
+            display: flex; justify-content: center; align-items: center; z-index: 120; cursor: pointer;
+            box-shadow: 0 0 15px var(--accent-glow); backdrop-filter: blur(4px);
+        }
+        
+        .hud-text { font-size: 18px; font-weight: 900; color: #fff; font-family: sans-serif; white-space: nowrap;}
+        .ship-core.needs-fix { border-color: var(--wrong-color); box-shadow: 0 0 20px var(--wrong-color); animation: pulseRed 0.8s infinite alternate; }
+        @keyframes pulseRed { from { opacity: 0.7; } to { opacity: 1; } }
+
+        #finger-hint {
+            position: absolute; top: -55px; left: 50%; transform: translateX(-50%);
+            font-size: 40px; animation: pointDown 0.5s infinite alternate; display: none; z-index: 130;
+        }
+        @keyframes pointDown { from { top: -55px; } to { top: -40px; } }
+
+        .enemy-container {
+            position: absolute; display: flex; flex-direction: column; align-items: center; justify-content: center;
+            z-index: 8; transition: opacity 0.1s ease-out, transform 0.1s ease-out;
+        }
+        .enemy-text { font-size: 32px; font-weight: 900; color: #fff; text-shadow: 0 0 10px var(--accent-glow), 0 0 20px var(--accent-glow); margin-bottom: 2px; z-index: 2; }
+        .enemy-img { width: 65px; height: 65px; object-fit: contain; mix-blend-mode: screen; filter: contrast(1.2); }
+        .fade-out-fast { opacity: 0 !important; transform: translateY(-50%) scale(0.01) !important; }
+
+        .explosion-effect-container { position: fixed; width: 150px; height: 150px; pointer-events: none; z-index: 160; mix-blend-mode: screen; }
+        .explosion-layer {
+            position: absolute; width: 100%; height: 100%;
+            /* 3. 修改爆炸图片路径 */
+            background-image: url("./pinyinfiles/explosion.png"); background-size: contain; background-repeat: no-repeat; background-position: center;
+            opacity: 0; animation: boomScaleLayers 0.5s ease-out forwards;
+        }
+        @keyframes boomScaleLayers { 0% { transform: translate(-50%, -50%) scale(0.3); opacity: 1; } 100% { transform: translate(-50%, -50%) scale(1.6); opacity: 0; } }
+
+        .combo-text {
+            position: fixed; color: #fbbf24; font-size: 40px; font-weight: 900; font-family: 'Orbitron', sans-serif;
+            text-shadow: 0 0 20px #fbbf24, 0 0 10px #ff0000; pointer-events: none; z-index: 170;
+            animation: comboPop 0.8s ease-out forwards; white-space: nowrap;
+        }
+        @keyframes comboPop {
+            0% { transform: translate(-50%, -50%) scale(0.5); opacity: 1; }
+            50% { transform: translate(-50%, -50%) scale(1.5); }
+            100% { transform: translate(-50%, calc(-50% - 50px)) scale(1.8); opacity: 0; }
+        }
+
+        .dashboard {
+            height: 25vh; min-height: 180px; background: linear-gradient(to bottom, #1e293b, #0f172a); 
+            border-top: 4px solid #334155; display: flex; justify-content: center; align-items: flex-end; gap: 3vw; border-radius: 30px 30px 0 0;
+            box-shadow: inset 0 5px 15px rgba(255,255,255,0.1), 0 -15px 40px rgba(0,0,0,0.8); padding: 0 2vw 15px 2vw;
+        }
+
+        .gauge-unit { position: relative; flex: 1; max-width: 220px; height: 140px; background: rgba(0, 0, 0, 0.5); border: 2px solid #334155; border-radius: 20px 20px 40px 40px; box-shadow: inset 0 0 20px rgba(0,0,0,0.9), 0 5px 10px rgba(0,0,0,0.5); overflow: hidden; cursor: grab; }
+        .gauge-unit:active { cursor: grabbing; }
+        #box-i, #box-f { flex: 1.2; max-width: 240px; } #box-t { flex: 0.8; max-width: 160px; }
+
+        .gauge-glass { position: absolute; top: 10px; left: 10px; right: 10px; height: 90px; background: radial-gradient(ellipse at bottom center, rgba(0, 240, 255, 0.1) 0%, transparent 70%); border-top: 2px solid rgba(0, 240, 255, 0.2); border-radius: 50% 50% 0 0 / 100% 100% 0 0; pointer-events: none; z-index: 1; }
+        .gauge-origin { position: absolute; bottom: 0px; left: 50%; width: 0; height: 0; z-index: 2; }
+        .gauge-item { position: absolute; display: flex; justify-content: center; align-items: center; font-size: 16px; font-weight: bold; color: #64748b; white-space: nowrap; text-shadow: 1px 1px 2px #000; transition: 0.2s; }
+        .gauge-item.active { font-size: 26px; font-weight: 900; color: #00f0ff; text-shadow: 0 0 10px rgba(0, 240, 255, 0.8); filter: drop-shadow(0 2px 2px #000); }
+        .gauge-tick { position: absolute; top: -5px; left: -2px; width: 4px; height: 10px; background: #475569; border-radius: 2px; transition: 0.2s; }
+        .gauge-tick.active { background: #00f0ff; box-shadow: 0 0 8px #00f0ff; }
+        .gauge-pointer-wrapper { position: absolute; top: 0; left: 0; width: 0; height: 0; z-index: 10; pointer-events: none; transition: transform 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275); }
+        .gauge-pointer { position: absolute; bottom: 0; left: -2px; width: 4px; height: 70px; background: linear-gradient(to top, transparent 15%, #ff003c 70%, #ff003c 100%); transform-origin: bottom center; filter: drop-shadow(0 0 6px #ff003c); }
+        .gauge-pointer::after { content: ''; position: absolute; top: -3px; left: -3px; width: 10px; height: 10px; background: #ff003c; border-radius: 50%; box-shadow: 0 0 10px #ff003c, 0 0 20px #ff003c; }
+        .gauge-knob { position: absolute; bottom: -20px; left: 50%; transform: translateX(-50%); width: 60px; height: 60px; border-radius: 50%; background: radial-gradient(circle, #e2e8f0, #64748b); border: 2px solid #0f172a; box-shadow: 0 -3px 10px rgba(0,0,0,0.8), inset 0 -3px 5px rgba(0,0,0,0.3); z-index: 15; pointer-events: none; }
+        .gauge-knob::after { content: ''; position: absolute; top: 12px; left: 12px; right: 12px; bottom: 12px; border-radius: 50%; border: 1px solid rgba(0,0,0,0.3); box-shadow: inset 0 2px 4px rgba(255,255,255,0.4); }
+
+        .action-container { display: flex; justify-content: center; align-items: center; margin-bottom: 10px;}
+        #btn-fire-action { width: 20vw; max-width: 110px; aspect-ratio: 1; border-radius: 50%; background: radial-gradient(circle at 30% 30%, #ff4d4d, #b91c1c); border: 6px solid #450a0a; color: white; font-size: 22px; font-weight: 900; cursor: pointer; transition: 0.1s; letter-spacing: 2px; box-shadow: inset 0 5px 10px rgba(255,255,255,0.4), 0 10px 0 #7f1d1d, 0 15px 25px rgba(0,0,0,0.8); text-shadow: -1px -1px 0 rgba(0,0,0,0.4); }
+        #btn-fire-action:active { transform: translateY(8px); box-shadow: inset 0 5px 10px rgba(255,255,255,0.4), 0 2px 0 #7f1d1d, 0 5px 10px rgba(0,0,0,0.8); background: radial-gradient(circle at 30% 30%, #cc0000, #7f1d1d); }
+
+        #overlay { position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0, 0, 0, 0.95); display: flex; flex-direction: column; justify-content: center; align-items: center; z-index: 300; backdrop-filter: blur(10px); text-align: center; }
+        .game-title { display: flex; flex-direction: column; align-items: center; gap: 15px; font-size: 36px; color: #fff; margin-bottom: 60px; text-shadow: 0 0 20px var(--accent-glow); text-align: center; letter-spacing: 4px; }
+        .title-line { display: flex; gap: 20px; }
+        .psle-cap { color: #fbbf24; font-size: 64px; text-shadow: 0 0 20px rgba(251, 191, 36, 0.6); }
+        
+        #loading-ui { color: var(--accent-glow); font-size: 20px; letter-spacing: 3px; animation: blink 1s infinite alternate; }
+        @keyframes blink { from { opacity: 0.4; } to { opacity: 1; } }
+        
+        .ship-selector-title { font-size: 16px; letter-spacing: 2px; margin-bottom: 25px; color: #94a3b8; display: none; }
+        .ship-selector { display: none; gap: 25px; margin-bottom: 60px; align-items: center; justify-content: center; }
+        .ship-option { width: 80px; height: 80px; padding: 5px; box-sizing: border-box; border-radius: 10px; border: 2px solid #334155; object-fit: contain; cursor: pointer; transition: 0.2s; mix-blend-mode: screen; background: #000; }
+        .ship-option.selected { border-color: var(--accent-glow); box-shadow: 0 0 15px var(--accent-glow); transform: scale(1.15); }
+        .start-btn { padding: 18px 50px; border: 2px solid var(--accent-glow); background: rgba(0, 240, 255, 0.05); color: var(--accent-glow); font-size: 26px; font-weight: 900; cursor: pointer; box-shadow: 0 0 15px rgba(0, 240, 255, 0.3), inset 0 0 15px rgba(0, 240, 255, 0.2); letter-spacing: 3px; clip-path: polygon(10% 0, 100% 0, 90% 100%, 0 100%); transition: all 0.2s; display: none; margin-top: 15px;}
+        .start-btn:active { transform: scale(0.95); }
+        
+        .back-btn { margin-top: 20px; padding: 10px 30px; border: 2px solid #64748b; background: rgba(0,0,0,0.5); color: #94a3b8; font-size: 18px; font-weight: 900; cursor: pointer; border-radius: 15px; transition: all 0.2s; }
+        .back-btn:hover { background: #334155; color: white; border-color: #94a3b8;}
+
+        .reward-box { margin-top: 20px; background: rgba(255,255,255,0.1); padding: 15px 25px; border-radius: 20px; border: 2px solid #fde68a; display: inline-block; animation: bounceIn 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275); text-align: center; }
+
+        @media (max-width: 800px) {
+            .game-title { font-size: 5vw; margin-bottom: 40px; gap: 10px; } .psle-cap { font-size: 9vw; }
+            .ship-selector { margin-bottom: 40px;}
+            .dashboard { gap: 2vw; padding: 0 10px 10px 10px; height: 22vh; min-height: 140px;}
+            .gauge-unit { height: 110px; } .gauge-pointer { height: 55px; } 
+            #btn-fire-action { font-size: 16px; border-width: 4px; box-shadow: inset 0 5px 10px rgba(255,255,255,0.4), 0 6px 0 #7f1d1d, 0 10px 15px rgba(0,0,0,0.6);}
+            #btn-fire-action:active { transform: translateY(5px); box-shadow: inset 0 5px 10px rgba(255,255,255,0.4), 0 1px 0 #7f1d1d, 0 5px 10px rgba(0,0,0,0.6);}
+        }
+    </style>
+</head>
+<body>
+
+    <header>
+        <button class="hub-btn sci-fi-text" onclick="window.location.href='https://andydang2007.github.io/valerie-venessa-learn/index.html'">← HUB</button>
+        <div class="stat-box" style="margin-right: 20px;">
+            <span class="stat-label sci-fi-text">TIME</span>
+            <span class="stat-value sci-fi-text" id="ui-time">05:00</span>
+        </div>
+        <div class="stat-box">
+            <span class="stat-label sci-fi-text">SCORE</span>
+            <span class="stat-value sci-fi-text" id="ui-score">0</span>
+        </div>
+    </header>
+
+    <div id="combat-area">
+        <canvas id="laser-canvas"></canvas>
+
+        <div id="spaceship-container">
+            <img id="player-ship-img" src="" alt="Fighter">
+            <div id="laser-muzzle"></div>
+            
+            <div class="ship-core" id="ship-main" onclick="handleHudClick()">
+                <div id="finger-hint">👇</div>
+                <span class="hud-text" id="hud-display"></span>
+            </div>
+        </div>
+    </div>
+
+    <div class="dashboard">
+        <div class="gauge-unit" id="box-i"><div class="gauge-glass"></div><div class="gauge-origin" id="origin-i"></div><div class="gauge-knob"></div></div>
+        <div class="gauge-unit" id="box-f"><div class="gauge-glass"></div><div class="gauge-origin" id="origin-f"></div><div class="gauge-knob"></div></div>
+        <div class="gauge-unit" id="box-t"><div class="gauge-glass"></div><div class="gauge-origin" id="origin-t"></div><div class="gauge-knob"></div></div>
+        <div class="action-container"><button id="btn-fire-action" class="sci-fi-text" onclick="handleFireClick()">FIRE</button></div>
+    </div>
+
+    <div id="overlay">
+        <h1 class="game-title sci-fi-text" id="main-title">
+            <div class="title-line"><span><span class="psle-cap">P</span>INYIN</span><span><span class="psle-cap">S</span>HOOTER</span></div>
+            <div class="title-line"><span><span class="psle-cap">L</span>ASER</span><span><span class="psle-cap">E</span>XPEDITION</span></div>
+        </h1>
+        
+        <div id="loading-ui" class="sci-fi-text">CONNECTING TO DATABASE...</div>
+        
+        <div class="ship-selector-title sci-fi-text" id="selector-title">SELECT YOUR FIGHTER</div>
+        <div class="ship-selector" id="ship-selector">
+            <img class="ship-option selected" src="./pinyinfiles/spaceship1.jpg" onclick="selectShip(0)">
+            <img class="ship-option" src="./pinyinfiles/spaceship2.jpg" onclick="selectShip(1)">
+            <img class="ship-option" src="./pinyinfiles/spaceship3.jpg" onclick="selectShip(2)">
+        </div>
+
+        <button class="start-btn sci-fi-text" id="btn-start" onclick="startGame()">MISSION START</button>
+        <button class="hub-btn sci-fi-text" onclick="window.location.href='https://andydang2007.github.io/valerie-venessa-learn/index.html'">← HUB</button>
+    </div>
+
+<script>
+    const SYNC_API_URL = "https://script.google.com/macros/s/AKfycbzbNOgg7deW9uVVyfYGTfKGOtVgNs_9ZfUQ9J_9cYpG2Ufow9KLDICHgsinBXrPJlmz/exec";
+    const CSV_URL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vQlpdRHnR9ybEHHgX6fouRI-vXOh8KQNLSjsbt0TYh9R3No_9i7QNv_4ELwJZJGQpTe3oZVXaZijaW4/pub?gid=573238154&single=true&output=csv";
+    
+    function getSGTDateString() {
+        const d = new Date();
+        const utc = d.getTime() + (d.getTimezoneOffset() * 60000);
+        const sgt = new Date(utc + (3600000 * 8));
+        return sgt.getFullYear() + '-' + String(sgt.getMonth() + 1).padStart(2, '0') + '-' + String(sgt.getDate()).padStart(2, '0');
+    }
+
+    async function syncToCloud(payload) {
+        try { fetch(SYNC_API_URL, { method: 'POST', mode: 'no-cors', body: JSON.stringify(payload) }); } catch (e) {}
+    }
+
+    async function syncUserDataFromCloud() {
+        try {
+            const statsResp = await fetch(`${SYNC_API_URL}?type=fetch_user_data&user=${currentUser}`);
+            const cloudStats = await statsResp.json();
+            if (cloudStats && Object.keys(cloudStats).length > 0) {
+                localStorage.setItem(`total_days_${currentUser}`, cloudStats.userTotalDays);
+                localStorage.setItem(`current_streak_${currentUser}`, cloudStats.userStreak);
+                localStorage.setItem(`crystals_${currentUser}`, cloudStats.userCrystals);
+                localStorage.setItem(`gold_coins_vault`, cloudStats.vaultCoins); 
+                
+                if (cloudStats.lastCheckinDate) {
+                    let d = new Date(cloudStats.lastCheckinDate);
+                    let sgtStr = d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0') + '-' + String(d.getDate()).padStart(2,'0');
+                    localStorage.setItem(`last_date_${currentUser}`, sgtStr);
+                }
+                console.log("✅ 成功从云端同步玩家数据！云端连击数：", cloudStats.userStreak);
+            }
+        } catch (e) {
+            console.log("❌ 云端数据同步失败，将使用本地缓存:", e);
+        }
+    }
+
+    const lessonMap = {
+        '第一课': 1, '第二课': 2, '第三课': 3, '第四课': 4, '第五课': 5,
+        '第六课': 6, '第七课': 7, '第八课': 8, '第九课': 9, '第十课': 10,
+        '第十一课': 11, '第十二课': 12, '第十三课': 13, '第十四课': 14, '第十五课': 15,
+        '第十六课': 16, '第十七课': 17, '第十八课': 18, '第十九课': 19
+    };
+
+    // 7. 修改逻辑里的飞船和怪物图片路径
+    const SHIPS = ['./pinyinfiles/spaceship1.jpg', './pinyinfiles/spaceship2.jpg', './pinyinfiles/spaceship3.jpg'];
+    const MONSTERS = ['./pinyinfiles/monster1.jpg', './pinyinfiles/monster2.jpg', './pinyinfiles/monster3.jpg', './pinyinfiles/monster4.jpg', './pinyinfiles/monster5.jpg'];
+    let currentShipIdx = 0;
+
+    function selectShip(idx) {
+        initAudio(); 
+        currentShipIdx = idx;
+        const options = document.querySelectorAll('.ship-option');
+        options.forEach((opt, i) => {
+            if(i === idx) opt.classList.add('selected');
+            else opt.classList.remove('selected');
+        });
+        playSound('select'); 
+    }
+
+    const TONE_MAP = {'a':['','ā','á','ǎ','à'], 'o':['','ō','ó','ǒ','ò'], 'e':['','ē','é','ě','è'], 'i':['','ī','í','ǐ','ì'], 'u':['','ū','ú','ǔ','ù'], 'ü':['','ǖ','ǘ','ǚ','ǜ']};
+    const TONE_DATA_REV = {'ā':'a1','á':'a2','ǎ':'a3','à':'a4','ē':'e1','é':'e2','ě':'e3','è':'e4','ō':'o1','ó':'o2','ǒ':'o3','ò':'o4','ī':'i1','í':'i2','ǐ':'i3','ì':'i4','ū':'u1','ú':'u2','ǔ':'u3','ù':'u4','ǖ':'ü1','ǘ':'ü2','ǚ':'ü3','ǜ':'ü4'};
+    const INITIALS_LIST = ['b','p','m','f','d','t','n','l','g','k','h','j','q','x','zh','ch','sh','r','z','c','s','y','w'];
+
+    let DB_WORDS = [];
+    
+    let state = {
+        pilot: currentUser,
+        score: 0, combo: 0, timeLeft: 300, isPlaying: false, hatRemoved: false, dialsTouched: false,
+        i: { angle: 0, opts: [], step: 0 }, f: { angle: 0, opts: [], step: 0 }, t: { angle: 0, opts: [], step: 0 },
+        targets: [], targetIdCounter: 0, lastSpawnTime: 0, lastTimerTick: 0,
+        lasers: [] 
+    };
+
+    let actx = null;
+
+    const ALL_INITIALS = ['','b','p','m','f','d','t','n','l','g','k','h','j','q','x','zh','ch','sh','r','z','c','s','y','w'];
+    const ALL_FINALS = ['a','o','e','i','u','ü','ai','ei','ui','ao','ou','iu','ie','üe','er','an','en','in','un','ün','ang','eng','ing','ong','iao','ia','ian','iang','ua','uo','uan','uang','uai'];
+    const ALL_TONES = ['1', '2', '', '3', '4']; 
+
+    const canvas = document.getElementById('laser-canvas');
+    const ctx = canvas.getContext('2d');
+
+    function parsePinyin(py) {
+        if (py === 'de') return { i:'d', f:'e', t:'' };
+        let clean = py, tone = ''; 
+        for (let char in TONE_DATA_REV) { 
+            if (py.includes(char)) { tone = TONE_DATA_REV[char].slice(-1); clean = py.replace(char, TONE_DATA_REV[char][0]); break; } 
+        }
+        let initial = ''; 
+        for (let i of INITIALS_LIST) {
+            if (clean.startsWith(i)) {
+                if (i.length === 2) { initial = i; break; }
+                if (i.length === 1) { initial = i; }
+            }
+        }
+        let final = initial === '' ? clean : clean.slice(initial.length);
+        if (['j','q','x','y'].includes(initial) && final === 'u') final = 'ü';
+        return { i: initial, f: final, t: tone };
+    }
+
+    async function loadDB() {
+        syncUserDataFromCloud();
+        
+        try {
+            let ALL_WORDS = [];
+            let cachedPinyinDB = sessionStorage.getItem('pinyin_db_cache');
+            
+            if (cachedPinyinDB) {
+                ALL_WORDS = JSON.parse(cachedPinyinDB);
+                filterAndStart(ALL_WORDS);
+            } else {
+                Papa.parse(CSV_URL, {
+                    download: true,
+                    header: true,
+                    skipEmptyLines: 'greedy',
+                    complete: function(results) {
+                        ALL_WORDS = results.data.map(row => {
+                            let keys = Object.keys(row);
+                            
+                            let kGrade = keys.find(k => /grade|年级/i.test(k)) || keys[0];
+                            let kTopic = keys.find(k => /topic|lesson|课/i.test(k)) || keys[2];
+                            let kType = keys.find(k => /type|类型/i.test(k)) || keys[3]; 
+                            let kChar = keys.find(k => /chinese|char|word|question|汉字|词|题目/i.test(k)) || keys[4];
+                            let kPy = keys.find(k => /pinyin|correct|answer|拼音|答案/i.test(k)) || keys[6];
+                            
+                            let typeVal = (row[kType] || "").toString().trim().toUpperCase();
+                            if (typeVal && typeVal !== 'PINYIN') return null;
+
+                            let grade = (row[kGrade] || "").trim().toUpperCase();
+                            let topic = (row[kTopic] || "").trim();
+                            
+                            let charRaw = (row[kChar] || "").trim();
+                            let char = charRaw.replace(/[^\u4e00-\u9fa5]/g, '') || charRaw[0]; 
+                            
+                            let pyStr = (row[kPy] || "").trim();
+                            
+                            if (!char || !pyStr) return null;
+                            
+                            let py = pyStr.split('/')[0].trim();
+                            let lesson = lessonMap[topic] || 99;
+                            if (lesson === 99 && topic) {
+                                let match = topic.match(/\d+/);
+                                if (match) lesson = parseInt(match[0]);
+                            }
+                            
+                            return { grade: grade, lesson: lesson, char: char, ...parsePinyin(py), py: py };
+                        }).filter(w => w);
+                        
+                        sessionStorage.setItem('pinyin_db_cache', JSON.stringify(ALL_WORDS));
+                        filterAndStart(ALL_WORDS);
+                    },
+                    error: function() {
+                        document.getElementById('loading-ui').innerText = "DB CONNECTION FAILED";
+                    }
+                });
+            }
+        } catch (e) { document.getElementById('loading-ui').innerText = "DB CONNECTION FAILED"; }
+    }
+
+    function filterAndStart(ALL_WORDS) {
+        let maxLesson = parseInt(localStorage.getItem(`max_lesson_${currentUser}`) || "8");
+
+        if (isSister) {
+            DB_WORDS = ALL_WORDS.filter(w => w.grade === 'P1' && w.lesson <= maxLesson);
+        } else {
+            DB_WORDS = ALL_WORDS.filter(w => w.grade === 'P1' || w.grade === 'P2' || (w.grade === 'P3' && w.lesson <= maxLesson));
+        }
+        
+        if(DB_WORDS.length > 0){
+            document.getElementById('loading-ui').style.display = 'none';
+            document.getElementById('selector-title').style.display = 'block';
+            document.getElementById('ship-selector').style.display = 'flex';
+            document.getElementById('btn-start').style.display = 'block';
+            document.getElementById('btn-back').style.display = 'block'; 
+        } else {
+            document.getElementById('loading-ui').innerText = "NO WORDS FOUND FOR THIS PROFILE";
+            document.getElementById('btn-back').style.display = 'block'; 
+        }
+    }
+
+    function initAudio() {
+        if (!actx) actx = new (window.AudioContext || window.webkitAudioContext)();
+        if (actx.state === 'suspended') actx.resume();
+    }
+
+    function formatTime(seconds) {
+        let m = Math.floor(seconds / 60);
+        let s = seconds % 60;
+        return (m < 10 ? '0' : '') + m + ':' + (s < 10 ? '0' : '') + s;
+    }
+
+    function startGame() {
+        if (document.documentElement.requestFullscreen) document.documentElement.requestFullscreen().catch(() => {});
+        initAudio(); 
+        
+        document.getElementById('player-ship-img').src = SHIPS[currentShipIdx];
+        document.getElementById('overlay').style.display = 'none';
+        
+        state.score = 0; state.combo = 0; state.timeLeft = 300; 
+        state.isPlaying = true; state.dialsTouched = false;
+        state.targets = []; state.targetIdCounter = 0; state.lasers = [];
+        state.lastSpawnTime = 0; state.lastTimerTick = Date.now();
+        
+        document.getElementById('ui-score').innerText = '0';
+        document.getElementById('ui-time').innerText = formatTime(state.timeLeft);
+        document.querySelectorAll('.enemy-container').forEach(el => el.remove());
+
+        buildGauge('i', getFixedOpts('', ALL_INITIALS));
+        buildGauge('f', getFixedOpts('', ALL_FINALS));
+        buildGauge('t', ALL_TONES);
+        
+        updateHUD();
+        gameLoop();
+    }
+
+    function endGame() {
+        state.isPlaying = false;
+        document.getElementById('overlay').style.display = 'flex';
+        
+        let config = JSON.parse(localStorage.getItem('hub_config') || "{}");
+        const threshold = isSister ? (config.pinyin_threshold_p1 || 2000) : (config.pinyin_threshold_p3 || 6000);
+        
+        const today = getSGTDateString();
+        const badgeDateKey = `pinyin_badge_date_${currentUser}`;
+        const badgeCountKey = `pinyin_badge_count_${currentUser}`;
+        const lastBadgeDate = localStorage.getItem(badgeDateKey);
+
+        let resultHTML = "";
+        let crystalEarned = false;
+
+        let lastDate = localStorage.getItem(`last_date_${currentUser}`);
+        let currentStreak = parseInt(localStorage.getItem(`current_streak_${currentUser}`) || "0");
+        let totalDays = parseInt(localStorage.getItem(`total_days_${currentUser}`) || "0");
+
+        if (lastDate) {
+            let diff = Math.floor((new Date(today) - new Date(lastDate)) / 864e5);
+            if (diff === 1) currentStreak++; else if (diff > 1) currentStreak = 1; 
+        } else {
+            currentStreak = 1;
+        }
+
+        if (lastDate !== today) {
+            totalDays++; 
+            localStorage.setItem(`last_date_${currentUser}`, today);
+            localStorage.setItem(`current_streak_${currentUser}`, currentStreak);
+            localStorage.setItem(`total_days_${currentUser}`, totalDays);
+
+            let crys = parseInt(localStorage.getItem(`crystals_${currentUser}`) || "0");
+            if (currentStreak >= 3) {
+                crys += 1;
+                localStorage.setItem(`crystals_${currentUser}`, crys);
+                crystalEarned = true;
+            }
+            
+            syncToCloud({ 
+                type: 'crystal_update', 
+                user: currentUser, 
+                crystalsTotal: crys, 
+                totalDays: totalDays, 
+                streak: currentStreak,
+                checkinDate: today 
+            });
+        }
+        
+        localStorage.setItem(`last_checkin_date_${currentUser}`, today);
+
+        if (state.score >= threshold) {
+            if (lastBadgeDate !== today) {
+                localStorage.setItem(badgeDateKey, today);
+                let currentCount = parseInt(localStorage.getItem(badgeCountKey) || "0");
+                localStorage.setItem(badgeCountKey, currentCount + 1);
+
+                let coinGain = 1;
+                let vaultCoins = parseInt(localStorage.getItem('gold_coins_vault') || "0");
+                localStorage.setItem('gold_coins_vault', vaultCoins + coinGain);
+
+                syncToCloud({ type: 'badge', user: currentUser, subject: '拼音', icon: '🎮', title: '拼音高手', desc: `镭射射击达到 ${state.score} 分！` });
+                syncToCloud({ type: 'coin_update', user: currentUser, earned: coinGain });
+
+                resultHTML = `
+                    <div style="font-size: 48px; color: #39ff14; text-shadow: 0 0 20px #39ff14;">MISSION ACCOMPLISHED</div>
+                    <div style="font-size: 24px; color: #fff; margin-top: 10px;">FINAL SCORE: ${state.score}</div>
+                    <div class="reward-box">
+                        <div style="font-size: 45px; margin-bottom: 5px;">🎮</div>
+                        <div style="font-size: 22px; color: #fde68a; font-weight: 900;">【拼音高手】徽章 +1！</div>
+                        <div style="font-size: 16px; color: #f59e0b; margin-top: 5px;">💰 金币 +${coinGain} 已存入家庭金库</div>
+                        ${crystalEarned ? `<div style="font-size: 16px; color: #38bdf8; margin-top: 5px;">💎 连续打卡${currentStreak}天，水晶 +1！</div>` : ''}
+                    </div>
+                `;
+                confetti({ particleCount: 150, spread: 70, origin: { y: 0.6 } });
+            } else {
+                resultHTML = `
+                    <div style="font-size: 48px; color: #39ff14; text-shadow: 0 0 20px #39ff14;">MISSION ACCOMPLISHED</div>
+                    <div style="font-size: 24px; color: #fff; margin-top: 10px;">FINAL SCORE: ${state.score}</div>
+                    <div style="font-size: 16px; color: #94a3b8; margin-top: 25px; max-width: 300px; margin-left:auto; margin-right:auto; line-height: 1.5;">(你太棒了！但【拼音高手】每天只发 1 枚，明天再来赚金币吧！)</div>
+                    ${crystalEarned ? `<div style="font-size: 16px; color: #38bdf8; margin-top: 15px;">💎 连续打卡${currentStreak}天，水晶 +1！</div>` : ''}
+                `;
+            }
+        } else {
+            resultHTML = `
+                <div style="font-size: 48px; color: #ff003c; text-shadow: 0 0 20px #ff003c;">TIME'S UP</div>
+                <div style="font-size: 24px; color: #fff; margin-top: 10px;">FINAL SCORE: ${state.score}</div>
+                <div style="font-size: 16px; color: #94a3b8; margin-top: 25px;">(目标：${threshold} 分。继续努力！)</div>
+                ${crystalEarned ? `<div style="font-size: 16px; color: #38bdf8; margin-top: 15px;">💎 连续打卡${currentStreak}天，水晶 +1！</div>` : ''}
+            `;
+        }
+
+        document.getElementById('main-title').innerHTML = resultHTML;
+        document.getElementById('selector-title').style.display = 'none';
+        document.getElementById('ship-selector').style.display = 'none';
+        
+        let startBtn = document.getElementById('btn-start');
+        startBtn.innerText = "PLAY AGAIN";
+        startBtn.style.display = "block";
+        startBtn.onclick = () => { window.location.reload(); }; 
+        
+        let backBtn = document.getElementById('btn-back');
+        backBtn.style.display = 'block'; 
+        backBtn.innerText = 'RETURN TO HUB';
+        // 8. 结算界面的返回路径也改为回到上级目录
+        backBtn.onclick = () => { window.location.href = "https://andydang2007.github.io/valerie-venessa-learn/index.html"; };
+    }
+
+    function getFixedOpts(correct, allArr) {
+        let res = allArr.filter(x => x !== correct).sort(() => 0.5-Math.random()).slice(0, 4);
+        res.push(correct);
+        return res.sort(() => 0.5-Math.random());
+    }
+
+    function fillOptionsSmartly(type, neededSet, allArr) {
+        let currentOpts = state[type].opts || [];
+        if (currentOpts.length !== 5) {
+            let arr = Array.from(neededSet);
+            let available = allArr.filter(x => !arr.includes(x)).sort(() => 0.5 - Math.random());
+            while(arr.length < 5) arr.push(available.pop());
+            return arr.sort(() => 0.5 - Math.random());
+        }
+
+        let needed = Array.from(neededSet);
+        let newOpts = [...currentOpts];
+        let missing = needed.filter(n => !newOpts.includes(n));
+        let replaceableIndices = newOpts.map((val, idx) => !needed.includes(val) ? idx : -1).filter(idx => idx !== -1);
+
+        while (missing.length > 0 && replaceableIndices.length > 0) {
+            newOpts[replaceableIndices.shift()] = missing.shift();
+        }
+
+        let available = allArr.filter(x => !newOpts.includes(x) && !needed.includes(x)).sort(() => 0.5 - Math.random());
+        while (replaceableIndices.length > 0 && available.length > 0) {
+            newOpts[replaceableIndices.shift()] = available.shift();
+        }
+        return newOpts;
+    }
+
+    function updateDialsForTargets() {
+        let iSet = new Set(state.targets.map(t => t.word.i));
+        let fSet = new Set(state.targets.map(t => t.word.f));
+        buildGauge('i', fillOptionsSmartly('i', iSet, ALL_INITIALS));
+        buildGauge('f', fillOptionsSmartly('f', fSet, ALL_FINALS));
+    }
+
+    function spawnTarget() {
+        if (!DB_WORDS.length) return;
+        if (state.targets.length >= 5) return;
+
+        let word = DB_WORDS[Math.floor(Math.random() * DB_WORDS.length)];
+        let id = 'target-' + state.targetIdCounter++;
+        
+        let speed = (0.04 + Math.random() * 0.03) * 0.75; 
+        let top = 15 + Math.random() * 50; 
+        
+        let randomMonsterImg = MONSTERS[Math.floor(Math.random() * MONSTERS.length)];
+
+        let div = document.createElement('div');
+        div.id = id;
+        div.className = 'enemy-container';
+        div.style.top = top + '%';
+        div.style.right = '-100px';
+        div.style.zIndex = Math.floor(100 - speed * 1000);
+
+        div.innerHTML = `
+            <div class="enemy-text">${word.char}</div>
+            <img class="enemy-img" src="${randomMonsterImg}" alt="monster">
+        `;
+        document.getElementById('combat-area').appendChild(div);
+
+        state.targets.push({ id: id, word: word, x: -10, y: top, speed: speed, element: div, isTargeted: false });
+        updateDialsForTargets();
+    }
+
+    function buildGauge(type, opts) {
+        state[type].opts = opts;
+        const minAngle = -35, maxAngle = 35;
+        state[type].step = (maxAngle - minAngle) / 4;
+        
+        const origin = document.getElementById(`origin-${type}`);
+        
+        if (origin.innerHTML.trim() === '') {
+            const boxH = document.getElementById(`box-${type}`).offsetHeight;
+            const R_TEXT = boxH * 0.85, R_TICK = R_TEXT - 22; 
+
+            let ptrHTML = `<div class="gauge-pointer-wrapper" id="ptr-${type}"><div class="gauge-pointer"></div></div>`;
+            let html = '';
+            opts.forEach((o, idx) => {
+                html += `<div style="position:absolute; top:0; left:0; width:0; height:0; transform: rotate(${minAngle + idx * state[type].step}deg) translateY(${-R_TICK}px);"><div class="gauge-tick" id="tick-${type}-${idx}"></div></div>`;
+                html += `<div style="position:absolute; top:0; left:0; width:0; height:0; transform: rotate(${minAngle + idx * state[type].step}deg) translateY(${-R_TEXT}px);"><div class="gauge-item" id="item-${type}-${idx}" style="transform: translate(-50%, -50%) rotate(${-(minAngle + idx * state[type].step)}deg);">${o}</div></div>`;
+            });
+            origin.innerHTML = ptrHTML + html;
+            state[type].angle = 0; 
+            const ptr = document.getElementById(`ptr-${type}`);
+            ptr.style.transition = 'none';
+            ptr.style.transform = `rotate(${state[type].angle}deg)`;
+            setupGaugeInteraction(type);
+        } else {
+            opts.forEach((o, idx) => {
+                let item = document.getElementById(`item-${type}-${idx}`);
+                if(item) item.innerText = o;
+            });
+        }
+        updateGaugeVisuals(type);
+    }
+
+    function setupGaugeInteraction(type) {
+        const box = document.getElementById(`box-${type}`);
+        let isDragging = false, startX = 0, startAngle = 0, lastIdx = -1;
+
+        const onStart = (e) => { 
+            initAudio(); 
+            isDragging = true; 
+            startX = e.touches ? e.touches[0].clientX : e.clientX;
+            startAngle = state[type].angle;
+            document.getElementById(`ptr-${type}`).style.transition = 'none';
+            
+            if (!state.dialsTouched) {
+                state.dialsTouched = true;
+                updateHUD();
+            }
+        };
+        
+        const onMove = (e) => {
+            if (!isDragging) return; e.preventDefault();
+            let currX = e.touches ? e.touches[0].clientX : e.clientX;
+            let deltaX = currX - startX;
+            
+            let targetAngle = startAngle + deltaX * 0.8; 
+            if (targetAngle < -35) targetAngle = -35;
+            if (targetAngle > 35) targetAngle = 35;
+            
+            state[type].angle = targetAngle;
+            document.getElementById(`ptr-${type}`).style.transform = `rotate(${state[type].angle}deg)`;
+            
+            let activeIdx = Math.round((state[type].angle - (-35)) / state[type].step);
+            if (activeIdx !== lastIdx) {
+                if (lastIdx !== -1) playSound('mech'); 
+                lastIdx = activeIdx;
+                updateGaugeClassesOnly(type, activeIdx);
+                updateHUD();
+            }
+        };
+        
+        const onEnd = () => { 
+            if(!isDragging) return; isDragging = false; 
+            let activeIdx = Math.round((state[type].angle - (-35)) / state[type].step);
+            state[type].angle = -35 + activeIdx * state[type].step;
+            
+            const ptr = document.getElementById(`ptr-${type}`);
+            ptr.style.transition = 'transform 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275)';
+            ptr.style.transform = `rotate(${state[type].angle}deg)`;
+            
+            updateGaugeClassesOnly(type, activeIdx);
+            updateHUD();
+        };
+
+        box.onmousedown = box.ontouchstart = onStart;
+        window.addEventListener('mousemove', onMove, {passive:false});
+        window.addEventListener('touchmove', onMove, {passive:false});
+        window.addEventListener('mouseup', onEnd);
+        window.addEventListener('touchend', onEnd);
+    }
+
+    function updateGaugeClassesOnly(type, activeIdx) {
+        const origin = document.getElementById(`origin-${type}`);
+        Array.from(origin.querySelectorAll('.gauge-item')).forEach((el, i) => el.classList.toggle('active', i === activeIdx));
+        Array.from(origin.querySelectorAll('.gauge-tick')).forEach((el, i) => el.classList.toggle('active', i === activeIdx));
+    }
+
+    function updateGaugeVisuals(type) {
+        const ptr = document.getElementById(`ptr-${type}`);
+        ptr.style.transform = `rotate(${state[type].angle}deg)`;
+        let activeIdx = Math.round((state[type].angle - (-35)) / state[type].step);
+        updateGaugeClassesOnly(type, activeIdx);
+        updateHUD();
+    }
+
+    function getVal(type) {
+        let activeIdx = Math.round((state[type].angle - (-35)) / state[type].step);
+        if (activeIdx < 0) activeIdx = 0;
+        if (activeIdx >= state[type].opts.length) activeIdx = state[type].opts.length - 1;
+        return state[type].opts[activeIdx];
+    }
+
+    function combineTruePinyin(i, f, tStr) {
+        let initial = i;
+        let toneNum = parseInt(tStr);
+        if (isNaN(toneNum)) return initial + f; 
+        
+        let v = '';
+        if (f.includes('a')) v = 'a'; else if (f.includes('e')) v = 'e'; else if (f.includes('o')) v = 'o';
+        else if (f.includes('ui')) v = 'i'; else if (f.includes('iu')) v = 'u'; else if (f.includes('i')) v = 'i';
+        else if (f.includes('u')) v = 'u'; else if (f.includes('ü')) v = 'ü';
+        
+        let final = f;
+        if (v) final = f.replace(v, TONE_MAP[v][toneNum]);
+        return initial + final;
+    }
+
+    function updateHUD() {
+        if (!state.dialsTouched) {
+            document.getElementById('hud-display').innerText = '';
+            document.getElementById('ship-main').classList.remove('needs-fix');
+            document.getElementById('finger-hint').style.display = 'none';
+            return;
+        }
+
+        let i = getVal('i'), f = getVal('f'), t = getVal('t');
+        let needsFix = ['j','q','x','y'].includes(i) && f.includes('ü');
+        let displayF = f;
+        
+        if (needsFix) {
+            if (!state.hatRemoved) {
+                document.getElementById('ship-main').classList.add('needs-fix');
+                document.getElementById('finger-hint').style.display = 'block';
+            } else {
+                displayF = f.replace(/ü/g, 'u');
+                document.getElementById('ship-main').classList.remove('needs-fix');
+                document.getElementById('finger-hint').style.display = 'none';
+            }
+        } else {
+            document.getElementById('ship-main').classList.remove('needs-fix');
+            document.getElementById('finger-hint').style.display = 'none';
+        }
+
+        document.getElementById('hud-display').innerText = combineTruePinyin(i, displayF, t);
+    }
+
+    function handleHudClick() {
+        if (document.getElementById('ship-main').classList.contains('needs-fix')) {
+            state.hatRemoved = true; updateHUD();
+            confetti({ particleCount: 20, origin: { x: 0.1, y: 0.5 }, colors:['#fff','#00f0ff'], startVelocity: 15, ticks: 50 });
+        }
+    }
+
+    function triggerWrongVisual() {
+        const combatArea = document.getElementById('combat-area');
+        combatArea.classList.add('shake-screen');
+        document.body.classList.add('flash-error');
+        setTimeout(() => {
+            combatArea.classList.remove('shake-screen');
+            document.body.classList.remove('flash-error');
+        }, 300);
+    }
+
+    function showComboEffect(targetElement, comboCount) {
+        const rect = targetElement.getBoundingClientRect();
+        const div = document.createElement('div');
+        div.className = 'combo-text';
+        div.innerText = 'COMBO x' + comboCount + '!';
+        div.style.left = (rect.left + rect.width / 2) + 'px';
+        div.style.top = rect.top + 'px';
+        document.body.appendChild(div);
+        setTimeout(() => div.remove(), 800);
+    }
+
+    function handleFireClick() {
+        if (!state.isPlaying) return;
+        if (!state.dialsTouched) return; 
+        
+        if (document.getElementById('ship-main').classList.contains('needs-fix')) {
+            state.combo = 0; 
+            playSound('wrong');
+            triggerWrongVisual();
+            document.getElementById('finger-hint').style.transform = 'translateY(-50%) scale(1.5)';
+            setTimeout(() => document.getElementById('finger-hint').style.transform = 'translateY(-50%) scale(1)', 200);
+            return;
+        }
+
+        let iVal = getVal('i'), fVal = getVal('f'), tVal = getVal('t');
+        let hitIndex = state.targets.findIndex(t => t.word.i === iVal && t.word.f === fVal && t.word.t === tVal && !t.isTargeted);
+
+        if (hitIndex !== -1) {
+            let hitTarget = state.targets[hitIndex];
+            hitTarget.isTargeted = true; 
+            
+            state.combo++;
+            let pointsEarned = 100;
+            if (state.combo > 1) {
+                pointsEarned += 100; 
+                showComboEffect(hitTarget.element, state.combo);
+            }
+            state.score += pointsEarned; 
+            document.getElementById('ui-score').innerText = state.score;
+            
+            const combatArea = document.getElementById('combat-area');
+            const combatRect = combatArea.getBoundingClientRect();
+            const muzzle = document.getElementById('laser-muzzle').getBoundingClientRect();
+            const sX = muzzle.left + muzzle.width / 2 - combatRect.left;
+            const sY = muzzle.top + muzzle.height / 2 - combatRect.top;
+            
+            state.lasers.push({ sX: sX, sY: sY, target: hitTarget, progress: 0 });
+            playSound('laser');
+        } else {
+            state.combo = 0; 
+            playSound('wrong');
+            triggerWrongVisual(); 
+        }
+    }
+
+    function triggerExplosionAt(targetElement) {
+        const combatArea = document.getElementById('combat-area');
+        combatArea.classList.add('shake-screen');
+        setTimeout(() => combatArea.classList.remove('shake-screen'), 200);
+
+        const targetRect = targetElement.getBoundingClientRect();
+        const cx = targetRect.left + targetRect.width / 2;
+        const cy = targetRect.top + targetRect.height / 2;
+
+        const container = document.createElement('div');
+        container.className = 'explosion-effect-container';
+        container.style.left = cx + 'px';
+        container.style.top = cy + 'px';
+
+        const core = document.createElement('div');
+        core.className = 'explosion-layer core';
+        container.appendChild(core);
+
+        const secondary = document.createElement('div');
+        secondary.className = 'explosion-layer secondary';
+        secondary.style.animationDelay = '0.05s';
+        secondary.style.transform = `translate(-50%, -50%) rotate(${Math.random() * 360}deg) translate(${Math.random() * 10 - 5}px, ${Math.random() * 10 - 5}px)`;
+        container.appendChild(secondary);
+
+        const sparks = document.createElement('div');
+        sparks.className = 'explosion-layer sparks';
+        sparks.style.animationDelay = '0.1s';
+        sparks.style.transform = `translate(-50%, -50%) rotate(${Math.random() * 360}deg) scale(0.6) translate(${Math.random() * 30 - 15}px, ${Math.random() * 30 - 15}px)`;
+        container.appendChild(sparks);
+
+        document.body.appendChild(container);
+        setTimeout(() => container.remove(), 600);
+    }
+
+    function gameLoop() {
+        if (!state.isPlaying) return;
+        
+        let now = Date.now();
+        
+        if (now - state.lastTimerTick >= 1000) {
+            state.timeLeft--;
+            state.lastTimerTick = now;
+            document.getElementById('ui-time').innerText = formatTime(state.timeLeft);
+            if (state.timeLeft <= 0) {
+                endGame();
+                return;
+            }
+        }
+
+        if (now - state.lastSpawnTime > 5000) {
+            spawnTarget();
+            state.lastSpawnTime = now;
+        }
+
+        for (let i = state.targets.length - 1; i >= 0; i--) {
+            let t = state.targets[i];
+            t.x += t.speed;
+            t.element.style.right = t.x + 'vw';
+            
+            if (t.x > 105) { 
+                t.element.remove();
+                state.targets.splice(i, 1);
+                state.combo = 0; 
+                updateDialsForTargets();
+            }
+        }
+        
+        const combatArea = document.getElementById('combat-area');
+        const combatRect = combatArea.getBoundingClientRect();
+        
+        if (canvas.width !== combatRect.width || canvas.height !== combatRect.height) {
+            canvas.width = combatRect.width;
+            canvas.height = combatRect.height;
+        } else {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+        }
+
+        for (let i = state.lasers.length - 1; i >= 0; i--) {
+            let l = state.lasers[i];
+            l.progress += 0.08; 
+
+            if(!document.body.contains(l.target.element)){
+                state.lasers.splice(i, 1);
+                continue;
+            }
+            let enemyRect = l.target.element.getBoundingClientRect();
+            let tX = enemyRect.left + enemyRect.width / 2 - combatRect.left;
+            let tY = enemyRect.top + enemyRect.height / 2 - combatRect.top;
+
+            let currX = l.sX + (tX - l.sX) * l.progress;
+            let currY = l.sY + (tY - l.sY) * l.progress;
+            
+            let tailP = Math.max(0, l.progress - 0.15);
+            let tailX = l.sX + (tX - l.sX) * tailP;
+            let tailY = l.sY + (tY - l.sY) * tailP;
+
+            ctx.beginPath(); ctx.moveTo(tailX, tailY); ctx.lineTo(currX, currY);
+            ctx.lineWidth = 8; ctx.strokeStyle = "#39ff14"; 
+            ctx.shadowBlur = 15; ctx.shadowColor = "#39ff14";
+            ctx.lineCap = "round"; ctx.stroke();
+
+            if (l.progress >= 1) {
+                l.target.element.classList.add('fade-out-fast');
+                triggerExplosionAt(l.target.element);
+                
+                let tIdx = state.targets.indexOf(l.target);
+                if (tIdx !== -1) state.targets.splice(tIdx, 1);
+                
+                setTimeout(() => {
+                    if(l.target.element) l.target.element.remove();
+                    updateDialsForTargets();
+                }, 100);
+                
+                state.lasers.splice(i, 1);
+            }
+        }
+        
+        requestAnimationFrame(gameLoop);
+    }
+
+    let lastSoundTime = 0;
+
+    function playSound(type) {
+        if (!actx) return;
+        
+        let now = Date.now();
+        if (type === 'mech') {
+            if (now - lastSoundTime < 80) return; 
+            lastSoundTime = now;
+        }
+
+        let osc = actx.createOscillator(); 
+        let g = actx.createGain();
+        osc.connect(g); 
+        g.connect(actx.destination);
+        
+        if(type === 'select'){ 
+            osc.type = 'sine'; osc.frequency.setValueAtTime(600, actx.currentTime); 
+            osc.frequency.exponentialRampToValueAtTime(1200, actx.currentTime + 0.1);
+            g.gain.setValueAtTime(0.3, actx.currentTime); g.gain.exponentialRampToValueAtTime(0.01, actx.currentTime + 0.1);
+            osc.start(); osc.stop(actx.currentTime + 0.1);
+        }
+        else if(type === 'mech'){ 
+            osc.type = 'square'; osc.frequency.setValueAtTime(150, actx.currentTime); 
+            osc.frequency.exponentialRampToValueAtTime(40, actx.currentTime + 0.03);
+            g.gain.setValueAtTime(0.3, actx.currentTime); g.gain.exponentialRampToValueAtTime(0.01, actx.currentTime + 0.03);
+            osc.start(); osc.stop(actx.currentTime + 0.03);
+        }
+        else if(type === 'laser'){ 
+            osc.type = 'sawtooth'; osc.frequency.setValueAtTime(800, actx.currentTime); 
+            osc.frequency.exponentialRampToValueAtTime(100, actx.currentTime + 0.2);
+            g.gain.setValueAtTime(0.3, actx.currentTime); g.gain.exponentialRampToValueAtTime(0.01, actx.currentTime + 0.2);
+            osc.start(); osc.stop(actx.currentTime + 0.2);
+        }
+        else if(type === 'wrong'){ 
+            osc.type = 'square'; osc.frequency.setValueAtTime(120, actx.currentTime); 
+            g.gain.setValueAtTime(0.2, actx.currentTime); g.gain.exponentialRampToValueAtTime(0.01, actx.currentTime + 0.3);
+            osc.start(); osc.stop(actx.currentTime + 0.3);
+        }
+    }
+
+    loadDB();
+</script>
+</body>
+</html>

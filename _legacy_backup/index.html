@@ -1,0 +1,660 @@
+<!DOCTYPE html> 
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Family Learning Hub</title>
+    <link rel="apple-touch-icon" href="https://img.icons8.com/fluency/240/paper-plane.png">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@600;800;900&display=swap" rel="stylesheet">
+    <style>
+        :root { --primary: #10b981; --bg: #f8fafc; --text-main: #1e293b; --text-muted: #64748b; }
+        * { box-sizing: border-box; font-family: 'Nunito', 'Microsoft YaHei', sans-serif; -webkit-tap-highlight-color: transparent; }
+        body { background: linear-gradient(135deg, #a1c4fd 0%, #c2e9fb 100%); margin: 0; padding: 15px; color: var(--text-main); display: flex; flex-direction: column; align-items: center; justify-content: flex-start; min-height: 100vh; overflow-x: hidden; }
+        
+        .container { width: 100%; max-width: 700px; background: rgba(255,255,255,0.95); padding: 30px 15px 40px 15px; border-radius: 40px; box-shadow: 0 20px 50px rgba(0,0,0,0.1); text-align: center; position: relative; border: 4px solid #ffffff; backdrop-filter: blur(12px); display: flex; flex-direction: column; align-items: center; margin-top: 5vh; margin-bottom: auto; }
+        
+        .screen { display: none; width: 100%; animation: bounceIn 0.4s cubic-bezier(0.68, -0.55, 0.265, 1.55); flex-direction: column; align-items: center; }
+        @keyframes bounceIn { 0% { opacity: 0; transform: scale(0.95); } 100% { opacity: 1; transform: scale(1); } }
+        
+        #school-term-display { margin-bottom: 20px; padding: 10px; display: flex; flex-direction: column; align-items: center; gap: 4px; cursor: pointer; transition: 0.2s; user-select: none; -webkit-user-select: none; }
+        #school-term-display:active { transform: scale(0.95); opacity: 0.7; }
+        
+        #cloud-sync-indicator { font-size: 13px; color: #3b82f6; font-weight: 900; margin-top: -15px; margin-bottom: 15px; display: none; align-items: center; justify-content: center; gap: 4px; animation: popPulse 1s infinite alternate; }
+        
+        .magic-number { display: inline-block; font-size: 1.4em; color: #f59e0b; font-weight: 900; padding: 0 5px; animation: popPulse 1s infinite alternate cubic-bezier(0.4, 0, 0.2, 1); }
+        @keyframes popPulse { 0% { transform: scale(1); } 100% { transform: scale(1.15) translateY(-3px); text-shadow: 0 0 15px rgba(234, 179, 8, 0.5); } }
+
+        button.name-btn { width: 100%; max-width: 320px; padding: 20px; border-radius: 30px; border: 4px solid #e2e8f0; background: white; cursor: pointer; font-weight: 900; font-size: 26px; transition: 0.15s; color: #475569; display: flex; align-items: center; justify-content: center; gap: 15px; box-shadow: 0 8px 0 #cbd5e1; outline: none; margin-bottom: 20px; }
+        button.name-btn:active { transform: translateY(8px); box-shadow: 0 0 0 transparent; }
+        .name-btn .avatar { font-size: 46px; filter: drop-shadow(0 4px 4px rgba(0,0,0,0.1)); }
+
+        .dashboard-header { display: flex; flex-direction: column; align-items: center; gap: 8px; margin-bottom: 25px; width: 100%; }
+        .dashboard-header .avatar-row { display: flex; align-items: center; gap: 15px; }
+        .dashboard-header .avatar { font-size: 50px; filter: drop-shadow(0 4px 6px rgba(0,0,0,0.15)); }
+        .dashboard-header h2 { margin: 0; font-size: 28px; color: #0f172a; font-weight: 900; }
+        
+        .streak-info-box { display: flex; flex-direction: column; align-items: center; gap: 5px; margin-top: 5px; }
+        .streak-badge { font-size: 15px; padding: 8px 20px; border-radius: 20px; font-weight: 900; transition: 0.3s; display: flex; align-items: center; justify-content: center; gap: 6px; }
+        .streak-badge.pending { background: #f1f5f9; color: #64748b; border: 2.5px solid #cbd5e1; box-shadow: 0 4px 0 #cbd5e1; filter: grayscale(100%); opacity: 0.8; }
+        .streak-badge.completed { background: #fffbeb; color: #d97706; border: 2.5px solid #fde68a; box-shadow: 0 4px 0 #fde68a; filter: grayscale(0%); opacity: 1; animation: bounceIn 0.5s ease-out; }
+
+        .honor-wall { width: 100%; background: linear-gradient(135deg, #fffbeb 0%, #fef3c7 100%); border: 4px solid #fde68a; border-radius: 30px; padding: 15px; margin-bottom: 30px; text-align: left; box-shadow: inset 0 4px 15px rgba(245, 158, 11, 0.1), 0 10px 20px rgba(0,0,0,0.05); position: relative; overflow: hidden; }
+        .honor-wall::after { content: '✨'; position: absolute; top: -15px; right: -5px; font-size: 100px; opacity: 0.15; transform: rotate(15deg); pointer-events: none; }
+        .honor-wall h3 { margin: 0 0 15px 0; font-size: 22px; color: #d97706; display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 10px; font-weight: 900; z-index: 2; position: relative; }
+        
+        .total-trophies { font-size: 14px; background: white; padding: 6px 12px; border-radius: 20px; color: #f59e0b; border: 2px solid #fcd34d; box-shadow: 0 4px 0 #fde68a; display: flex; align-items: center; gap: 5px; }
+        .total-number { font-size: 18px; font-weight: 900; color: #d97706; }
+        
+        .badges-container { display: flex; flex-direction: column; gap: 20px; position: relative; z-index: 2; }
+        .badge-category { width: 100%; }
+        .badge-category-title { font-size: 15px; color: #b45309; font-weight: 900; margin-bottom: 12px; border-bottom: 2px dashed #fde68a; padding-bottom: 5px; display: flex; align-items: center; gap: 6px; }
+        
+        .badge-grid { display: flex; flex-wrap: wrap; justify-content: center; gap: 15px 8px; width: 100%; }
+        .badge-item { display: flex; flex-direction: column; align-items: center; gap: 6px; transition: 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275); position: relative; width: 75px; flex-shrink: 0; }
+        .badge-item.locked { opacity: 0.45; filter: grayscale(100%); transform: scale(0.95); }
+        .badge-item.unlocked { opacity: 1; filter: grayscale(0%); transform: scale(1.05); }
+        
+        .badge-icon-wrapper { position: relative; display: flex; justify-content: center; }
+        .badge-icon { width: 48px; height: 48px; border-radius: 16px; background: white; border: 3px solid #cbd5e1; display: flex; align-items: center; justify-content: center; font-size: 26px; box-shadow: 0 4px 0 #94a3b8; transition: 0.3s; }
+        .badge-item.unlocked .badge-icon { border-color: #f59e0b; background: #fffbeb; box-shadow: 0 4px 0 #d97706, 0 0 10px rgba(245, 158, 11, 0.3); }
+        .badge-item.unlocked.bronze .badge-icon { border-color: #cd7f32; box-shadow: 0 4px 0 #8b5a2b; background: #fdf5e6; }
+        .badge-item.unlocked.silver .badge-icon { border-color: #94a3b8; box-shadow: 0 4px 0 #64748b; background: #f1f5f9; }
+        .badge-item.unlocked.gold .badge-icon { border-color: #fbbf24; box-shadow: 0 4px 0 #d97706; background: #fffbeb; }
+        .badge-item.locked .badge-icon { border: 3px dashed #94a3b8; background: #f1f5f9; box-shadow: none; font-size: 24px; }
+        
+        .badge-count { position: absolute; top: -6px; right: -6px; background: #ef4444; color: white; font-size: 11px; font-weight: 900; padding: 2px 6px; border-radius: 10px; border: 2px solid white; box-shadow: 0 2px 4px rgba(0,0,0,0.2); animation: popPulse 2s infinite alternate; z-index: 3; white-space: nowrap; }
+        .badge-name { font-size: 11px; font-weight: 900; color: #64748b; text-align: center; line-height: 1.2; width: 100%; word-break: keep-all; }
+        .badge-item.unlocked .badge-name { color: #d97706; }
+        .badge-progress { font-size: 10px; color: #94a3b8; font-weight: 800; margin-top: 2px; text-align: center; width: 100%; }
+
+        .section-title { width: 100%; text-align: left; margin: 0 0 15px 5px; font-size: 20px; font-weight: 900; color: #334155; }
+        .grid-cards { display: grid; grid-template-columns: repeat(2, 1fr); gap: 15px; width: 100%; margin-bottom: 25px; }
+        .card-btn { background: white; border: 4px solid #e2e8f0; border-radius: 25px; padding: 20px 5px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 8px; cursor: pointer; transition: 0.15s; color: #475569; font-weight: 900; font-size: 18px; box-shadow: 0 6px 0 #cbd5e1; }
+        .card-btn:active { transform: translateY(6px); box-shadow: 0 0 0 transparent; }
+        .card-btn .emoji { font-size: 38px; filter: drop-shadow(0 3px 3px rgba(0,0,0,0.1)); }
+        
+        .card-btn.eng { border-color: #bae6fd; }
+        .card-btn.math { border-color: #fbcfe8; }
+        .card-btn.cn { border-color: #e9d5ff; }
+        .card-btn.sci { border-color: #a7f3d0; }
+
+        .menu-row { display: flex; gap: 15px; width: 100%; margin-bottom: 15px; }
+        .menu-btn { flex: 1; background: white; border: 4px solid #e2e8f0; border-radius: 20px; padding: 20px 10px; font-size: 18px; font-weight: 900; color: #475569; cursor: pointer; box-shadow: 0 6px 0 #cbd5e1; display: flex; flex-direction: column; align-items: center; gap: 8px; transition: 0.1s; }
+        .menu-btn:active { transform: translateY(6px); box-shadow: 0 0 0 transparent; }
+        .menu-btn .emoji { font-size: 32px; }
+
+        .btn-action { width: 100%; border-radius: 20px; border: none; font-weight: 900; font-size: 18px; cursor: pointer; transition: 0.15s; display: flex; align-items: center; justify-content: center; outline: none; padding: 18px; box-shadow: 0 6px 0 rgba(0,0,0,0.1); background: #f1f5f9; color: #64748b; border: 4px solid #e2e8f0; }
+        .btn-action:active { transform: translateY(6px); box-shadow: 0 0 0 transparent; }
+
+        .modal-overlay { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(15, 23, 42, 0.8); z-index: 1000; align-items: center; justify-content: center; backdrop-filter: blur(8px); }
+        .modal-content { background: white; padding: 40px; border-radius: 40px; text-align: center; width: 90%; max-width: 380px; border: 5px solid #fff; box-shadow: 0 25px 50px rgba(0,0,0,0.2); max-height: 80vh; overflow-y: auto;}
+        
+        .pin-input-hub { font-size: 36px; font-weight: 900; letter-spacing: 10px; padding: 15px; width: 160px; text-align: center; border: 4px solid #e2e8f0; border-radius: 20px; margin: 20px 0; outline: none; color: #1e293b; transition: 0.2s; background: #f8fafc; }
+        .pin-input-hub:focus { border-color: #f59e0b; background: #fffbeb; }
+        .error-shake { border-color: #ef4444 !important; animation: shake 0.3s; background-color: #fef2f2 !important; }
+
+        .config-row { display: flex; justify-content: space-between; align-items: center; background: white; padding: 12px 20px; border-radius: 15px; border: 2px solid #e2e8f0; width: 100%; box-shadow: 0 2px 0 #cbd5e1;}
+        .config-row label { font-weight: 900; color: #475569; font-size: 16px; }
+        .config-row input { width: 90px; font-weight: 900; font-size: 18px; padding: 6px; text-align: center; border: 2px solid #cbd5e1; border-radius: 10px; color: #1e293b; outline: none; transition: 0.2s; }
+        .config-row input:focus { border-color: #3b82f6; background: #eff6ff; }
+
+        @media (min-width: 768px) { 
+            .container { padding: 40px 50px; max-width: 750px; } 
+            .grid-cards { grid-template-columns: repeat(4, 1fr); }
+            .badge-grid { gap: 15px 10px; }
+            .badge-icon { width: 56px; height: 56px; font-size: 30px; border-radius: 18px; }
+            .badge-name { font-size: 13px; }
+            .badge-count { font-size: 12px; padding: 2px 8px; top: -8px; right: -8px; }
+        }
+        @keyframes shake { 0%, 100% { transform: translateX(0); } 25% { transform: translateX(-8px); } 75% { transform: translateX(8px); } }
+
+        #master-lock-screen { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%); z-index: 9999; display: flex; flex-direction: column; align-items: center; justify-content: center; color: white; text-align: center; }
+        .master-input { font-size: 36px; letter-spacing: 12px; text-align: center; width: 220px; padding: 15px; border-radius: 25px; border: 4px solid #334155; background: rgba(0,0,0,0.3); color: #38bdf8; outline: none; margin: 20px 0 30px 0; transition: 0.2s; font-family: monospace; font-weight: 900; box-shadow: inset 0 4px 10px rgba(0,0,0,0.5); }
+        .master-input:focus { border-color: #3b82f6; box-shadow: 0 0 20px rgba(59, 130, 246, 0.4), inset 0 4px 10px rgba(0,0,0,0.5); }
+        .master-btn { padding: 18px 50px; font-size: 20px; font-weight: 900; background: #3b82f6; color: white; border: none; border-radius: 25px; cursor: pointer; box-shadow: 0 6px 0 #2563eb; transition: 0.1s; letter-spacing: 2px; }
+        .master-btn:active { transform: translateY(6px); box-shadow: 0 0 0 transparent; }
+    </style>
+</head>
+<body>
+
+<div id="master-lock-screen">
+    <div style="font-size: 80px; margin-bottom: 10px; filter: drop-shadow(0 10px 10px rgba(0,0,0,0.5));">🛡️</div>
+    <h2 style="font-size: 32px; margin: 0 0 10px 0; color: #f8fafc;">Family Hub Secured</h2>
+    <p style="color: #94a3b8; font-size: 16px; margin: 0; font-weight: 800;">Please verify to proceed.</p>
+    <input type="password" id="master-pwd" class="master-input" maxlength="4" placeholder="****" inputmode="numeric" pattern="[0-9]*">
+    <button class="master-btn" onclick="verifyMasterLock()">ENTER</button>
+</div>
+
+<div class="container" id="main-app-container" style="display: none;">
+    <div id="school-term-display"></div>
+    <div id="cloud-sync-indicator"></div>
+
+    <div id="admin-screen" class="screen">
+        <h2 style="color: #3b82f6; font-size: 28px; font-weight: 900; margin-bottom: 20px;">⚙️ 系统控制台</h2>
+        
+        <button class="btn-action" style="background:#8b5cf6; color:white; border-color:#7e22ce; box-shadow:0 6px 0 #6b21a8; margin-bottom: 15px;" onclick="window.location.href='mistakescanner.html'">📸 智能错题扫描台</button>
+        <button class="btn-action" style="background:#ef4444; color:white; border-color:#dc2626; box-shadow:0 6px 0 #b91c1c; margin-bottom: 15px;" onclick="executeNuclearReset()">☢️ 清空所有本地数据</button>
+        
+        <div style="width: 100%; border-top: 2px dashed #cbd5e1; padding-top: 20px; margin-bottom: 20px; text-align: left;">
+            <h3 style="color: #475569; font-size: 18px; margin-top:0; margin-bottom:8px;">💳 后台订单撤销 (退款)</h3>
+            <p style="font-size:13px; color:#94a3b8; margin:0 0 10px 0; font-weight:800;">输入兑换缩写 (HB/TC/PZ/TT/XF) 强制退款</p>
+            <div style="display:flex; gap:10px;">
+                <input type="text" id="admin-refund-code" placeholder="如 HB" class="pin-input-hub" style="margin:0; width:120px; font-size:20px; letter-spacing:2px; padding:10px; text-transform:uppercase;">
+                <button class="btn-action" style="flex:1; background:#f59e0b; color:white; border-color:#d97706; box-shadow:0 6px 0 #b45309; margin:0; padding:10px;" onclick="adminForceRefund()">强制退回金币</button>
+            </div>
+        </div>
+
+        <button class="btn-action" onclick="showScreen('dashboard-screen')" style="margin-bottom: 25px;">← 返回主页</button>
+        
+        <div style="width: 100%; border-top: 2px dashed #cbd5e1; padding-top: 20px;">
+            <div id="admin-loading" style="font-weight:900; color:#94a3b8; padding: 10px;">📡 连接云端引擎中...</div>
+            <div id="admin-config-container" style="display:none; width: 100%; flex-direction: column; gap: 12px; margin-bottom: 15px;">
+                <div class="config-row"><label>P1 拼音要求</label><input type="number" id="cfg-pinyin_threshold_p1"></div>
+                <div class="config-row"><label>P3 拼音要求</label><input type="number" id="cfg-pinyin_threshold_p3"></div>
+                <div class="config-row"><label>P1 极速时间(秒)</label><input type="number" id="cfg-speed_limit_p1"></div>
+                <div class="config-row"><label>P3 极速时间(秒)</label><input type="number" id="cfg-speed_limit_p3"></div>
+                <div class="config-row"><label>听写全对奖励</label><input type="number" id="cfg-tingxie_reward_coin"></div>
+                <div class="config-row"><label>汉堡价格 (金币)</label><input type="number" id="cfg-shop_hb_price"></div>
+                <div class="config-row"><label>套餐价格 (金币)</label><input type="number" id="cfg-shop_tc_price"></div>
+                <div class="config-row"><label>披萨价格 (金币)</label><input type="number" id="cfg-shop_pz_price"></div>
+                <div class="config-row"><label>甜筒价格 (水晶)</label><input type="number" id="cfg-shop_tt_price"></div>
+                <div class="config-row"><label>麦旋风价格 (水晶)</label><input type="number" id="cfg-shop_xf_price"></div>
+            </div>
+            <button id="admin-save-btn" class="btn-action" style="background:#10b981; color:white; box-shadow:0 6px 0 #059669; margin-bottom: 15px; display:none;" onclick="saveAdminConfig()">💾 保存并推送云端</button>
+        </div>
+    </div>
+
+    <div id="user-screen" class="screen">
+        <h2 style="margin:0 0 5px 0; color:#0f172a; font-size: 30px; font-weight: 900;">Who is learning?</h2>
+        <div style="font-size: 16px; color: #64748b; margin-top: 5px; font-weight: 800; margin-bottom: 25px;">Aim for <span class="magic-number" style="font-size:1.1em;">6~7</span> today!</div>
+        <button class="name-btn" onclick="switchUser('Valerie', 'P3')"><span class="avatar">👱‍♀️</span> Valerie</button>
+        <button class="name-btn" onclick="switchUser('Venessa', 'P1')"><span class="avatar">👧</span> Venessa</button>
+    </div>
+
+    <div id="dashboard-screen" class="screen">
+        <div class="dashboard-header">
+            <div class="avatar-row"><div class="avatar" id="dash-avatar">👱‍♀️</div><h2 id="dash-name">Welcome!</h2></div>
+            <div class="streak-info-box"><div class="streak-badge pending" id="dash-streak">⚪ 开启你的第 1 天打卡吧！</div></div>
+        </div>
+
+        <div class="section-title">Select Subject</div>
+        <div class="grid-cards">
+            <div class="card-btn eng" onclick="showSubMenu('english-menu')"><div class="emoji">🔤</div> English</div>
+            <div class="card-btn math" onclick="launchPractice('Math')"><div class="emoji">🔢</div> Math</div>
+            <div class="card-btn cn" onclick="showSubMenu('chinese-menu')"><div class="emoji" id="cn-emoji">🐼</div> <span id="cn-label">华文</span></div>
+            <div class="card-btn sci" onclick="launchPractice('Science')"><div class="emoji">🌱</div> Science</div>
+        </div>
+
+        <div class="honor-wall">
+            <h3>
+                <div style="display:flex; align-items:center; gap:10px;">
+                    🏆 My Badges 
+                    <div class="total-trophies">Total: <span class="total-number" id="total-badge-count">0</span></div>
+                </div>
+                <button onclick="window.location.href='shop.html'" style="background:#f59e0b; color:white; border:none; padding:10px 18px; border-radius:20px; font-weight:900; font-size:16px; cursor:pointer; box-shadow:0 6px 0 #d97706; display:flex; align-items:center; gap:6px; transition:0.15s;">
+                    🎁 神秘商店
+                </button>
+            </h3>
+            <div class="badges-container" id="badges-container"></div>
+        </div>
+        <button class="btn-action" onclick="showScreen('user-screen')">👤 Switch User</button>
+    </div>
+
+    <div id="english-menu" class="screen">
+        <h2 style="margin:0 0 20px 0; font-size: 26px; font-weight: 900; color: #0f172a;">🔤 English Modes</h2>
+        <div class="menu-row" style="flex-wrap: wrap;">
+            <div class="menu-btn" style="border-color:#bae6fd; color:#0284c7; flex: 1 1 40%;" onclick="launchPractice('English')"><div class="emoji">🚀</div> Practice</div>
+            <div class="menu-btn" style="border-color:#fde68a; color:#b45309; flex: 1 1 40%;" onclick="window.location.href='spelling.html'"><div class="emoji">✍️</div> Spelling</div>
+            <div class="menu-btn" style="border-color:#a7f3d0; color:#047857; flex: 1 1 40%;" onclick="window.location.href='https://andydang2007.github.io/game/wordsearch.html'"><div class="emoji">🔍</div> Word Search</div>
+        </div>
+        <button class="btn-action" onclick="showScreen('dashboard-screen')">← Back to Hub</button>
+    </div>
+
+    <div id="chinese-menu" class="screen">
+        <h2 style="margin:0 0 20px 0; font-size: 26px; font-weight: 900; color: #0f172a;">🐼 华文练习</h2>
+        <div class="menu-row" style="flex-wrap: wrap;">
+            <div class="menu-btn" style="border-color:#bae6fd; color:#0284c7; flex: 1 1 40%;" onclick="launchPractice('华文')"><div class="emoji">📝</div> 复习</div>
+            <div class="menu-btn" style="border-color:#fde68a; color:#b45309; flex: 1 1 40%;" onclick="window.location.href='tingxie.html'"><div class="emoji">✍️</div> 听写</div>
+            <div class="menu-btn" style="border-color:#fbcfe8; color:#be185d; flex: 1 1 40%;" onclick="window.location.href='https://andydang2007.github.io/game/pinyin.html'"><div class="emoji">🎮</div> 拼音游戏</div>
+            <div class="menu-btn" style="border-color:#a7f3d0; color:#047857; flex: 1 1 40%;" onclick="window.location.href='https://andydang2007.github.io/reading/'"><div class="emoji">📚</div> 图书馆</div>
+            <div class="menu-btn" style="border-color:#a7f3d0; color:#047857; flex: 1 1 40%;" onclick="window.location.href='https://andydang2007.github.io/game/radical.html'"><div class="emoji">🎹</div> 汉字音乐盒</div>
+        </div>
+        <button class="btn-action" onclick="showScreen('dashboard-screen')">← 返回主页</button>
+    </div>
+</div>
+
+<div id="pin-modal" class="modal-overlay">
+    <div class="modal-content">
+        <div style="font-size: 40px; margin-bottom: 5px;">🛡️</div>
+        <h3 style="margin:0 0 10px 0; color:#0f172a; font-size: 24px; font-weight: 900;">Parent Lock</h3>
+        <p style="color:#64748b; font-size:14px; margin:0; font-weight: 700;">Ask Dad for today's code.</p>
+        <input type="tel" id="hub-pin-input" class="pin-input-hub" maxlength="4" placeholder="***" autocomplete="off" inputmode="numeric" pattern="[0-9]*">
+        <div style="display:flex; gap:10px; width: 100%;">
+            <button class="btn-action" style="flex:1; padding:15px; font-size:16px;" onclick="closePinModal()">Cancel</button>
+            <button class="btn-action" style="flex:1; padding:15px; font-size:16px; background:#f59e0b; color:white; border-color:#f59e0b; box-shadow:0 6px 0 #d97706;" onclick="verifyHubPin()">Unlock</button>
+        </div>
+    </div>
+</div>
+
+<div id="admin-pin-modal" class="modal-overlay">
+    <div class="modal-content" style="border-color: #3b82f6;">
+        <div style="font-size: 40px; margin-bottom: 5px;">😎</div>
+        <h3 style="margin:0 0 10px 0; color:#0f172a; font-size: 24px; font-weight: 900;">God Mode</h3>
+        <p style="color:#64748b; font-size:14px; margin:0; font-weight: 700;">请输入最高权限密钥</p>
+        <input type="tel" id="admin-pin-input" class="pin-input-hub" maxlength="4" placeholder="***" autocomplete="off" inputmode="numeric" pattern="[0-9]*">
+        <div style="display:flex; gap:10px; width: 100%;">
+            <button class="btn-action" style="flex:1; padding:15px; font-size:16px;" onclick="closeAdminPinModal()">取消</button>
+            <button class="btn-action" style="flex:1; padding:15px; font-size:16px; background:#3b82f6; color:white; border-color:#2563eb; box-shadow:0 6px 0 #1d4ed8;" onclick="verifyAdminPin()">进入</button>
+        </div>
+    </div>
+</div>
+
+<script>
+    let pendingUser = { name: null, grade: null };
+    let currentUser = '';
+    let currentGrade = '';
+    
+    const SYNC_API_URL = "https://script.google.com/macros/s/AKfycbzbNOgg7deW9uVVyfYGTfKGOtVgNs_9ZfUQ9J_9cYpG2Ufow9KLDICHgsinBXrPJlmz/exec";
+
+    function getSGTDate() {
+        const d = new Date();
+        const utc = d.getTime() + (d.getTimezoneOffset() * 60000);
+        return new Date(utc + (3600000 * 8));
+    }
+
+    function getSGTDateString() {
+        const sgt = getSGTDate();
+        return sgt.getFullYear() + '-' + String(sgt.getMonth() + 1).padStart(2, '0') + '-' + String(sgt.getDate()).padStart(2, '0');
+    }
+
+    function checkMasterLock() {
+        if (localStorage.getItem('family_hub_unlocked') === 'true') {
+            document.getElementById('master-lock-screen').style.display = 'none';
+            document.getElementById('main-app-container').style.display = 'flex';
+            initializeHub();
+        } else {
+            document.getElementById('master-pwd').focus();
+        }
+    }
+
+    function verifyMasterLock() {
+        const input = document.getElementById('master-pwd').value;
+        if (input === '0426') { 
+            localStorage.setItem('family_hub_unlocked', 'true');
+            checkMasterLock();
+        } else {
+            const el = document.getElementById('master-pwd');
+            el.classList.add('error-shake');
+            setTimeout(() => { el.classList.remove('error-shake'); el.value = ''; el.focus(); }, 400);
+        }
+    }
+
+    document.getElementById('master-pwd').addEventListener('keydown', function(e) {
+        if (e.key === 'Enter') verifyMasterLock();
+    });
+
+    function initDate() {
+        const now = getSGTDate();
+        const t2 = new Date(2026, 2, 23), t3 = new Date(2026, 5, 29), t4 = new Date(2026, 8, 14);
+        const diff = (d1, d2) => Math.floor((d1 - d2) / 864e5);
+        let termStr = "Term 1";
+        if (now >= t4) { const w = Math.floor(diff(now, t4)/7) + 1; termStr = w <= 10 ? `Term 4 Week ${w}` : "Holiday"; }
+        else if (now >= t3) { const w = Math.floor(diff(now, t3)/7) + 1; termStr = w <= 10 ? `Term 3 Week ${w}` : "Holiday"; }
+        else if (now >= t2) { const w = Math.floor(diff(now, t2)/7) + 1; termStr = w <= 10 ? `Term 2 Week ${w}` : "Holiday"; }
+        
+        document.getElementById('school-term-display').innerHTML = `
+            <div style="font-size: 14px; color: #64748b; font-weight: 800;">📅 ${now.toLocaleDateString('en-SG', {month:'short', day:'numeric'})}</div>
+            <div style="font-size: 18px; color: #3b82f6; font-weight: 900;">${termStr}</div>
+        `;
+    }
+
+    // 后台长按进入
+    let pressTimer = null;
+    let isLongPress = false;
+    let startY = 0;
+    const termEl = document.getElementById('school-term-display');
+    
+    const startPress = (e) => {
+        if(e.touches) startY = e.touches[0].clientY;
+        isLongPress = false;
+        termEl.style.transform = 'scale(0.95)';
+        pressTimer = setTimeout(() => {
+            isLongPress = true;
+            termEl.style.transform = 'scale(1)';
+            document.getElementById('admin-pin-modal').style.display = 'flex';
+            document.getElementById('admin-pin-input').value = '';
+            setTimeout(() => document.getElementById('admin-pin-input').focus(), 100);
+        }, 1200); 
+    };
+
+    const movePress = (e) => {
+        if(e.touches && Math.abs(e.touches[0].clientY - startY) > 10) {
+            clearTimeout(pressTimer);
+            termEl.style.transform = 'scale(1)';
+        }
+    };
+    
+    const cancelPress = (e) => {
+        clearTimeout(pressTimer);
+        termEl.style.transform = 'scale(1)';
+        if (!isLongPress && (e.type === 'touchend' || e.type === 'mouseup')) {
+            const ind = document.getElementById('cloud-sync-indicator');
+            ind.style.display = 'flex'; ind.innerText = "🔄 正在重新载入...";
+            setTimeout(() => window.location.reload(true), 300);
+        }
+    };
+    
+    termEl.addEventListener('touchstart', startPress, {passive: true});
+    termEl.addEventListener('touchmove', movePress, {passive: true});
+    termEl.addEventListener('touchend', cancelPress);
+    termEl.addEventListener('mousedown', startPress);
+    termEl.addEventListener('mouseup', cancelPress);
+    termEl.addEventListener('mouseleave', cancelPress);
+
+    function verifyAdminPin() {
+        if (document.getElementById('admin-pin-input').value === '0426') {
+            closeAdminPinModal(); openAdminScreen();
+        } else {
+            const el = document.getElementById('admin-pin-input'); el.classList.add('error-shake');
+            setTimeout(() => { el.classList.remove('error-shake'); el.value = ''; el.focus(); }, 400);
+        }
+    }
+    function closeAdminPinModal() { document.getElementById('admin-pin-modal').style.display = 'none'; }
+
+    function openAdminScreen() {
+        showScreen('admin-screen');
+        document.getElementById('admin-loading').style.display = 'block';
+        document.getElementById('admin-config-container').style.display = 'none';
+        document.getElementById('admin-save-btn').style.display = 'none';
+        
+        fetch(`${SYNC_API_URL}?type=fetch_config`).then(r => r.json()).then(cfg => {
+            document.getElementById('admin-loading').style.display = 'none';
+            document.getElementById('admin-config-container').style.display = 'flex';
+            document.getElementById('admin-save-btn').style.display = 'flex';
+            Object.keys(cfg).forEach(k => { let el = document.getElementById(`cfg-${k}`); if(el) el.value = cfg[k]; });
+        }).catch(e => { document.getElementById('admin-loading').innerText = "⚠️ 连接失败，请检查网络"; });
+    }
+
+    async function saveAdminConfig() {
+        const btn = document.getElementById('admin-save-btn');
+        btn.innerText = "上传中..."; btn.disabled = true;
+        const keys = ['pinyin_threshold_p1', 'pinyin_threshold_p3', 'speed_limit_p1', 'speed_limit_p3', 'tingxie_reward_coin', 'shop_hb_price', 'shop_tc_price', 'shop_pz_price', 'shop_tt_price', 'shop_xf_price'];
+        let promises = [];
+        keys.forEach(k => {
+            let val = document.getElementById(`cfg-${k}`).value;
+            if(val !== "") promises.push(fetch(SYNC_API_URL, { method: 'POST', mode: 'no-cors', body: JSON.stringify({ type: 'update_config', key: k, value: Number(val) }) }));
+        });
+        await Promise.all(promises);
+        btn.innerText = "✅ 保存成功！";
+        setTimeout(() => { btn.innerText = "💾 保存并推送云端"; btn.disabled = false; fetchGlobalConfig(); }, 2000);
+    }
+    
+    function adminForceRefund() {
+        let prefix = document.getElementById('admin-refund-code').value.trim().toUpperCase();
+        const validPrefixes = ['HB', 'TC', 'PZ', 'TT', 'XF'];
+        if (!validPrefixes.includes(prefix)) { alert("❌ 代码无效！请输入 HB, TC, PZ, TT 或 XF"); return; }
+        let count = parseInt(localStorage.getItem(`redeemed_${prefix}`) || "0");
+        if (count <= 0) { alert(`⚠️ 没有找到【${prefix}】的待领取记录，无法退款。`); return; }
+
+        let type = (prefix === 'TT' || prefix === 'XF') ? '个人水晶' : '团队金币';
+        let balanceKey = type === '团队金币' ? 'gold_coins_vault' : `crystals_${currentUser}`;
+        let currentBalance = parseInt(localStorage.getItem(balanceKey) || "0");
+
+        let cfg = JSON.parse(localStorage.getItem('hub_config') || "{}");
+        let defaultPrices = {HB:67, TC:134, PZ:268, TT:7, XF:14};
+        let itemNames = {HB:'汉堡', TC:'套餐', PZ:'披萨大餐', TT:'甜筒', XF:'麦旋风'};
+        let price = cfg[`shop_${prefix.toLowerCase()}_price`] || defaultPrices[prefix];
+        let name = itemNames[prefix];
+
+        if (confirm(`【后台强制退款】\n即将撤销 1 份 ${name}，并退回 ${price} ${type}。\n确定吗？`)) {
+            localStorage.setItem(`redeemed_${prefix}`, count - 1);
+            localStorage.setItem(balanceKey, currentBalance + price);
+            localStorage.removeItem('last_code_' + prefix);
+            document.getElementById('admin-refund-code').value = '';
+
+            try {
+                fetch(SYNC_API_URL, {
+                    method: 'POST', mode: 'no-cors', headers: { 'Content-Type': 'text/plain' },
+                    body: JSON.stringify({
+                        type: 'refund', user: currentUser || 'Admin', rewardName: name, refundAmount: price, prefix: prefix,
+                        balanceType: type === '团队金币' ? 'coin' : 'crystal', newBalance: currentBalance + price
+                    })
+                });
+            } catch(e) {}
+            alert("✅ 强制退款指令已发送！"); 
+            updateEconomyUI();
+        }
+    }
+
+    async function fetchGlobalConfig() {
+        try {
+            let res = await fetch(`${SYNC_API_URL}?type=fetch_config`);
+            let cfg = await res.json();
+            localStorage.setItem('hub_config', JSON.stringify(cfg));
+        } catch(e){}
+    }
+
+    async function syncFromCloud() {
+        if (!currentUser) return;
+        const indicator = document.getElementById('cloud-sync-indicator');
+        indicator.innerText = "☁️ 云端数据同步中..."; indicator.style.display = 'flex';
+        
+        try {
+            const resp = await fetch(`${SYNC_API_URL}?type=fetch_user_data&user=${currentUser}`);
+            const cloudData = await resp.json();
+            
+            if (cloudData && Object.keys(cloudData).length > 0) {
+                // 更新货币与打卡
+                if (cloudData.vaultCoins !== undefined) localStorage.setItem('gold_coins_vault', cloudData.vaultCoins);
+                if (cloudData.userCrystals !== undefined) localStorage.setItem(`crystals_${currentUser}`, cloudData.userCrystals);
+                if (cloudData.userTotalDays !== undefined) localStorage.setItem(`total_days_${currentUser}`, cloudData.userTotalDays);
+                if (cloudData.userStreak !== undefined) localStorage.setItem(`current_streak_${currentUser}`, cloudData.userStreak);
+                if (cloudData.maxStreak !== undefined) localStorage.setItem(`max_streak_${currentUser}`, cloudData.maxStreak);
+                
+                // 更新各科数据
+                if (cloudData.pinyin !== undefined) localStorage.setItem(`pinyin_badge_count_${currentUser}`, cloudData.pinyin);
+                if (cloudData.speed !== undefined) localStorage.setItem(`speed_breaks_${currentUser}`, cloudData.speed);
+                if (cloudData.tingxie !== undefined) localStorage.setItem(`tingxie_badge_count_${currentUser}`, cloudData.tingxie);
+                if (cloudData.hanzi !== undefined) localStorage.setItem(`hanzi_badge_count_${currentUser}`, cloudData.hanzi);
+                if (cloudData.perfects !== undefined) localStorage.setItem(`perfects_count_${currentUser}`, cloudData.perfects);
+                if (cloudData.games !== undefined) localStorage.setItem(`games_count_${currentUser}`, cloudData.games);
+                if (cloudData.eng !== undefined) localStorage.setItem(`eng_badge_count_${currentUser}`, cloudData.eng);
+                if (cloudData.math !== undefined) localStorage.setItem(`math_badge_count_${currentUser}`, cloudData.math);
+                if (cloudData.cn !== undefined) localStorage.setItem(`cn_badge_count_${currentUser}`, cloudData.cn);
+                if (cloudData.sci !== undefined) localStorage.setItem(`sci_badge_count_${currentUser}`, cloudData.sci);
+
+                if (cloudData.earlybird !== undefined) localStorage.setItem(`easter_earlybird_${currentUser}`, cloudData.earlybird);
+                if (cloudData.nightowl !== undefined) localStorage.setItem(`easter_nightowl_${currentUser}`, cloudData.nightowl);
+                if (cloudData.hattrick !== undefined) localStorage.setItem(`easter_hattrick_${currentUser}`, cloudData.hattrick);
+                if (cloudData.weekend !== undefined) localStorage.setItem(`easter_weekend_${currentUser}`, cloudData.weekend);
+                if (cloudData.holiday !== undefined) localStorage.setItem(`easter_holiday_${currentUser}`, cloudData.holiday);
+                
+                if (cloudData.lastCheckinDate) {
+                    let d = new Date(cloudData.lastCheckinDate);
+                    let sgtStr = d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0') + '-' + String(d.getDate()).padStart(2,'0');
+                    localStorage.setItem(`last_checkin_date_${currentUser}`, sgtStr);
+                    localStorage.setItem(`last_date_${currentUser}`, sgtStr); 
+                }
+
+                // 核心同步：用云端的背包清单强制覆盖本地！
+                if (cloudData.activeItems !== undefined) {
+                    const validItems = ['HB', 'TC', 'PZ', 'TT', 'XF'];
+                    validItems.forEach(p => {
+                        localStorage.setItem(`redeemed_${p}`, 0);
+                        localStorage.removeItem(`last_code_${p}`);
+                    });
+                    
+                    cloudData.activeItems.forEach(item => {
+                        if (item.code) {
+                            let prefix = item.code.split('-')[0];
+                            if (validItems.includes(prefix)) {
+                                let c = parseInt(localStorage.getItem(`redeemed_${prefix}`)||0);
+                                localStorage.setItem(`redeemed_${prefix}`, c + 1);
+                                localStorage.setItem(`last_code_${prefix}`, item.code); 
+                            }
+                        }
+                    });
+                }
+
+                updateEconomyUI(); renderBadges();
+            }
+        } catch (e) {}
+        setTimeout(() => { indicator.style.display = 'none'; }, 800);
+    }
+
+    function showScreen(id) { document.querySelectorAll('.screen').forEach(s => s.style.display = 'none'); document.getElementById(id).style.display = 'flex'; }
+    function showSubMenu(menuId) { showScreen(menuId); }
+    function launchPractice(subject) { localStorage.setItem('currentSubject', subject); window.location.href = 'practice.html'; }
+
+    function switchUser(name, grade) {
+        if (name === 'Venessa') { 
+            pendingUser = { name: name, grade: grade }; 
+            document.getElementById('pin-modal').style.display = 'flex'; 
+            const pinInput = document.getElementById('hub-pin-input');
+            pinInput.value = ''; setTimeout(() => pinInput.focus(), 100); return; 
+        }
+        executeSwitchUser(name, grade);
+    }
+
+    function executeSwitchUser(name, grade) {
+        currentUser = name; currentGrade = grade;
+        localStorage.setItem('currentPlayer', currentUser); localStorage.setItem('currentGrade', currentGrade);
+        document.getElementById('dash-avatar').innerText = name === 'Valerie' ? '👱‍♀️' : '👧';
+        document.getElementById('dash-name').innerText = `Hello, ${name}!`;
+        document.getElementById('cn-label').innerText = name === 'Valerie' ? '高级华文' : '华文';
+        updateEconomyUI(); renderBadges(); showScreen('dashboard-screen'); syncFromCloud();
+    }
+
+    function verifyHubPin() {
+        const input = document.getElementById('hub-pin-input').value;
+        const now = getSGTDate(); const mmdd = (now.getMonth() + 1) * 100 + now.getDate();
+        const day = now.getDay() === 0 ? 7 : now.getDay();
+        if (input === (mmdd + day).toString()) { closePinModal(); executeSwitchUser(pendingUser.name, pendingUser.grade); } 
+        else {
+            const el = document.getElementById('hub-pin-input'); el.classList.add('error-shake');
+            setTimeout(() => { el.classList.remove('error-shake'); el.value = ''; el.focus(); }, 400);
+        }
+    }
+    function closePinModal() { document.getElementById('pin-modal').style.display = 'none'; document.getElementById('hub-pin-input').value = ''; }
+
+    function updateEconomyUI() {
+        let totalDays = parseInt(localStorage.getItem(`total_days_${currentUser}`) || "0");
+        let lastCheckin = localStorage.getItem(`last_checkin_date_${currentUser}`);
+        let todayStr = getSGTDateString();
+        let streakEl = document.getElementById('dash-streak');
+        if (totalDays === 0) { streakEl.className = 'streak-badge pending'; streakEl.innerHTML = `⚪ 开启你的第 1 天打卡吧！`; } 
+        else { 
+            if (lastCheckin === todayStr) { streakEl.className = 'streak-badge completed'; streakEl.innerHTML = `🔥 今日已打卡 (累计 ${totalDays} 天)`; } 
+            else { streakEl.className = 'streak-badge pending'; streakEl.innerHTML = `⚪ 今日待打卡 (累计 ${totalDays} 天)`; }
+        }
+    }
+
+    function renderBadges() {
+        const container = document.getElementById('badges-container');
+        container.innerHTML = ''; 
+
+        let localPerfects = 0, localGames = 0;
+        let subPerfects = { 'English': 0, 'Math': 0, '华文': 0, 'Science': 0 };
+        for (let i = 0; i < localStorage.length; i++) {
+            let key = localStorage.key(i);
+            if (key.startsWith('practice_stats_') && key.includes(`_${currentUser}_`)) {
+                try {
+                    let sub = key.split('_')[4];
+                    let stats = JSON.parse(localStorage.getItem(key));
+                    localPerfects += (stats.perfects||0); localGames += (stats.gamesPlayed||0);
+                    if (sub && subPerfects[sub] !== undefined) subPerfects[sub] += (stats.perfects||0);
+                } catch(e) {}
+            }
+        }
+
+        let totalTrophies = 0;
+        const renderItemHTML = (b) => {
+            totalTrophies += b.count;
+            let classes = ['badge-item'];
+            if (b.count > 0) { classes.push('unlocked'); if (b.tier) classes.push(b.tier); } 
+            else { classes.push('locked'); }
+            
+            let countHtml = (b.count > 1) ? `<div class="badge-count">x${b.count}</div>` : '';
+            let progressHtml = '';
+            if (b.isCrown) { progressHtml = `<div class="badge-progress" style="color:#d97706;">${b.currentStreak} 天</div>`; } 
+            else if (b.count === 0 && b.targetStreak) { progressHtml = `<div class="badge-progress">${b.currentStreak}/${b.targetStreak}</div>`; }
+            
+            return `<div class="${classes.join(' ')}"><div class="badge-icon-wrapper"><div class="badge-icon">${b.icon}</div>${countHtml}</div><div class="badge-name">${b.name}</div>${progressHtml}</div>`;
+        };
+
+        const coreBadges = [
+            { icon: '🎯', name: '神奇射手', count: Math.max(localPerfects, parseInt(localStorage.getItem(`perfects_count_${currentUser}`)||'0')) },
+            { icon: '⚡️', name: '极速突破', count: parseInt(localStorage.getItem(`speed_breaks_${currentUser}`)||'0') },
+            { icon: '🎈', name: '气球猎人', count: Math.max(localGames, parseInt(localStorage.getItem(`games_count_${currentUser}`)||'0')) }
+        ];
+        container.innerHTML += `<div class="badge-category"><div class="badge-category-title">🌟 核心战绩</div><div class="badge-grid">${coreBadges.map(renderItemHTML).join('')}</div></div>`;
+
+        const subBadges = [
+            { icon: '🔤', name: '英语达人', count: Math.max(subPerfects['English'], parseInt(localStorage.getItem(`eng_badge_count_${currentUser}`)||'0')) },
+            { icon: '🔢', name: '数学天才', count: Math.max(subPerfects['Math'], parseInt(localStorage.getItem(`math_badge_count_${currentUser}`)||'0')) },
+            { icon: '🐼', name: '华文小将', count: Math.max(subPerfects['华文'], parseInt(localStorage.getItem(`cn_badge_count_${currentUser}`)||'0')) },
+            { icon: '🌱', name: '科学博士', count: Math.max(subPerfects['Science'], parseInt(localStorage.getItem(`sci_badge_count_${currentUser}`)||'0')) },
+            { icon: '🎮', name: '拼音高手', count: parseInt(localStorage.getItem(`pinyin_badge_count_${currentUser}`)||'0') },
+            { icon: '👑', name: '听写大王', count: parseInt(localStorage.getItem(`tingxie_badge_count_${currentUser}`)||'0') },
+            { icon: '🧚', name: '汉字精灵', count: parseInt(localStorage.getItem(`hanzi_badge_count_${currentUser}`)||'0') } 
+        ];
+        container.innerHTML += `<div class="badge-category"><div class="badge-category-title">🎓 科目大师</div><div class="badge-grid">${subBadges.map(renderItemHTML).join('')}</div></div>`;
+
+        const currentStreak = parseInt(localStorage.getItem(`current_streak_${currentUser}`) || '0');
+        const maxStreak = Math.max(parseInt(localStorage.getItem(`max_streak_${currentUser}`) || '0'), currentStreak);
+        let streakMilestones = [3, 5, 10, 15, 30];
+        if (currentStreak >= 30) {
+            let nextTarget = (Math.floor(currentStreak / 5) + 1) * 5;
+            streakMilestones = [nextTarget - 20, nextTarget - 15, nextTarget - 10, nextTarget - 5, nextTarget];
+        }
+        let streakBadges = [];
+        streakBadges.push({ icon: '👑', name: `最高记录`, count: 1, tier: 'gold', targetStreak: maxStreak, currentStreak: maxStreak, isCrown: true });
+        streakMilestones.forEach(day => {
+            let isAchieved = (currentStreak >= day);
+            streakBadges.push({ icon: '🔥', name: `连击${day}天`, count: isAchieved ? 1 : 0, tier: day >= 15 ? 'gold' : (day >= 10 ? 'silver' : 'bronze'), targetStreak: day, currentStreak: currentStreak });
+        });
+        container.innerHTML += `<div class="badge-category"><div class="badge-category-title">📅 毅力连击 (当前已连续 ${currentStreak} 天)</div><div class="badge-grid">${streakBadges.map(renderItemHTML).join('')}</div></div>`;
+
+        const easterBadgesData = [
+            { icon: '🌅', name: '早起鸟儿', count: parseInt(localStorage.getItem(`easter_earlybird_${currentUser}`) || '0'), tier: 'gold' },
+            { icon: '🦉', name: '小猫头鹰', count: parseInt(localStorage.getItem(`easter_nightowl_${currentUser}`) || '0'), tier: 'gold' },
+            { icon: '🔥', name: '全对三连', count: parseInt(localStorage.getItem(`easter_hattrick_${currentUser}`) || '0'), tier: 'gold' },
+            { icon: '🎉', name: '周末狂人', count: parseInt(localStorage.getItem(`easter_weekend_${currentUser}`) || '0'), tier: 'gold' },
+            { icon: '🔋', name: '假期充电', count: parseInt(localStorage.getItem(`easter_holiday_${currentUser}`) || '0'), tier: 'gold' }
+        ];
+        const unlockedEasterBadges = easterBadgesData.filter(b => b.count > 0);
+        if (unlockedEasterBadges.length > 0) { container.innerHTML += `<div class="badge-category"><div class="badge-category-title" style="color: #9333ea; border-bottom-color: #d8b4fe;">🎁 特别彩蛋</div><div class="badge-grid">${unlockedEasterBadges.map(renderItemHTML).join('')}</div></div>`; }
+        document.getElementById('total-badge-count').innerText = totalTrophies;
+    }
+
+    function executeNuclearReset() {
+        if(confirm("☢️ 警告：此操作将清空本地所有测试数据（Ticket将重置）！\n\n确定要执行吗？")) {
+            localStorage.clear(); sessionStorage.clear(); alert("🧹 所有本地数据已清零。"); window.location.reload();
+        }
+    }
+
+    document.addEventListener('keydown', (e) => { 
+        if (e.key === 'Enter') {
+            if (document.getElementById('master-lock-screen').style.display === 'flex') verifyMasterLock();
+            else if (document.getElementById('pin-modal').style.display === 'flex') verifyHubPin();
+            else if (document.getElementById('admin-pin-modal').style.display === 'flex') verifyAdminPin();
+        } 
+    });
+    
+    function initializeHub() {
+        initDate();
+        let lastUser = localStorage.getItem('currentPlayer');
+        let lastGrade = localStorage.getItem('currentGrade') || (lastUser === 'Valerie' ? 'P3' : 'P1');
+        fetchGlobalConfig();
+        if(lastUser === 'Valerie' || lastUser === 'Venessa') { executeSwitchUser(lastUser, lastGrade); } 
+        else { showScreen('user-screen'); }
+    }
+
+    window.onload = checkMasterLock;
+</script>
+
+</body>
+</html>

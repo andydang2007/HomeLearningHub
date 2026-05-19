@@ -1,0 +1,648 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Smart Practice</title>
+
+    <link rel="apple-touch-icon" href="https://img.icons8.com/fluency/240/paper-plane.png">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+
+    <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@600;800;900&display=swap" rel="stylesheet">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
+    
+    <style>
+        :root { --primary: #10b981; --bg: #f8fafc; --text-main: #1e293b; --text-muted: #64748b; }
+        * { box-sizing: border-box; font-family: 'Nunito', 'Microsoft YaHei', sans-serif; -webkit-tap-highlight-color: transparent; }
+        
+        body { background: linear-gradient(135deg, #a1c4fd 0%, #c2e9fb 100%); margin: 0; padding: 15px; color: var(--text-main); display: flex; flex-direction: column; align-items: center; justify-content: flex-start; min-height: 100vh; overflow-x: hidden; }
+        
+        .container { width: 100%; max-width: 650px; background: rgba(255,255,255,0.95); padding: 30px 25px; border-radius: 35px; box-shadow: 0 20px 50px rgba(0,0,0,0.1); text-align: center; position: relative; border: 4px solid #ffffff; backdrop-filter: blur(12px); display: flex; flex-direction: column; align-items: center; margin-top: 4vh; margin-bottom: auto; }
+        
+        .screen { display: none; width: 100%; flex-direction: column; align-items: center; animation: bounceIn 0.5s cubic-bezier(0.68, -0.55, 0.265, 1.55); }
+        @keyframes bounceIn { 0% { opacity: 0; transform: scale(0.9); } 100% { opacity: 1; transform: scale(1); } }
+        
+        .header-tag { background: #f8fafc; color: #3b82f6; padding: 8px 20px; border-radius: 30px; font-weight: 900; font-size: 16px; border: 3px solid #e2e8f0; box-shadow: 0 3px 0 #cbd5e1; margin-bottom: 15px; display: inline-flex; align-items: center; gap: 8px; }
+
+        .quiz-wrapper { width: 100%; display: flex; flex-direction: column; align-items: center; gap: 15px; }
+        .progress-col { width: 100%; display: flex; flex-direction: column; align-items: center; margin-bottom: 5px; }
+        .milestone-track { display: flex; flex-wrap: wrap; justify-content: center; align-items: center; gap: 6px; width: 100%; margin-bottom: 8px; }
+        
+        .milestone { width: 24px; height: 24px; background: #f8fafc; border: 2px solid #cbd5e1; border-radius: 50%; z-index: 2; display: flex; align-items: center; justify-content: center; font-size: 11px; transition: 0.4s; box-sizing: border-box; flex-shrink: 0; }
+        .milestone.done { border-color: #10b981; background: #d1fae5; }
+        .milestone.active { border-color: #3b82f6; background: #eff6ff; font-size: 14px; transform: scale(1.2); box-shadow: 0 0 8px rgba(59,130,246,0.3); animation: bounceActive 1s infinite alternate; }
+        @keyframes bounceActive { 0% { transform: scale(1.2) translateY(0); } 100% { transform: scale(1.2) translateY(-2px); } }
+
+        .quiz-main-col { width: 100%; display: flex; flex-direction: column; align-items: center; }
+
+        .q-text { font-size: 22px; text-align: center; margin: 10px 0 20px 0; line-height: 1.5; font-weight: 800; color: #1e293b; width: 100%; }
+        
+        .hint-text { color: #94a3b8; font-family: monospace; font-size: 22px; font-weight: 900; margin-bottom: 10px; letter-spacing: 6px; text-align: center; }
+
+        input.ans-input, textarea.ans-input { font-size: 20px; padding: 12px; width: 100%; border: 3px solid #e2e8f0; border-radius: 15px; box-sizing: border-box; outline: none; font-family: inherit; font-weight: bold; color: #334155; text-align: center; }
+        textarea.ans-input { text-align: left; }
+        input.ans-input.error-shake { border-color: #ef4444; animation: shake 0.3s; background-color: #fef2f2; color: #ef4444; }
+        
+        .mcq-list { display: flex; flex-direction: column; gap: 10px; width: 100%; }
+        button.mcq-btn { padding: 10px 15px; border-radius: 15px; border: 3px solid #e2e8f0; background: white; font-size: 16px; font-weight: 800; cursor: pointer; text-align: center; transition: 0.15s; color: #1e293b; outline: none; box-shadow: 0 3px 0 #cbd5e1; margin: 0; }
+        button.mcq-btn.active { border-color: #3b82f6; background: #eff6ff; font-weight: 900; color: #1d4ed8; box-shadow: 0 3px 0 #93c5fd; }
+        button.mcq-btn.error { border-color: #ef4444; background: #fef2f2; color: #b91c1c; animation: shake 0.3s; }
+
+        .feedback { font-size: 18px; margin: 15px 0; min-height: 25px; font-weight: 900; width: 100%; }
+        .btn-action { width: 100%; border-radius: 20px; border: none; font-weight: 900; font-size: 18px; cursor: pointer; transition: 0.15s; display: flex; align-items: center; justify-content: center; outline: none; padding: 15px; box-shadow: 0 5px 0 rgba(0,0,0,0.1); }
+        .btn-action:active { transform: translateY(4px); box-shadow: 0 1px 0 rgba(0,0,0,0.1); }
+
+        .tool-btn { background: white; border: 3px solid #e2e8f0; padding: 8px 15px; border-radius: 12px; font-weight: 900; font-size: 14px; cursor: pointer; color: #475569; transition: 0.15s; box-shadow: 0 3px 0 #cbd5e1; outline: none; margin-bottom: 10px; }
+        .draw-panel { display: none; flex-direction: column; align-items: center; margin-bottom: 15px; background: #f8fafc; padding: 15px; border-radius: 20px; border: 3px dashed #cbd5e1; width: 100%; }
+        canvas { background: white; border-radius: 15px; border: 2px solid #e2e8f0; touch-action: none; cursor: crosshair; max-width: 100%; }
+
+        .modal-overlay { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(15, 23, 42, 0.85); z-index: 1000; align-items: center; justify-content: center; backdrop-filter: blur(10px); }
+        .epic-modal { background: linear-gradient(135deg, #fffbeb 0%, #fef3c7 100%); padding: 40px; border-radius: 40px; text-align: center; width: 90%; max-width: 400px; border: 6px solid #fde68a; box-shadow: inset 0 0 30px rgba(245, 158, 11, 0.2), 0 30px 60px rgba(0,0,0,0.4); display: flex; flex-direction: column; align-items: center; position: relative; transition: 0.2s; }
+        @keyframes epicPop { 0% { transform: scale(0.5); opacity: 0; } 100% { transform: scale(1); opacity: 1; } }
+        
+        .epic-icon { font-size: 80px; margin-top: -80px; background: white; width: 120px; height: 120px; border-radius: 50%; display: flex; align-items: center; justify-content: center; border: 6px solid #fde68a; box-shadow: 0 10px 20px rgba(245, 158, 11, 0.3); z-index: 2; animation: float 3s ease-in-out infinite; }
+        @keyframes float { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-10px); } }
+        
+        .epic-title { font-size: 28px; font-weight: 900; color: #b45309; margin: 20px 0 10px 0; }
+        .epic-desc { font-size: 16px; font-weight: 800; color: #92400e; line-height: 1.5; margin-bottom: 25px; }
+        .epic-highlight { color: #ea580c; font-size: 20px; font-weight: 900; background: white; padding: 5px 12px; border-radius: 12px; border: 2px dashed #fcd34d; display: inline-block; margin: 8px 0; }
+        .stat-badge { background: #fffbeb; color: #d97706; padding: 8px 15px; border-radius: 20px; font-weight: 900; font-size: 16px; border: 2px solid #fde68a; display: inline-block; margin-top: 10px; }
+
+        @media (min-width: 768px) { 
+            .container { padding: 40px 60px; max-width: 750px; } 
+        }
+        @keyframes shake { 0%, 100% { transform: translateX(0); } 25% { transform: translateX(-8px); } 75% { transform: translateX(8px); } }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <div id="loading" class="screen" style="display:flex; justify-content:center; align-items:center; padding: 60px 0; font-size: 20px; font-weight: 900; color: #3b82f6;">
+        🌟 魔法书正在组卷... 
+    </div>
+
+    <div id="quiz-screen" class="screen">
+        <div class="header-tag" id="header-info">🚀 Practice</div>
+        <div class="quiz-wrapper">
+            
+            <div class="progress-col">
+                <div id="progress-bar" class="milestone-track"></div>
+                <div id="progress-text" style="font-size:14px; font-weight: 900; color:#94a3b8; margin-top: 5px;"></div>
+            </div>
+
+            <div class="quiz-main-col">
+                <div style="display:flex; justify-content: center; width:100%;">
+                    <button id="draw-pad-btn" class="tool-btn" style="color:#059669; border-color:#a7f3d0; background:#ecfdf5; display:none;" onclick="toggleDrawPad()">✍️ 打开草稿板</button>
+                </div>
+                
+                <div id="draw-panel" class="draw-panel">
+                    <canvas id="pad" width="300" height="200"></canvas>
+                    <div style="display:flex; justify-content: space-between; width:100%; margin-top:12px;">
+                        <button class="tool-btn" style="background:#fef2f2; border-color:#fecaca; color:#e11d48;" onclick="clearPad()">🗑️ 清除</button>
+                        <button class="tool-btn" onclick="toggleDrawPad()">❌ 关闭</button>
+                    </div>
+                </div>
+
+                <div id="q-text" class="q-text"></div>
+                
+                <div id="input-container" style="width: 100%;"></div>
+                
+                <div id="fb-text" class="feedback"></div>
+                
+                <div style="display:flex; gap:12px; margin-top: 5px; width: 100%;">
+                    <button id="exit-btn" class="btn-action" style="background:#f1f5f9; color:#64748b; border: 3px solid #e2e8f0; box-shadow: 0 4px 0 #cbd5e1; flex: 0.8;" onclick="window.location.href='index.html'">退出 🏠</button>
+                    <button id="sub-btn" class="btn-action" style="background:#3b82f6; color:white; box-shadow: 0 4px 0 #2563eb; flex: 1.2;" onclick="checkAns()">提交</button>
+                    <button id="next-btn" class="btn-action" style="background:#10b981; color:white; box-shadow: 0 4px 0 #059669; flex: 1.2; display:none;" onclick="nextQ()">下一题 ➡️</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div id="finish-screen" class="screen"></div>
+</div>
+
+<div id="badge-modal" class="modal-overlay">
+    <div class="epic-modal">
+        <div class="epic-icon" id="badge-icon">⚡️</div>
+        <div class="epic-title" id="badge-title">新纪录诞生！</div>
+        <div class="epic-desc" id="badge-desc"></div>
+        <div style="font-size:12px; color:#b45309; font-weight:800; margin-bottom: 20px;">☁️ 荣誉已存入云端荣誉墙...</div>
+        <button class="btn-action" style="background:#f59e0b; color:white; box-shadow: 0 6px 0 #d97706;" onclick="closeBadgeModal()">Awesome! 🚀</button>
+    </div>
+</div>
+
+<script>
+    const SYNC_API_URL = "https://script.google.com/macros/s/AKfycbzbNOgg7deW9uVVyfYGTfKGOtVgNs_9ZfUQ9J_9cYpG2Ufow9KLDICHgsinBXrPJlmz/exec";
+    const SHEET_ID = "1vQlpdRHnR9ybEHHgX6fouRI-vXOh8KQNLSjsbt0TYh9R3No_9i7QNv_4ELwJZJGQpTe3oZVXaZijaW4";
+    const GIDS = { "English": "1893311738", "Math": "59294467", "Science": "1581471994", "华文": "2020673087" };
+    
+    let db = {}, sessionQs = [], curIdx = 0, sessionErrors = 0;
+    let canvas, ctx, drawing = false;
+    let currentTermNum = 1, startTime = 0; 
+    
+    let curUser = localStorage.getItem('currentPlayer') || 'Valerie';
+    let curGrade = localStorage.getItem('currentGrade') || 'P3';
+    let curSub = localStorage.getItem('currentSubject') || 'English';
+
+    let badgeQueue = [], pendingGameResult = null;
+
+    async function syncToCloud(payload) {
+        try {
+            fetch(SYNC_API_URL, { method: 'POST', mode: 'no-cors', body: JSON.stringify(payload) });
+        } catch (e) {}
+    }
+
+    function getMistakes() { return JSON.parse(localStorage.getItem('hub_mistakes') || '{}'); }
+    function saveMistakes(m) { localStorage.setItem('hub_mistakes', JSON.stringify(m)); }
+    function getQuestionKey(sub, user, qText) { return `${user}_${sub}_${qText.trim()}`; }
+
+    function getSGTDateString() {
+        const d = new Date();
+        const utc = d.getTime() + (d.getTimezoneOffset() * 60000);
+        const sgt = new Date(utc + (3600000 * 8));
+        return sgt.getFullYear() + '-' + String(sgt.getMonth() + 1).padStart(2, '0') + '-' + String(sgt.getDate()).padStart(2, '0');
+    }
+
+    function applyBalloonLogic(errors) {
+        const today = getSGTDateString();
+        const key = `balloon_stats_${today}_${curUser}`;
+        let stats = JSON.parse(localStorage.getItem(key) || '{"goodCount":0, "date":""}');
+        if (stats.date !== today) stats = { goodCount: 0, date: today }; 
+
+        let trigger = false;
+        let msg = "";
+
+        if (errors <= 1) {
+            stats.goodCount += 1; 
+            if (errors === 0) {
+                trigger = true;
+                msg = "🎉 满分达成！直接奖励气球大作战！🎈";
+            } else if (stats.goodCount % 2 === 0) {
+                trigger = true;
+                msg = "🎉 累计两次高质量完成！解锁气球大作战！🎈";
+            } else {
+                msg = "🔥 表现不错！再获得一次 6~7 就能玩气球啦！";
+            }
+        }
+        localStorage.setItem(key, JSON.stringify(stats));
+        return { trigger, msg };
+    }
+
+    function showScreen(id) {
+        document.querySelectorAll('.screen').forEach(s => s.style.display = 'none');
+        document.getElementById(id).style.display = 'flex';
+    }
+
+    async function init() {
+        let activeIcon = curSub === '华文' ? '🐼' : (curSub === 'Science' ? '🌱' : (curSub === 'Math' ? '🔢' : '🚀'));
+        document.getElementById('header-info').innerHTML = `${activeIcon} ${curUser} - ${curSub}`;
+
+        try {
+            const statsResp = await fetch(`${SYNC_API_URL}?type=fetch_user_data&user=${curUser}`);
+            const cloudStats = await statsResp.json();
+            if (cloudStats && Object.keys(cloudStats).length > 0) {
+                localStorage.setItem(`total_days_${curUser}`, cloudStats.userTotalDays);
+                localStorage.setItem(`current_streak_${curUser}`, cloudStats.userStreak);
+                localStorage.setItem(`crystals_${curUser}`, cloudStats.userCrystals);
+                localStorage.setItem(`gold_coins_vault`, cloudStats.vaultCoins);
+                
+                if (cloudStats.lastCheckinDate) {
+                    let d = new Date(cloudStats.lastCheckinDate);
+                    let sgtStr = d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0') + '-' + String(d.getDate()).padStart(2,'0');
+                    localStorage.setItem(`last_date_${curUser}`, sgtStr);
+                }
+            }
+        } catch (e) { console.log("云端同步失败:", e); }
+
+        const today = getSGTDateString();
+        const limitKey = `limit_${today}_${curUser}_${curSub}`;
+        if (parseInt(localStorage.getItem(limitKey) || "0") >= 1) {
+            document.getElementById('loading').innerHTML = `
+                <div style="padding:20px; text-align:center;">
+                    <div style="font-size:60px; margin-bottom:15px;">🏆</div>
+                    <h2 style="color:#1e293b; margin-bottom:10px; font-size:24px;">今日【${curSub}】已达标！</h2>
+                    <p style="color:#64748b; font-weight:800; font-size:14px; margin-bottom:25px;">每天只做一次，保证最高质量。<br>明天再来挑战吧！</p>
+                    <button class="btn-action" style="background:#3b82f6; color:white; max-width:200px; margin: 0 auto;" onclick="window.location.href='index.html'">返回主页</button>
+                </div>`;
+            return;
+        }
+
+        try {
+            const resp = await fetch(`${SYNC_API_URL}?type=fetch_mistakes&user=${curUser}`);
+            const cloudMistakes = await resp.json();
+            if (cloudMistakes && Object.keys(cloudMistakes).length > 0) {
+                localStorage.setItem('hub_mistakes', JSON.stringify(cloudMistakes));
+            }
+        } catch (e) {}
+
+        const now = new Date();
+        const t2 = new Date(2026, 2, 23), t3 = new Date(2026, 5, 29), t4 = new Date(2026, 8, 14);
+        if (now >= t4) currentTermNum = 4; else if (now >= t3) currentTermNum = 3; else if (now >= t2) currentTermNum = 2; else currentTermNum = 1;
+        
+        let cached = sessionStorage.getItem('hub_db_cache');
+        if (cached) { try { db = JSON.parse(cached); if (Object.keys(db).length > 0) { startQuiz(); return; } } catch(e) { sessionStorage.removeItem('hub_db_cache'); } }
+
+        const loads = Object.entries(GIDS).map(([name, gid]) => new Promise(res => {
+            Papa.parse(`https://docs.google.com/spreadsheets/d/e/2PACX-${SHEET_ID}/pub?gid=${gid}&single=true&output=csv&t=${Date.now()}`, {
+                download: true, header: true, skipEmptyLines: 'greedy',
+                complete: r => res({ name, data: r.data.map(row => { let n = {}; Object.keys(row).forEach(k => n[k.trim()] = row[k]); return n; }) }),
+                error: () => res({name, data: []})
+            });
+        }));
+        const results = await Promise.race([Promise.all(loads), new Promise(res => setTimeout(() => res('timeout'), 5000))]);
+        if (results === 'timeout') { document.getElementById('loading').innerHTML = "⚠️ 网络慢，请重试。"; return; }
+        db = {};
+        results.forEach(r => { if(r && r.data) { r.data.forEach(row => { 
+            let g = (row.Grade || row.GRADE || "").toUpperCase(); if(!g) return;
+            if(!db[g]) db[g] = {}; if(!db[g][r.name]) db[g][r.name] = []; db[g][r.name].push(row);
+        }); } });
+        if (Object.keys(db).length > 0) { sessionStorage.setItem('hub_db_cache', JSON.stringify(db)); startQuiz(); }
+        else { document.getElementById('loading').innerText = "⚠️ Data error."; }
+    }
+
+    
+    function startQuiz() {
+        let mainPool = (db[curGrade][curSub] || []).filter(q => (q.Type || "").toString().trim().toUpperCase() !== 'SPELLING');
+        mainPool = mainPool.filter(q => {
+            let t = q.Term || q.TERM; if (!t) return true; 
+            let tNum = parseInt(t.toString().replace(/\D/g, ''));
+            return isNaN(tNum) || tNum <= currentTermNum;
+        });
+        if (mainPool.length === 0) { 
+            document.getElementById('loading').innerHTML = "⚠️ 没有可用练习题。"; 
+            setTimeout(() => window.location.href='index.html', 2000); return; 
+        }
+
+        const today = getSGTDateString();
+        localStorage.setItem(`limit_${today}_${curUser}_${curSub}`, "1");
+
+        let lowerGrade = curGrade === 'P3' ? 'P2' : (curGrade === 'P2' ? 'P1' : null);
+        let lowerPicked = [];
+        if (lowerGrade && db[lowerGrade] && db[lowerGrade][curSub]) {
+            let lPool = db[lowerGrade][curSub].filter(q => (q.Type || "").toString().trim().toUpperCase() !== 'SPELLING');
+            lPool.sort(() => 0.5 - Math.random()); lowerPicked = lPool.slice(0, 2);
+        }
+        
+        let mistakes = getMistakes(), eligibleMistakes = [], freshNewPool = []; 
+        mainPool.forEach(q => {
+            let key = getQuestionKey(curSub, curUser, q.Question);
+            let mData = mistakes[key];
+            if (mData) {
+                let w = typeof mData === 'object' ? (mData.weight || 0) : mData;
+                if (w > 0) eligibleMistakes.push({ q: q, weight: w });
+                else freshNewPool.push(q);
+            } else {
+                freshNewPool.push(q);
+            }
+        });
+
+        let mistakesPicked = [];
+        if (eligibleMistakes.length > 0) {
+            let weightedList = [];
+            eligibleMistakes.forEach(item => { let w = Math.max(1, item.weight); for(let i=0; i<w; i++) weightedList.push(item.q); });
+            let targetMistakes = Math.min(5, eligibleMistakes.length);
+            while (mistakesPicked.length < targetMistakes && weightedList.length > 0) {
+                let idx = Math.floor(Math.random() * weightedList.length); let selectedQ = weightedList[idx];
+                if (!mistakesPicked.includes(selectedQ)) mistakesPicked.push(selectedQ);
+                weightedList = weightedList.filter(item => item !== selectedQ);
+            }
+        }
+        
+        let remainingQuota = 15 - lowerPicked.length - mistakesPicked.length;
+        freshNewPool.sort(() => 0.5 - Math.random());
+        sessionQs = [...lowerPicked, ...mistakesPicked, ...freshNewPool.slice(0, remainingQuota)];
+        sessionQs.sort(() => 0.5 - Math.random());
+        curIdx = 0; sessionErrors = 0; 
+        document.getElementById('draw-panel').style.display = 'none';
+        if (curGrade === 'P3' && curSub === 'Math') document.getElementById('draw-pad-btn').style.display = 'inline-block';
+        else document.getElementById('draw-pad-btn').style.display = 'none';
+        
+        startTime = Date.now(); 
+        showScreen('quiz-screen'); renderQ();
+    }
+
+    function updateProgress() {
+        const bar = document.getElementById('progress-bar');
+        let html = '', icon = curSub === '华文' ? '🐼' : (curSub === 'Science' ? '🌱' : (curSub === 'Math' ? '🔢' : '🚀'));
+        for(let i=0; i<sessionQs.length; i++) html += `<div class="milestone${i < curIdx ? ' done' : (i === curIdx ? ' active' : '')}">${i < curIdx ? '⭐' : (i === curIdx ? icon : '☁️')}</div>`;
+        bar.innerHTML = html;
+        document.getElementById('progress-text').innerText = `${curIdx + 1} / ${sessionQs.length}`;
+    }
+
+    function renderQ() {
+        updateProgress(); if(ctx && canvas) clearPad();
+        const q = sessionQs[curIdx], isCN = (curSub === '华文');
+        document.getElementById('q-text').innerText = q.Question;
+        const container = document.getElementById('input-container'), qType = (q.Type || "").toString().trim().toUpperCase();
+        q.isEvaluated = false; 
+
+        let hintHtml = "";
+        if (curUser === 'Venessa' && qType !== 'MCQ') {
+            const correctRaw = (q['Correct Answer'] || q['ANSWER'] || "").toString().trim();
+            const hintStr = correctRaw.split('').map(c => /[a-zA-Z0-9\u4e00-\u9fa5]/.test(c) ? '_' : c).join(' ');
+            hintHtml = `<div class="hint-text">Hint: ${hintStr}</div>`;
+        }
+        
+        if (qType === 'OPEN') {
+            container.innerHTML = hintHtml + `<textarea id="ans-in" class="ans-input" rows="4" placeholder="${isCN ? '输入你的完整答案...' : 'Type full answer...'}"></textarea>`;
+        } else if (qType === 'MCQ') {
+            const opts = (q.Options || q.options || "").toString().split('|').map(o => o.trim()).filter(o => o);
+            let html = `<div class="mcq-list">`;
+            opts.forEach(opt => html += `<button class="mcq-btn" onclick="selectMCQ(this, '${opt.replace(/'/g, "\\'").replace(/"/g, "&quot;")}')">${opt}</button>`);
+            container.innerHTML = html + `</div><input type="hidden" id="ans-in" value="">`;
+        } else {
+            container.innerHTML = hintHtml + `<input type="text" id="ans-in" class="ans-input" placeholder="${isCN ? '在此输入...' : 'Type here...'}" autocomplete="off">`;
+        }
+        
+        document.getElementById('fb-text').innerText = '';
+        document.getElementById('sub-btn').style.display = 'flex'; document.getElementById('next-btn').style.display = 'none';
+        if (curIdx === sessionQs.length - 1) document.getElementById('next-btn').innerText = "完成 ✨";
+        else document.getElementById('next-btn').innerText = "下一题 ➡️";
+    }
+
+    function selectMCQ(btn, val) {
+        if(document.getElementById('sub-btn').style.display === 'none') return; 
+        document.querySelectorAll('.mcq-btn').forEach(b => { b.classList.remove('active'); b.classList.remove('error'); });
+        btn.classList.add('active'); document.getElementById('ans-in').value = val;
+    }
+
+    function checkAns() {
+        const input = document.getElementById('ans-in'), user = input.value.trim(); 
+        const userLower = user.toLowerCase();
+        const correctRaw = (sessionQs[curIdx]['Correct Answer'] || sessionQs[curIdx]['ANSWER'] || "").toString().trim();
+        const fb = document.getElementById('fb-text'), qType = (sessionQs[curIdx]['Type'] || "").toString().trim().toUpperCase(), isCN = (curSub === '华文');
+        
+        if(userLower === "") { if(qType === 'MCQ') alert(isCN ? "请选择一个选项！" : "Please select!"); return; }
+        
+        let isCorrect = (userLower === correctRaw.toLowerCase()), key = getQuestionKey(curSub, curUser, sessionQs[curIdx].Question), mistakes = getMistakes();
+        
+        if (qType === 'OPEN') {
+            input.disabled = true; document.getElementById('sub-btn').style.display = 'none'; document.getElementById('next-btn').style.display = 'flex';
+            fb.innerHTML = `<span style="color:#0f172a;"><b>参考答案：</b></span><br><span style="font-size:20px; font-weight:900; color:#10b981;">${correctRaw}</span>`;
+            return; 
+        }
+
+        let mData = mistakes[key] || { weight: 0, wrongs: [] };
+        if (typeof mData === 'number') mData = { weight: mData, wrongs: [] };
+
+        if(isCorrect) {
+            input.disabled = true; document.getElementById('sub-btn').style.display = 'none'; document.getElementById('next-btn').style.display = 'flex';
+            fb.innerHTML = `<span style="color:#10b981;">${isCN ? "✅ 答对啦！" : "✅ Correct!"}</span>`;
+            
+            if (mistakes[key] && !sessionQs[curIdx].isEvaluated) {
+                mData.weight = Math.max(0, mData.weight - 1); 
+                if (mData.weight <= 0) delete mistakes[key]; 
+                else mistakes[key] = mData;
+                saveMistakes(mistakes); 
+                
+                syncToCloud({
+                    type: 'mistake_update', 
+                    user: curUser, grade: curGrade, subject: curSub, 
+                    questionText: sessionQs[curIdx].Question, 
+                    correctAns: correctRaw, isCorrect: true
+                });
+            }
+        } else {
+            if (!sessionQs[curIdx].isEvaluated) sessionErrors++; 
+            fb.innerHTML = `<span style="color:#ef4444;">❌ 不对哦！</span><br><span style="font-size:16px; color:#64748b;">答案：<b style="color:#0f172a;">${correctRaw}</b></span>`;
+            input.classList.add('error-shake'); setTimeout(()=> input.classList.remove('error-shake'), 400);
+            
+            if (!sessionQs[curIdx].isEvaluated) {
+                if (!mistakes[key]) mData.weight = 3; 
+                else mData.weight += 1; 
+                
+                if (mData.wrongs[mData.wrongs.length - 1] !== user) {
+                    mData.wrongs.push(user);
+                }
+                mistakes[key] = mData; saveMistakes(mistakes); 
+                
+                syncToCloud({
+                    type: 'mistake_update', 
+                    user: curUser, grade: curGrade, subject: curSub, 
+                    questionText: sessionQs[curIdx].Question, 
+                    correctAns: correctRaw, wrongAns: user
+                });
+            }
+        }
+        sessionQs[curIdx].isEvaluated = true; 
+    }
+
+    function nextQ() { if (curIdx < sessionQs.length - 1) { curIdx++; renderQ(); } else { finishQuiz(); } }
+
+    function finishQuiz() {
+        const timeTakenSec = Math.floor((Date.now() - startTime) / 1000);
+        const isPerfect = sessionErrors <= 1; // 错题1道以内判定为完美
+        const isCN = (curSub === '华文');
+        
+        let config = JSON.parse(localStorage.getItem('hub_config') || "{}");
+        const speedLimit = (curGrade === 'P1' || curUser === 'Venessa') ? (config.speed_limit_p1 || 360) : (config.speed_limit_p3 || 180);
+
+        badgeQueue = [];
+        let earnedBadgesForCoin = 0;
+        
+        const today = getSGTDateString();
+        const statsKey = `practice_stats_${today.replace(/-/g, '')}_${curUser}_${curSub}`;
+        let localStats = JSON.parse(localStorage.getItem(statsKey) || '{"perfects":0, "gamesPlayed":0}');
+        if (isPerfect) localStats.perfects += 1;
+        localStorage.setItem(statsKey, JSON.stringify(localStats));
+
+        // 1. 基础科目徽章奖励 (错题 <= 3)
+        if (sessionErrors <= 3) {
+            if (curSub === '华文') {
+                earnedBadgesForCoin += 2;
+                badgeQueue.push({ icon: '🐼', title: '华文小将', desc: '完成高质量练习，金币 +2！' });
+                syncToCloud({ type: 'badge', user: curUser, grade: curGrade, subject: curSub, icon: '🐼', title: '华文小将', desc: '高质量练习(金币+2)' });
+            } else {
+                earnedBadgesForCoin++;
+                let subIcon = curSub === 'Science' ? '🌱' : (curSub === 'Math' ? '🔢' : '🔤');
+                let subName = curSub === 'Science' ? '科学博士' : (curSub === 'Math' ? '数学天才' : '英语达人');
+                badgeQueue.push({ icon: subIcon, title: subName, desc: `Good job! Badge +1!` });
+                syncToCloud({ type: 'badge', user: curUser, grade: curGrade, subject: curSub, icon: subIcon, title: subName, desc: '高质量练习' });
+            }
+        }
+
+        // 2. 核心战绩徽章 (完美/极速/气球)
+        if (isPerfect) {
+            earnedBadgesForCoin++;
+            badgeQueue.push({ icon: '🎯', title: isCN ? '神奇射手！' : 'Sharpshooter!', desc: isCN ? '错题在1道以内，神奇射手徽章 +1！' : 'Great accuracy! Sharpshooter badge +1!' });
+            syncToCloud({ type: 'badge', user: curUser, grade: curGrade, subject: curSub, icon: '🎯', title: '神奇射手', desc: '错题<=1' });
+
+            // ⚡️ 极速突破
+            if (timeTakenSec <= speedLimit) {
+                earnedBadgesForCoin++;
+                let currentBreaks = parseInt(localStorage.getItem(`speed_breaks_${curUser}`) || '0');
+                localStorage.setItem(`speed_breaks_${curUser}`, currentBreaks + 1);
+                badgeQueue.push({ icon: '⚡️', title: isCN ? '极速突破！' : 'Speed Record!', desc: isCN ? `仅用 <span class="epic-highlight">${timeTakenSec}秒</span>！闪电般的速度！` : `Finished in <span class="epic-highlight">${timeTakenSec}s</span>! Lightning fast!` });
+                syncToCloud({ type: 'badge', user: curUser, grade: curGrade, subject: curSub, icon: '⚡️', title: '极速突破', desc: `耗时: ${timeTakenSec}秒` });
+            }
+
+            // 🎈 气球猎人
+            pendingGameResult = applyBalloonLogic(sessionErrors);
+            if (pendingGameResult && pendingGameResult.trigger) {
+                badgeQueue.push({ icon: '🎈', title: isCN ? '气球猎人！' : 'Balloon Hunter!', desc: pendingGameResult.msg });
+                localStats.gamesPlayed += 1;
+                localStorage.setItem(statsKey, JSON.stringify(localStats));
+                syncToCloud({ type: 'badge', user: curUser, grade: curGrade, subject: curSub, icon: '🎈', title: '气球猎人', desc: '解锁气球游戏' });
+            }
+
+            // 🔥 核心逻辑：全对三连 (Hat-trick)
+            let pStreak = parseInt(localStorage.getItem(`perfect_streak_${curUser}`) || "0") + 1;
+            localStorage.setItem(`perfect_streak_${curUser}`, pStreak);
+            if (pStreak === 3) {
+                let htCount = parseInt(localStorage.getItem(`easter_hattrick_${curUser}`) || "0");
+                localStorage.setItem(`easter_hattrick_${curUser}`, htCount + 1);
+                badgeQueue.push({ icon: '🔥', title: isCN ? '全对三连！' : 'Hat-trick!', desc: isCN ? `连续 3 次完美通关！手感火热！` : `3 perfect scores in a row! On fire!` });
+                syncToCloud({ type: 'badge', user: curUser, grade: curGrade, subject: curSub, icon: '🔥', title: '全对三连', desc: '连续3次完美' });
+                localStorage.setItem(`perfect_streak_${curUser}`, 0); // 发放后重置
+            }
+        } else {
+            pendingGameResult = null; 
+            localStorage.setItem(`perfect_streak_${curUser}`, 0); // 只要有一次不完美，连击直接归零
+        }
+
+        // 3. 资产结算：发放金币
+        if (earnedBadgesForCoin > 0) {
+            let vaultCoins = parseInt(localStorage.getItem('gold_coins_vault') || "0");
+            localStorage.setItem('gold_coins_vault', vaultCoins + earnedBadgesForCoin);
+            syncToCloud({ type: 'coin_update', user: curUser, earned: earnedBadgesForCoin });
+        }
+
+        // 4. 打卡连击与水晶奖励 (每日一次)
+        let lastDate = localStorage.getItem(`last_date_${curUser}`);
+        let currentStreak = parseInt(localStorage.getItem(`current_streak_${curUser}`) || "0");
+        let totalDays = parseInt(localStorage.getItem(`total_days_${curUser}`) || "0");
+        if (lastDate) {
+            let diff = Math.floor((new Date(today) - new Date(lastDate)) / 864e5);
+            if (diff === 1) currentStreak++; else if (diff > 1) currentStreak = 1; 
+        } else { currentStreak = 1; }
+
+        if (lastDate !== today) {
+            totalDays++; 
+            localStorage.setItem(`last_date_${curUser}`, today);
+            localStorage.setItem(`current_streak_${curUser}`, currentStreak);
+            localStorage.setItem(`total_days_${curUser}`, totalDays);
+            let crys = parseInt(localStorage.getItem(`crystals_${curUser}`) || "0");
+            if (currentStreak >= 3) {
+                crys += 1;
+                localStorage.setItem(`crystals_${curUser}`, crys);
+                badgeQueue.push({ icon: '💎', title: isCN ? '毅力水晶' : 'Crystal', desc: isCN ? `连续打卡 ${currentStreak} 天，水晶 +1！` : `Streak ${currentStreak} days! Crystal +1!` });
+            }
+            syncToCloud({ type: 'crystal_update', user: curUser, crystalsTotal: crys, totalDays: totalDays, streak: currentStreak, checkinDate: today });
+        }
+
+        // 🌟🌟 5. 新增：隐藏彩蛋 (早起 / 熬夜 / 假期) 🌟🌟
+        let currentHour = new Date().getHours();
+        
+        // 🌅 5.1 早起鸟儿 (< 7点)
+        if (currentHour < 7) {
+            let ebCount = parseInt(localStorage.getItem(`easter_earlybird_${curUser}`) || '0');
+            localStorage.setItem(`easter_earlybird_${curUser}`, ebCount + 1);
+            badgeQueue.push({ icon: '🌅', title: isCN ? '早起鸟儿！' : 'Early Bird!', desc: isCN ? `一日之计在于晨！真棒！` : `The early bird catches the worm!` });
+            syncToCloud({ type: 'badge', user: curUser, grade: curGrade, subject: curSub, icon: '🌅', title: '早起鸟儿', desc: `时间: ${currentHour}点` });
+        } 
+        // 🦉 5.2 小猫头鹰 (>= 22点)
+        else if (currentHour >= 22) {
+            let noCount = parseInt(localStorage.getItem(`easter_nightowl_${curUser}`) || '0');
+            localStorage.setItem(`easter_nightowl_${curUser}`, noCount + 1);
+            badgeQueue.push({ icon: '🦉', title: isCN ? '小猫头鹰！' : 'Night Owl!', desc: isCN ? `夜深了，做完赶紧休息哦！` : `Studying late! Time to rest soon!` });
+            syncToCloud({ type: 'badge', user: curUser, grade: curGrade, subject: curSub, icon: '🦉', title: '小猫头鹰', desc: `时间: ${currentHour}点` });
+        }
+
+        // 🔋 5.3 假期充电 (根据 2026 MOE 校历)
+        const d = new Date();
+        const y = d.getFullYear(), m = d.getMonth() + 1, day = d.getDate();
+        const isHoliday = (y === 2026 && (
+            (m === 3 && day >= 14 && day <= 22) ||   // Term 1 Break
+            (m === 5 && day >= 30) || (m === 6 && day <= 28) || // Term 2 Break
+            (m === 9 && day >= 5 && day <= 13) ||    // Term 3 Break
+            (m === 11 && day >= 21) || m === 12      // Term 4 Break
+        ));
+        if (isHoliday && lastDate !== today) {
+            let holCount = parseInt(localStorage.getItem(`easter_holiday_${curUser}`) || '0');
+            localStorage.setItem(`easter_holiday_${curUser}`, holCount + 1);
+            badgeQueue.push({ icon: '🔋', title: isCN ? '假期充电！' : 'Holiday Charge!', desc: isCN ? `假期也不忘学习，给你点赞！` : `Learning during holidays! Awesome!` });
+            syncToCloud({ type: 'badge', user: curUser, grade: curGrade, subject: curSub, icon: '🔋', title: '假期充电', desc: `假期首次打卡` });
+        }
+
+        // 🎉 6. 周末狂人
+        const dayOfWeek = new Date().getDay();
+        if (dayOfWeek === 0 || dayOfWeek === 6) { 
+            if (earnedBadgesForCoin > 0) {
+                let wd = new Date();
+                wd.setDate(wd.getDate() - (wd.getDay() === 0 ? 7 : wd.getDay()) + 6); 
+                let weekendId = wd.toISOString().split('T')[0];
+                let wkKey = `wk_count_${curUser}_${weekendId}`, wkAwardedKey = `wk_awarded_${curUser}_${weekendId}`;
+                let currentWkCount = (parseInt(localStorage.getItem(wkKey) || "0")) + earnedBadgesForCoin;
+                localStorage.setItem(wkKey, currentWkCount);
+                if (currentWkCount >= 10 && !localStorage.getItem(wkAwardedKey)) {
+                    localStorage.setItem(wkAwardedKey, "1"); 
+                    badgeQueue.push({ icon: '🎉', title: isCN ? '周末狂人！' : 'Weekend Maniac!', desc: isCN ? `本周末狂揽 10 个徽章！太肝了！` : `10 badges this weekend! Amazing!` });
+                    syncToCloud({ type: 'badge', user: curUser, grade: curGrade, subject: curSub, icon: '🎉', title: '周末狂人', desc: '周末满10个徽章' });
+                }
+            }
+        }
+
+        localStorage.setItem(`last_checkin_date_${curUser}`, today);
+
+        if (badgeQueue.length > 0) {
+            document.getElementById('badge-modal').style.display = 'flex';
+            showNextBadge();
+        } else renderFinalScreen();
+    }
+
+    function showNextBadge() {
+        if (badgeQueue.length > 0) {
+            let b = badgeQueue.shift(); let m = document.querySelector('.epic-modal');
+            m.style.transform = m.style.opacity = ''; m.style.animation = 'none'; void m.offsetWidth; m.style.animation = 'epicPop 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275)';
+            document.getElementById('badge-icon').innerText = b.icon;
+            document.getElementById('badge-title').innerText = b.title;
+            document.getElementById('badge-desc').innerHTML = b.desc;
+            if (typeof confetti === 'function') confetti({ particleCount: 300, spread: 150, origin: { y: 0.3 }, zIndex: 1001 });
+        } else { document.getElementById('badge-modal').style.display = 'none'; renderFinalScreen(); }
+    }
+
+    function closeBadgeModal() {
+        let m = document.querySelector('.epic-modal'); m.style.transform = 'scale(0.8)'; m.style.opacity = '0';
+        setTimeout(showNextBadge, 150);
+    }
+
+    function renderFinalScreen() {
+        const isPerfect = sessionErrors <= 1, isCN = (curSub === '华文');
+        let title = isPerfect ? (isCN ? '🎉 获得了 6~7！' : '🎉 You got 6~7!') : (isCN ? '💪 挑战完成！' : '💪 Keep trying!');
+        let html = `<div style="text-align:center; padding: 40px 0;"><h1 style="font-size:28px; color:#0f172a; font-weight:900;">${title}</h1>`;
+        if (pendingGameResult && pendingGameResult.msg) html += `<div class="stat-badge">${pendingGameResult.msg}</div>`;
+        if (sessionErrors > 0) html += `<p style="color:#ef4444; font-weight:800; margin-top:20px; font-size: 14px;">🐞 已将 ${sessionErrors} 道错题关进捉虫日记。</p>`;
+        html += `<button class="btn-action" style="background:#f1f5f9; color:#64748b; width:100%; max-width: 250px; margin: 30px auto 0 auto; border: 3px solid #e2e8f0;" onclick="window.location.href='index.html'">🏠 返回主页</button></div>`;
+        document.getElementById('finish-screen').innerHTML = html; showScreen('finish-screen');
+
+        if (isPerfect && pendingGameResult && pendingGameResult.trigger) setTimeout(() => { window.location.href = "https://andydang2007.github.io/game/index.html?ticket=" + Date.now() + "&returnUrl=../index.html"; }, 2500);
+    }
+
+    function initDrawPad() {
+        canvas = document.getElementById('pad'); ctx = canvas.getContext('2d');
+        ctx.lineCap = 'round'; ctx.lineJoin = 'round'; ctx.lineWidth = 5; ctx.strokeStyle = '#1e293b';
+        const getP = (e) => { const r = canvas.getBoundingClientRect(), t = e.touches ? e.touches[0] : e; return { x: t.clientX - r.left, y: t.clientY - r.top }; };
+        canvas.addEventListener('mousedown', (e) => { drawing = true; ctx.beginPath(); const p = getP(e); ctx.moveTo(p.x, p.y); });
+        canvas.addEventListener('mousemove', (e) => { if (!drawing) return; e.preventDefault(); const p = getP(e); ctx.lineTo(p.x, p.y); ctx.stroke(); });
+        window.addEventListener('mouseup', () => drawing = false);
+        canvas.addEventListener('touchstart', (e) => { drawing = true; ctx.beginPath(); const p = getP(e); ctx.moveTo(p.x, p.y); }, {passive:false});
+        canvas.addEventListener('touchmove', (e) => { if (!drawing) return; e.preventDefault(); const p = getP(e); ctx.lineTo(p.x, p.y); ctx.stroke(); }, {passive:false});
+        canvas.addEventListener('touchend', () => drawing = false);
+    }
+    function clearPad() { if(ctx) ctx.clearRect(0,0,canvas.width,canvas.height); }
+    function toggleDrawPad() { const p = document.getElementById('draw-panel'); p.style.display = p.style.display === 'none' ? 'flex' : 'none'; if (p.style.display === 'flex' && !ctx) initDrawPad(); }
+
+    document.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter') {
+            if (document.getElementById('quiz-screen').style.display === 'flex') {
+                if (document.getElementById('sub-btn').style.display !== 'none') { e.preventDefault(); checkAns(); }
+                else if (document.getElementById('next-btn').style.display !== 'none') { e.preventDefault(); nextQ(); }
+            } else if (document.getElementById('badge-modal').style.display === 'flex') { e.preventDefault(); closeBadgeModal(); }
+        }
+    });
+    window.onload = init;
+</script>
+</body>
+</html>

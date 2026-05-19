@@ -1,0 +1,80 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Smart Practice</title>
+    <link rel="apple-touch-icon" href="https://img.icons8.com/fluency/240/paper-plane.png">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@600;800;900&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="practice.css">
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+    <script src="../common/js/supabase-client.js"></script>
+    <script src="../common/js/auth.js"></script>
+    <script src="../common/js/i18n.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js" defer></script>
+</head>
+<body>
+
+<div class="container">
+
+    <!-- Loading Screen -->
+    <div id="screen-loading" class="screen is-active">
+        <p class="loading-text" data-i18n="practice.loading">🌟 Building your quiz...</p>
+    </div>
+
+    <!-- Quiz Screen -->
+    <div id="screen-quiz" class="screen">
+        <div class="header-tag" id="header-info">🚀 Practice</div>
+
+        <div class="quiz-wrapper">
+            <div class="progress-col">
+                <div id="progress-bar" class="milestone-track"></div>
+                <div id="progress-text" class="progress-text"></div>
+            </div>
+
+            <div class="quiz-main-col">
+                <button id="draw-pad-btn" class="tool-btn draw-pad-btn is-hidden" data-i18n="practice.open_pad">✍️ Open Scratchpad</button>
+
+                <div id="draw-panel" class="draw-panel is-hidden">
+                    <canvas id="pad" width="300" height="200"></canvas>
+                    <div class="draw-panel-actions">
+                        <button id="clear-pad-btn" class="tool-btn tool-btn--danger" data-i18n="practice.clear_pad">🗑️ Clear</button>
+                        <button id="close-pad-btn" class="tool-btn" data-i18n="practice.close_pad">❌ Close</button>
+                    </div>
+                </div>
+
+                <div id="q-text" class="q-text"></div>
+                <div id="hint-text" class="hint-text"></div>
+                <div id="input-container" class="input-container"></div>
+                <div id="fb-text" class="feedback"></div>
+
+                <div class="action-row">
+                    <button id="exit-btn" class="btn-action btn-action--exit" data-i18n="practice.exit">Exit 🏠</button>
+                    <button id="sub-btn" class="btn-action btn-action--submit" data-i18n="practice.submit">Submit</button>
+                    <button id="next-btn" class="btn-action btn-action--next is-hidden" data-i18n="practice.next">Next ➡️</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Finish Screen -->
+    <div id="screen-finish" class="screen"></div>
+
+</div>
+
+<!-- Badge Modal -->
+<div id="badge-modal" class="modal-overlay is-hidden">
+    <div class="epic-modal">
+        <div class="epic-icon" id="badge-icon">⚡️</div>
+        <div class="epic-title" id="badge-title">新纪录诞生！</div>
+        <div class="epic-desc" id="badge-desc"></div>
+        <p class="badge-cloud-note" data-i18n="practice.badge_cloud">☁️ Achievement saved to the Honor Wall...</p>
+        <button id="badge-close-btn" class="btn-action btn-action--gold" data-i18n="practice.awesome">Awesome! 🚀</button>
+    </div>
+</div>
+
+<script src="practice.js"></script>
+</body>
+</html>

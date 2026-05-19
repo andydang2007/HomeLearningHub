@@ -1,0 +1,90 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>神秘兑换中心</title>
+    <link rel="apple-touch-icon" href="https://img.icons8.com/fluency/240/paper-plane.png">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@600;800;900&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="shop.css">
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+    <script src="../common/js/supabase-client.js"></script>
+    <script src="../common/js/auth.js"></script>
+    <script src="../common/js/i18n.js"></script>
+</head>
+<body>
+
+<div class="container">
+
+    <h2 class="shop-title" data-i18n="shop.title">🎁 Reward Center</h2>
+
+    <!-- Balance Row -->
+    <div class="balance-row">
+        <div class="balance-card balance-card--gold">
+            <span class="balance-label" data-i18n="shop.gold_label">Team Gold</span>
+            <span class="balance-amount">🪙 <span id="balance-gold">0</span></span>
+        </div>
+        <div class="balance-card balance-card--crystal">
+            <span class="balance-label" data-i18n="shop.crystal_label">Personal Crystals</span>
+            <span class="balance-amount">💎 <span id="balance-crystal">0</span></span>
+        </div>
+    </div>
+
+    <!-- Tab Switcher -->
+    <div class="tab-switcher" role="tablist">
+        <button class="tab-btn tab-btn--crystal is-active" id="tab-crystal" role="tab" aria-selected="true" data-tab="crystal" data-i18n="shop.tab_crystal">
+            💎 Crystal Exchange
+        </button>
+        <button class="tab-btn tab-btn--gold" id="tab-gold" role="tab" aria-selected="false" data-tab="gold" data-i18n="shop.tab_gold">
+            🪙 Gold Exchange
+        </button>
+    </div>
+
+    <!-- Crystal Panel -->
+    <section class="tab-panel is-active" id="panel-crystal" aria-labelledby="tab-crystal">
+        <p class="panel-desc" data-i18n="shop.panel_crystal_desc">Redeem sweet treats with your daily check-in crystals!</p>
+        <div class="item-grid" id="grid-crystal"></div>
+    </section>
+
+    <!-- Gold Panel -->
+    <section class="tab-panel" id="panel-gold" aria-labelledby="tab-gold">
+        <p class="panel-desc" data-i18n="shop.panel_gold_desc">Unlock big meal rewards with your hard-earned gold!</p>
+        <div class="item-grid" id="grid-gold"></div>
+    </section>
+
+    <!-- Action Buttons -->
+    <div class="action-row">
+        <button class="btn-action btn-action--purple" id="backpack-btn" data-i18n="shop.backpack_btn">📦 My Backpack</button>
+        <button class="btn-action btn-action--confirm" id="confirm-btn" disabled data-i18n="shop.confirm_btn">✅ Confirm Redeem</button>
+    </div>
+
+    <button class="btn-action btn-action--home" id="home-btn" data-i18n="shop.home_btn">← Back Home</button>
+
+</div>
+
+<!-- Redeem Success Modal -->
+<div class="modal-overlay is-hidden" id="modal-redeem">
+    <div class="modal-content modal-content--gold">
+        <div class="modal-icon">🎉</div>
+        <h2 class="modal-title" data-i18n="shop.success_title">Request Submitted!</h2>
+        <p class="modal-subtitle" data-i18n="shop.success_sub">Awaiting parent approval to take effect.</p>
+        <div class="redemption-code" id="redemption-code">--</div>
+        <button class="btn-action btn-action--gold-solid" id="modal-redeem-close" data-i18n="shop.got_it">Got it! 🎉</button>
+    </div>
+</div>
+
+<!-- Backpack Modal -->
+<div class="modal-overlay is-hidden" id="modal-backpack">
+    <div class="modal-content modal-content--purple">
+        <div class="modal-icon">📦</div>
+        <h2 class="modal-title" data-i18n="shop.backpack_title">My Backpack</h2>
+        <div class="backpack-list" id="backpack-list"></div>
+        <button class="btn-action btn-action--home" id="modal-backpack-close" data-i18n="shop.backpack_close">Close</button>
+    </div>
+</div>
+
+<script src="shop.js"></script>
+</body>
+</html>

@@ -1,0 +1,54 @@
+# ==============================================================================
+# DYR Family Learning Hub - AI Coding Rules & Architectural Specification (V2)
+# ==============================================================================
+
+# Rule Priority
+1. Security Guardrails & Data Write Isolation (Highest)
+2. Supabase Schema Integrity & Transaction Constraints
+3. Architecture Constraints & Module Boundaries
+4. Performance & Media Pipeline Rules
+5. Style Guidelines & Logging Metrics (Lowest)
+
+# 1. Architectural & File Governance
+- **Tech Stack:** Pure HTML5, Vanilla JavaScript (ES6+ Modules), CSS3. Heavy frontend frameworks (React, Vue, Next.js) or bundlers are STRICTLY FORBIDDEN unless explicitly requested.
+- **Strict Single Responsibility Files:**
+  - `common/js/db.js`: ONLY initializes the Supabase client instance. No business or routing logic allowed.
+  - `common/js/auth.js`: ONLY handles session state, authentication, and core access control. No UI rendering or DOM mutation allowed.
+  - `parent/`: Contains isolated Parent Dashboard code. Modules inside `subjects/` or `shop/` MUST NOT import or call scripts inside `parent/` directly.
+  - `subjects/`: Contains kids learning modules. They MUST NOT modify global states or user balances without utilizing a backend RPC or transaction.
+- **State Ownership Rule:** Global runtime state (user profiles, unlocked subjects, current session info) MUST be centrally owned and accessed via `common/js/auth.js` to prevent disparate DOM components from maintaining decoupled or desynchronized local state instances.
+
+# 2. Tiered Interaction & Refactor Workflow
+- **Tiered Design Before Code Rule:**
+  - *Conditional Stop:* For medium-to-high complexity tasks, DO NOT generate code immediately. Present a natural language plan detailing file creations, schema changes, and data flows first. Wait for "Approved".
+  - *Trigger Conditions:* Mandatory ONLY for (1) New module instantiation, (2) Supabase schema/migration alterations, (3) Cross-module multi-file changes, and (4) Auth, Payment, or Coin-ledger modifications.
+  - *Fast-Track:* Bug fixes, local CSS visual adjustments, or single-file logic modifications are exempt; proceed to direct code output.
+- **Atomic Changes with Loose Coupling:** Limit scope to a single distinct task per cycle. However, tightly-coupled changes (e.g., a specific UI component paired with its corresponding API data-fetch method, or a modal window alongside its immediate localized CSS) can be combined to optimize execution efficiency.
+- **Refactor & Expansion Constraints:**
+  - If a JavaScript file exceeds 300-500 lines, handles multiple business domains, or causes regression bugs, proactively propose a modular code split.
+  - If a code refactoring task unexpectedly expands to affect >2 distinct files or alters critical database assumptions, STOP immediately and propose a revised rollout roadmap.
+
+# 3. Security, Authentication & PIN Guardrails
+- **Parent PIN Verification Pipeline:**
+  - The 4-digit Parent PIN (`parent_pin`) is used exclusively for shared-device adult boundary protection.
+  - The raw PIN input MUST be mapped to a SHA-256 hash string BEFORE database interaction.
+  - PIN verification MUST occur strictly inside a Supabase Edge Function / RPC. The frontend must only submit the raw user string to the endpoint and capture a boolean outcome. The backend must NEVER return the persistent PIN hash string to the client.
+- **Anti-Brute Force Throttle:** If the client or a specific session submits a wrong PIN 5 consecutive times, both client-side UI and the receiving Edge Function MUST trigger an exponential backoff cooldown period (minimum 30 seconds lockout).
+
+# 4. Financial Ledger & Supabase Write Isolation
+- **Data Write Isolation Standard:** All operations targeting critical, exploitable state tables (`coin_ledger`, `reward_catalog`, `profiles.role`) MUST comply with the strict architectural route: `Frontend Client -> Supabase Edge Function / RPC -> SQL Database Transaction`. Direct client-side client-SDK `.update()` writes to these tables are strictly FORBIDDEN.
+- **No Implicit Business Logic:** All calculation mechanics regarding coin accrual, game scoring modifiers, and item purchase values must be declared explicitly within central configuration profiles or backend database routines. The UI rendering layer is forbidden from performing hidden or implicit business accounting math.
+- **Concurrency Locking & Double-Spending Protection:** Promo Code redemptions, item inventory drawdowns, and transaction ledger logging MUST run via atomic database transactions utilizing row-level database locking or explicit `UPDATE ... SET is_used = true WHERE ... AND is_used = false RETURNING *` clauses. Verify affected row metrics before committing downstream logic.
+- **Supabase Schema Migration Rule:** Any requested database schema adjustments must be clearly outputted as standard raw PostgreSQL migration DDL scripts, ensuring schema tracking remains highly reproducible.
+
+# 5. Business Logic & AI Usage
+- **AI API Isolation Boundary:** Execution calls connecting to LLM inference pipelines (e.g., Claude/Gemini APIs for dynamic content generation) are restricted exclusively to the Parent Dashboard (`parent/`) or admin-authorized asynchronous Edge Functions. LLM API calls are FORBIDDEN inside running student game loops, real-time live interactive scoring systems, or high-frequency client-side tickers.
+- **Debug Traceability Rule:** Critical transactional paths (Stripe webhooks, coin acquisitions, prize redemptions) MUST generate a unique trace identifier or explicitly record audit footprints directly into the `public.audit_logs` index table.
+
+# 6. Performance, Logging & Media Pipelines
+- **Image Compression Pipeline:** User-uploaded profile imagery must be funneled through a client-side Canvas API pipeline prior to storage push.
+  - Max dimensions: 200x200 pixels square.
+  - Max asset payload limit: 50KB.
+  - Formats allowed: JPEG or WebP exclusively.
+- **Safe Engineering Logging:** Implement cohesive try-catch fault containment boundaries across all network calls. Log error metrics cleanly to protect UI stability.
+- **Data Privacy Masking:** High-verbosity diagnostic logs MUST NEVER print or output plaintext user PIN strings, authorization tokens, or comprehensive multi-tenant payload arrays.

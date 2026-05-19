@@ -1,0 +1,352 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Scanner - Family Hub</title>
+    <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@600;800;900&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.5.13/cropper.min.css">
+    
+    <style>
+        :root { --text-main: #1e293b; --bg: #f8fafc; }
+        * { box-sizing: border-box; font-family: 'Nunito', 'Microsoft YaHei', sans-serif; }
+        body { background: linear-gradient(135deg, #e0e7ff 0%, #bae6fd 100%); margin: 0; padding: 15px; color: var(--text-main); display: flex; flex-direction: column; align-items: center; min-height: 100vh; }
+        
+        .container { width: 100%; max-width: 600px; background: rgba(255,255,255,0.95); padding: 20px; border-radius: 25px; box-shadow: 0 15px 40px rgba(0,0,0,0.1); border: 4px solid #ffffff; position: relative; }
+        
+        h1 { color: #3b82f6; text-align: center; margin: 0 0 15px 0; font-size: 24px; font-weight: 900; }
+
+        .settings-btn { position: absolute; top: 20px; right: 20px; font-size: 18px; cursor: pointer; opacity: 0.4; background: none; border: none; }
+
+        #key-setup-area { background: #fffbeb; border: 3px dashed #f59e0b; padding: 15px; border-radius: 15px; margin-bottom: 15px; }
+        #key-setup-area input { width: 100%; padding: 12px; border: 2px solid #fcd34d; border-radius: 10px; margin: 10px 0; outline: none;}
+        
+        .upload-area { border: 4px dashed #cbd5e1; border-radius: 20px; padding: 30px 20px; text-align: center; cursor: pointer; background: #f1f5f9; position: relative; margin-bottom: 15px; transition: 0.2s; }
+        .upload-area:hover { border-color: #3b82f6; background: #eff6ff; }
+        .upload-area input[type="file"] { position: absolute; top: 0; left: 0; width: 100%; height: 100%; opacity: 0; cursor: pointer; }
+        .upload-text { font-size: 16px; font-weight: 800; color: #64748b; }
+        
+        .preview-container { text-align: center; display: none; margin-bottom: 15px; background: #f8fafc; padding: 15px; border-radius: 15px; border: 2px dashed #cbd5e1;}
+        #preview-img { max-width: 100%; max-height: 200px; border-radius: 10px; cursor: pointer; border: 3px solid #3b82f6; box-shadow: 0 5px 15px rgba(0,0,0,0.1); }
+        .click-hint { font-size: 13px; color: #64748b; font-weight: bold; margin-top: 8px; }
+        .image-count-badge { background: #3b82f6; color: white; padding: 2px 8px; border-radius: 10px; font-size: 12px; vertical-align: top; margin-left: 5px; }
+
+        #crop-modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: #000; z-index: 999; padding: 20px; padding-bottom: max(20px, env(safe-area-inset-bottom)); flex-direction: column; box-sizing: border-box; }
+        .cropper-wrapper { flex: 1; min-height: 0; overflow: hidden; background: #111; display: flex; align-items: center; justify-content: center; border-radius: 10px; margin-bottom: 15px; }
+        #image-to-crop { max-width: 100%; max-height: 100%; }
+        
+        .form-group { display: flex; flex-direction: column; gap: 5px; margin-bottom: 12px; }
+        label { font-weight: 900; color: #475569; font-size: 13px; }
+        input[type="text"], select, textarea { padding: 12px; border-radius: 10px; border: 2px solid #e2e8f0; font-size: 15px; font-weight: 700; background: #f8fafc; width: 100%; outline: none; }
+        input:focus, select:focus, textarea:focus { border-color: #3b82f6; background: #fff; }
+        
+        .btn-action { width: 100%; border-radius: 15px; border: none; font-weight: 900; font-size: 16px; cursor: pointer; padding: 15px; color: white; display: flex; align-items: center; justify-content: center; gap: 8px; transition: 0.1s; }
+        .btn-action:active { transform: translateY(2px); }
+        .btn-ai { background: #8b5cf6; box-shadow: 0 5px 0 #7e22ce; }
+        .btn-add-more { background: #f1f5f9; color: #3b82f6; border: 2px dashed #3b82f6; box-shadow: none; padding: 12px; font-size: 14px; margin-bottom: 15px; position: relative;}
+        .btn-add-more input[type="file"] { position: absolute; top: 0; left: 0; width: 100%; height: 100%; opacity: 0; cursor: pointer; }
+        
+        .btn-save { background: #10b981; box-shadow: 0 5px 0 #059669; }
+        .btn-crop-confirm { background: #3b82f6; box-shadow: 0 5px 0 #2563eb; }
+
+        #ai-loading { display: none; color: #8b5cf6; font-weight: 900; text-align: center; margin: 15px 0; font-size: 15px; }
+        #error-msg { color: #ef4444; background: #fef2f2; padding: 10px; border-radius: 10px; margin-bottom: 15px; font-size: 13px; display: none; border: 2px solid #fecaca; }
+
+        @keyframes pulse { 0% { opacity: 0.5; } 50% { opacity: 1; } 100% { opacity: 0.5; } }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <button class="settings-btn" onclick="resetApiKey()" title="重置API Key">⚙️</button>
+    <h1>🤖 智能错题录入台</h1>
+
+    <div id="key-setup-area" style="display: none;">
+        <input type="text" id="api-key-input" placeholder="输入 Gemini API Key...">
+        <button class="btn-action" style="background:#f59e0b; box-shadow: 0 5px 0 #d97706; margin-top: 10px;" onclick="saveApiKey()">保存密钥到本地</button>
+    </div>
+    
+    <div id="main-scanner-area" style="display: none;">
+        <div class="upload-area" id="upload-area">
+            <div class="upload-text">📸 点击拍照 或 选择错题</div>
+            <input type="file" id="file-input" accept="image/*">
+        </div>
+
+        <div class="preview-container" id="preview-container">
+            <div class="click-hint" style="margin-bottom: 10px;">已准备就绪 <span class="image-count-badge" id="image-count">1 张图</span></div>
+            <img id="preview-img" onclick="startCropping()" title="点我重新裁剪这张图">
+            <div class="click-hint" style="margin-top: 10px; font-weight: normal;">(点击图片可重新裁剪)</div>
+        </div>
+
+        <!-- 🌟 升级：允许无限补充图片 -->
+        <div class="btn-action btn-add-more" id="btn-add-more" style="display: none;">
+            ➕ 补充跨页图片 (阅读理解适用)
+            <input type="file" id="file-input-more" accept="image/*">
+        </div>
+
+        <div id="error-msg"></div>
+        <button class="btn-action btn-ai" id="btn-analyze" style="display: none;" onclick="processImage()">✨ AI 识别并解析所有图片</button>
+        <div id="ai-loading">🧠 Gemini 正在进行跨页合并解析...</div>
+
+        <div id="editor-area" style="display: none; margin-top: 20px;">
+            <div style="display:flex; gap:10px; margin-bottom:10px;">
+                <div class="form-group" style="flex:1;">
+                    <label>👤 谁的错题？</label>
+                    <select id="f-user"><option value="Valerie">Valerie</option><option value="Venessa">Venessa</option></select>
+                </div>
+                <div class="form-group" style="flex:1;">
+                    <label>📚 科目</label>
+                    <select id="f-subject"><option value="English">English</option><option value="Math">Math</option><option value="华文">华文</option><option value="Science">Science</option></select>
+                </div>
+            </div>
+            
+            <div class="form-group">
+                <label>📝 题目内容</label>
+                <textarea id="f-question" rows="5" placeholder="跨页合并后的题目内容会显示在这里..." style="resize: vertical; min-height: 100px;"></textarea>
+            </div>
+            <div class="form-group">
+                <label>✅ 正确答案</label>
+                <input type="text" id="f-correct">
+            </div>
+            <div class="form-group">
+                <label>❌ 她的错误答案 (选填)</label>
+                <input type="text" id="f-wrong">
+            </div>
+            
+            <button class="btn-action btn-save" id="btn-save" onclick="saveToCloud()" style="margin-top: 15px;">💾 确认无误，写入云端</button>
+            <button class="btn-action" style="background:#cbd5e1; box-shadow: 0 5px 0 #94a3b8; color:#334155; margin-top: 15px;" onclick="resetScanner()">🔄 放弃当前，换下一道</button>
+        </div>
+    </div>
+</div>
+
+<div id="crop-modal">
+    <div class="cropper-wrapper">
+        <img id="image-to-crop">
+    </div>
+    <div style="display: flex; gap: 10px; width: 100%; max-width: 600px; margin: 0 auto; flex-shrink: 0;">
+        <button class="btn-action" style="background:#64748b; box-shadow: 0 5px 0 #475569; flex: 1;" onclick="closeCropModal()">取消</button>
+        <button class="btn-action btn-crop-confirm" style="flex: 2;" onclick="confirmCrop()">✂️ 确认截取</button>
+    </div>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.5.13/cropper.min.js"></script>
+<script>
+    const SYNC_API_URL = "https://script.google.com/macros/s/AKfycbzbNOgg7deW9uVVyfYGTfKGOtVgNs_9ZfUQ9J_9cYpG2Ufow9KLDICHgsinBXrPJlmz/exec";
+    
+    // 🌟 核心升级：从单张图变成图片数组
+    let imageArray = []; 
+    let currentOriginalImage = ""; 
+    let cropper = null;
+
+    window.onload = function() {
+        const savedKey = localStorage.getItem('my_gemini_key');
+        if (!savedKey) document.getElementById('key-setup-area').style.display = 'block';
+        else document.getElementById('main-scanner-area').style.display = 'block';
+        
+        if(localStorage.getItem('scanner_last_user')) document.getElementById('f-user').value = localStorage.getItem('scanner_last_user');
+        if(localStorage.getItem('scanner_last_subject')) document.getElementById('f-subject').value = localStorage.getItem('scanner_last_subject');
+    };
+
+    function saveApiKey() {
+        const key = document.getElementById('api-key-input').value.trim();
+        if (key) { localStorage.setItem('my_gemini_key', key); location.reload(); }
+    }
+
+    function resetApiKey() { if(confirm("确定要清除本地保存的 API Key 吗？")) { localStorage.removeItem('my_gemini_key'); location.reload(); } }
+    function resetScanner() { location.reload(); }
+    function showError(msg) { const el = document.getElementById('error-msg'); el.innerText = msg; el.style.display = 'block'; }
+
+    // 处理图片读取的共用函数
+    function handleFileSelection(e) {
+        const file = e.target.files[0];
+        if (!file) return;
+        
+        const reader = new FileReader();
+        reader.onload = function(event) {
+            const img = new Image();
+            img.onload = function() {
+                const canvas = document.createElement('canvas');
+                let width = img.width; let height = img.height; const MAX_WIDTH = 1200;
+                if (width > MAX_WIDTH) { height = Math.round((height * MAX_WIDTH) / width); width = MAX_WIDTH; }
+                canvas.width = width; canvas.height = height;
+                const ctx = canvas.getContext('2d'); ctx.drawImage(img, 0, 0, width, height);
+                
+                currentOriginalImage = canvas.toDataURL('image/jpeg', 0.8);
+                
+                // 每次选完图，立刻弹出裁剪框（跨页题通常有很多杂乱信息，必须裁）
+                startCropping();
+                
+                // 重置上传框的值，以便可以连续选同一张图
+                e.target.value = "";
+            }
+            img.src = event.target.result;
+        };
+        reader.readAsDataURL(file);
+    }
+
+    document.getElementById('file-input').addEventListener('change', handleFileSelection);
+    document.getElementById('file-input-more').addEventListener('change', handleFileSelection);
+
+    function startCropping() {
+        document.getElementById('crop-modal').style.display = 'flex';
+        const image = document.getElementById('image-to-crop');
+        image.src = currentOriginalImage;
+        if(cropper) cropper.destroy();
+        setTimeout(() => { cropper = new Cropper(image, { viewMode: 1, autoCropArea: 0.8, checkOrientation: false, background: false, modal: true, guides: true }); }, 50);
+    }
+
+    function closeCropModal() { 
+        document.getElementById('crop-modal').style.display = 'none'; 
+        if(cropper) { cropper.destroy(); cropper = null; }
+    }
+
+    function confirmCrop() {
+        if(!cropper) return;
+        const canvas = cropper.getCroppedCanvas({ maxWidth: 1200, fillColor: '#fff' });
+        const dataUrl = canvas.toDataURL('image/jpeg', 0.8);
+        
+        // 将裁切好的图片塞进数组里
+        const base64Data = dataUrl.split(',')[1];
+        imageArray.push(base64Data);
+        
+        // 更新 UI
+        document.getElementById('preview-img').src = dataUrl; // 预览区显示最后裁切的这张
+        document.getElementById('image-count').innerText = `${imageArray.length} 张图`;
+        
+        document.getElementById('preview-container').style.display = 'block';
+        document.getElementById('upload-area').style.display = 'none';
+        document.getElementById('btn-add-more').style.display = 'block';
+        document.getElementById('btn-analyze').style.display = 'flex';
+        document.getElementById('editor-area').style.display = 'none';
+        document.getElementById('error-msg').style.display = 'none';
+        
+        closeCropModal();
+    }
+
+    // 🌟 多图打包发送给 Gemini
+    async function processImage() {
+        if (imageArray.length === 0) return;
+        const apiKey = localStorage.getItem('my_gemini_key');
+        
+        document.getElementById('btn-analyze').style.display = 'none';
+        document.getElementById('btn-add-more').style.display = 'none'; // 开始识别后不让再加图了
+        document.getElementById('ai-loading').style.display = 'block';
+        document.getElementById('error-msg').style.display = 'none';
+
+        const prompt = `你是一个严谨的OCR和教育数据提取专家。
+用户上传了 ${imageArray.length} 张图片（可能包含跨页的阅读理解篇章和题目）。
+请综合理解所有图片的内容，并提取出最终的题目和答案。
+规则：
+1. 提取题目的完整文本。如果篇章和题目分开，请将它们合并整理。
+2. 识别图片中手写的正确答案和错误答案（若无则留空）。
+3. 必须返回合法的JSON格式，不带任何Markdown代码块，格式如下：
+{
+  "question": "提取的题目内容及篇章",
+  "correctAns": "推断的正确答案",
+  "wrongAns": "学生写错的答案"
+}`;
+
+        // 🌟 动态构建 parts 数组，把所有的图都塞进去！
+        let partsArray = [{ text: prompt }];
+        imageArray.forEach(imgBase64 => {
+            partsArray.push({ inlineData: { mimeType: "image/jpeg", data: imgBase64 } });
+        });
+
+        const requestBody = {
+            contents: [{ parts: partsArray }],
+            generationConfig: { responseMimeType: "application/json" }
+        };
+
+        try {
+            const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${apiKey}`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(requestBody)
+            });
+
+            if (!response.ok) {
+                if (response.status === 400 || response.status === 403) {
+                    localStorage.removeItem('my_gemini_key');
+                    throw new Error(`API 密钥无效或被拒绝 (代码: ${response.status})。请刷新页面重试。`);
+                }
+                throw new Error(`识别失败 (代码: ${response.status})`);
+            }
+
+            const data = await response.json();
+            if (!data.candidates || data.candidates.length === 0) throw new Error("未能识别到内容，请重试。");
+
+            const parsed = JSON.parse(data.candidates[0].content.parts[0].text);
+            
+            document.getElementById('f-question').value = parsed.question || "";
+            document.getElementById('f-correct').value = parsed.correctAns || "";
+            document.getElementById('f-wrong').value = parsed.wrongAns || "";
+            
+            document.getElementById('ai-loading').style.display = 'none';
+            document.getElementById('editor-area').style.display = 'block';
+
+        } catch (error) {
+            console.error(error);
+            document.getElementById('ai-loading').style.display = 'none';
+            document.getElementById('btn-analyze').style.display = 'flex';
+            document.getElementById('btn-add-more').style.display = 'block';
+            document.getElementById('btn-analyze').innerText = "🔄 遇到错误，点击重试";
+            showError("❌ " + error.message);
+        }
+    }
+
+    async function saveToCloud() {
+        const btn = document.getElementById('btn-save');
+        const originalText = btn.innerText;
+        btn.innerText = "⏳ 上传中...";
+        btn.disabled = true;
+
+        const user = document.getElementById('f-user').value;
+        const subject = document.getElementById('f-subject').value;
+        const grade = user === 'Valerie' ? 'P3' : 'P1'; 
+        const question = document.getElementById('f-question').value.trim();
+        const correctAns = document.getElementById('f-correct').value.trim();
+        const wrongAns = document.getElementById('f-wrong').value.trim();
+
+        if (!question || !correctAns) {
+            alert("⚠️ 题目和正确答案不能为空！");
+            btn.innerText = originalText;
+            btn.disabled = false;
+            return;
+        }
+
+        localStorage.setItem('scanner_last_user', user);
+        localStorage.setItem('scanner_last_subject', subject);
+
+        const payload = {
+            type: 'mistake_update',
+            user: user,
+            grade: grade,
+            subject: subject,
+            questionText: question,
+            correctAns: correctAns,
+            wrongAns: wrongAns,
+            isCorrect: false 
+        };
+
+        try {
+            await fetch(SYNC_API_URL, {
+                method: 'POST',
+                mode: 'no-cors',
+                body: JSON.stringify(payload)
+            });
+
+            btn.innerText = "✅ 成功录入！";
+            btn.style.background = "#3b82f6";
+            btn.style.boxShadow = "0 5px 0 #2563eb";
+            
+            setTimeout(() => resetScanner(), 1500);
+
+        } catch (error) {
+            showError("❌ 上传云端失败，请检查网络！");
+            btn.innerText = originalText;
+            btn.disabled = false;
+        }
+    }
+</script>
+</body>
+</html>

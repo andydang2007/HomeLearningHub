@@ -1,0 +1,57 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Learning Hub</title>
+    <link rel="apple-touch-icon" href="https://img.icons8.com/fluency/240/paper-plane.png">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@600;800;900&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="index.css">
+</head>
+<body>
+
+<div class="container">
+    <div class="hub-header">
+        <div class="player-badge" id="player-badge">🌟 ...</div>
+        <div class="header-right">
+            <div class="asset-row">
+                <span class="asset-chip crystal-chip">💎 <span id="crystal-count">--</span></span>
+                <span class="asset-chip coin-chip">🪙 <span id="coin-count">--</span></span>
+            </div>
+            <button class="lang-toggle" id="lang-toggle" aria-label="Switch language">中文</button>
+        </div>
+    </div>
+
+    <h1 class="hub-title" data-i18n="index.title">What to practice today?</h1>
+
+    <div class="subject-grid" id="subject-grid">
+        <button class="subject-card" data-subject="English">
+            <span class="subject-icon">🚀</span>
+            <span class="subject-name">English</span>
+        </button>
+        <button class="subject-card" data-subject="Math">
+            <span class="subject-icon">🔢</span>
+            <span class="subject-name">Math</span>
+        </button>
+        <button class="subject-card" data-subject="华文">
+            <span class="subject-icon">🐼</span>
+            <span class="subject-name">华文</span>
+        </button>
+        <button class="subject-card" data-subject="Science">
+            <span class="subject-icon">🌱</span>
+            <span class="subject-name">Science</span>
+        </button>
+    </div>
+
+    <div class="streak-row">
+        <span id="streak-info"></span>
+        <span id="total-days-info"></span>
+    </div>
+</div>
+
+<script src="../common/js/i18n.js"></script>
+<script src="index.js"></script>
+</body>
+</html>

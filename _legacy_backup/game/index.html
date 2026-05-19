@@ -1,0 +1,126 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>神秘奖励抽取中...</title>
+    <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@800;900&display=swap" rel="stylesheet">
+    <style>
+        * { box-sizing: border-box; user-select: none; -webkit-tap-highlight-color: transparent; }
+        body { 
+            margin: 0; padding: 0; background: #0f172a; color: white;
+            font-family: 'Nunito', 'Microsoft YaHei', sans-serif;
+            height: 100vh; display: flex; flex-direction: column; 
+            justify-content: center; align-items: center; overflow: hidden;
+        }
+        
+        .box-container {
+            position: relative;
+            display: flex; flex-direction: column; align-items: center;
+            animation: float 2s ease-in-out infinite;
+        }
+
+        @keyframes float {
+            0%, 100% { transform: translateY(0); }
+            50% { transform: translateY(-15px); }
+        }
+
+        #mystery-icon {
+            font-size: 100px;
+            filter: drop-shadow(0 10px 20px rgba(56, 189, 248, 0.5));
+            margin-bottom: 20px;
+            transition: all 0.1s;
+        }
+
+        .title {
+            font-size: 28px; font-weight: 900; color: #38bdf8;
+            text-shadow: 0 0 15px rgba(56, 189, 248, 0.5);
+            margin-bottom: 10px; letter-spacing: 2px; text-align: center;
+        }
+
+        .subtitle {
+            font-size: 16px; color: #94a3b8; font-weight: 800;
+        }
+
+        .loading-bar-container {
+            width: 200px; height: 6px; background: #334155;
+            border-radius: 10px; margin-top: 30px; overflow: hidden;
+        }
+
+        .loading-bar {
+            height: 100%; width: 0%; background: #38bdf8;
+            border-radius: 10px; box-shadow: 0 0 10px #38bdf8;
+            animation: load 2.5s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+        }
+
+        @keyframes load {
+            0% { width: 0%; }
+            100% { width: 100%; }
+        }
+    </style>
+</head>
+<body>
+
+    <div class="box-container">
+        <div id="mystery-icon">🎁</div>
+        <div class="title">正在为你抽取神秘奖励</div>
+        <div class="subtitle">Please wait...</div>
+        <div class="loading-bar-container">
+            <div class="loading-bar"></div>
+        </div>
+    </div>
+
+<script>
+    // 1. 无损接收前面的防作弊车票 (ticket) 和回城地址 (returnUrl)
+    const urlParams = new URLSearchParams(window.location.search);
+    const ticket = urlParams.get('ticket');
+    const returnUrl = urlParams.get('returnUrl');
+
+    // 2. 🌟 游戏奖池：50/50 比例随机 🌟
+    const GAMES = [
+        'popballoons.html', // 经典的打气球游戏
+        'catcher.html'      // 全新的星际接接乐
+    ];
+
+    // 随机抽取一款游戏 (Math.random() 自动实现 50% 概率)
+    const chosenGame = GAMES[Math.floor(Math.random() * GAMES.length)];
+
+    // 3. 重新打包参数，准备发往抽中的游戏
+    let targetUrl = "./" + chosenGame; // 使用相对路径，确保在 game 文件夹内跳转
+    let params = [];
+    if (ticket) params.push('ticket=' + ticket);
+    if (returnUrl) params.push('returnUrl=' + encodeURIComponent(returnUrl));
+    if (params.length > 0) targetUrl += '?' + params.join('&');
+
+    // 4. 炫酷的盲盒跳动动画
+    const emojis = ['🎁', '🎲', '🛸', '🎈', '🎮', '🦄', '🐼', '💎'];
+    let count = 0;
+    const interval = setInterval(() => {
+        document.getElementById('mystery-icon').innerText = emojis[count % emojis.length];
+        count++;
+    }, 150);
+
+    // 5. 2.5秒悬念结束后，展示结果并正式发车跳转！
+    setTimeout(() => {
+        clearInterval(interval);
+        
+        // 根据抽中的游戏，显示一下暗示图标
+        if (chosenGame === 'popballoons.html') {
+            document.getElementById('mystery-icon').innerText = '🎈';
+        } else {
+            document.getElementById('mystery-icon').innerText = '🛸';
+        }
+        
+        document.querySelector('.title').innerText = '抽取成功！';
+        document.querySelector('.title').style.color = '#39ff14';
+        document.querySelector('.loading-bar').style.background = '#39ff14';
+        document.querySelector('.loading-bar').style.boxShadow = '0 0 10px #39ff14';
+        
+        setTimeout(() => {
+            window.location.replace(targetUrl); // 用 replace 防止按后退键又回到盲盒页
+        }, 500); // 留 0.5 秒让孩子看清成功提示
+    }, 2500);
+
+</script>
+</body>
+</html>

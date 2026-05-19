@@ -1,0 +1,431 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Word Search</title>
+    <link rel="apple-touch-icon" href="https://img.icons8.com/fluency/240/paper-plane.png">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@600;800;900&display=swap" rel="stylesheet">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
+    
+    <style>
+        * { box-sizing: border-box; font-family: 'Nunito', sans-serif; -webkit-tap-highlight-color: transparent; user-select: none; }
+        body { background: linear-gradient(135deg, #a1c4fd 0%, #c2e9fb 100%); margin: 0; padding: 15px; display: flex; flex-direction: column; align-items: center; min-height: 100vh; overflow-x: hidden; }
+        
+        .container { width: 100%; max-width: 850px; background: rgba(255,255,255,0.95); padding: 30px; border-radius: 35px; box-shadow: 0 20px 50px rgba(0,0,0,0.1); text-align: center; border: 4px solid #ffffff; backdrop-filter: blur(12px); display: flex; flex-direction: column; align-items: center; margin-top: 2vh; }
+        
+        .header-tag { background: #ecfdf5; color: #059669; padding: 8px 25px; border-radius: 30px; font-weight: 900; font-size: 18px; border: 3px solid #a7f3d0; box-shadow: 0 3px 0 #6ee7b7; margin-bottom: 15px; }
+
+        .timer-badge { display: none; background: #fffbeb; color: #d97706; font-size: 20px; font-weight: 900; padding: 8px 25px; border-radius: 30px; border: 3px solid #fde68a; box-shadow: 0 3px 0 #fcd34d; margin-bottom: 20px; letter-spacing: 1px; }
+
+        .game-layout { display: flex; flex-direction: row; width: 100%; gap: 25px; align-items: flex-start; justify-content: center; margin-bottom: 25px; }
+
+        .word-list { display: flex; flex-direction: column; gap: 10px; width: 30%; min-width: 150px; }
+        .word-item { background: #f1f5f9; color: #475569; padding: 12px 15px; border-radius: 15px; font-weight: 900; font-size: 18px; border: 2px dashed #cbd5e1; transition: 0.3s; text-align: center; }
+        .word-item.found { background: #d1fae5; color: #059669; border-style: solid; border-color: #34d399; text-decoration: line-through; opacity: 0.7; }
+
+        #ws-grid { flex: 1; display: grid; gap: 6px; touch-action: none; background: #e2e8f0; padding: 8px; border-radius: 20px; max-width: 550px; width: 100%; }
+        
+        .ws-cell { background: white; border-radius: 12px; font-size: 26px; font-weight: 900; color: #1e293b; display: flex; align-items: center; justify-content: center; text-transform: uppercase; border: 2px solid #cbd5e1; box-shadow: 0 4px 0 #94a3b8; transition: 0.1s; cursor: pointer; aspect-ratio: 1/1; }
+        
+        .ws-cell.highlight { background: #fef08a; border-color: #eab308; box-shadow: 0 4px 0 #ca8a04; color: #854d0e; transform: translateY(3px); }
+        .ws-cell.found { background: #34d399; border-color: #10b981; box-shadow: 0 4px 0 #059669; color: white; transform: translateY(3px); }
+
+        .btn-action { width: 100%; border-radius: 20px; border: none; font-weight: 900; font-size: 18px; cursor: pointer; transition: 0.15s; padding: 15px; display: flex; align-items: center; justify-content: center; }
+        .btn-action:active { transform: translateY(5px); box-shadow: 0 1px 0 rgba(0,0,0,0.1) !important; }
+        
+        #loading { font-size: 20px; font-weight: 900; color: #3b82f6; padding: 50px; }
+        #game-area { display: none; width: 100%; flex-direction: column; align-items: center; }
+
+        @media (max-width: 600px) {
+            body { padding: 10px 5px; }
+            .container { padding: 20px 15px; border-radius: 25px; border-width: 3px; }
+            
+            .game-layout { flex-direction: column-reverse; align-items: center; gap: 15px; margin-bottom: 15px; }
+            
+            .word-list { flex-direction: row; flex-wrap: wrap; width: 100%; justify-content: center; gap: 6px; }
+            .word-item { padding: 6px 12px; font-size: 14px; border-radius: 12px; border-width: 2px; }
+            
+            #ws-grid { gap: 3px; padding: 5px; border-radius: 12px; }
+            .ws-cell { font-size: 16px; border-radius: 6px; border-width: 1.5px; box-shadow: 0 2px 0 #94a3b8; }
+            .ws-cell.highlight { transform: translateY(2px); box-shadow: 0 2px 0 #ca8a04; }
+            .ws-cell.found { transform: translateY(2px); box-shadow: 0 2px 0 #059669; }
+
+            .timer-badge { margin-bottom: 15px; font-size: 15px; padding: 6px 15px; width: 100%; }
+            .header-tag { font-size: 16px; margin-bottom: 10px; }
+        }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <div class="header-tag" id="player-tag">🔍 Word Search</div>
+    
+    <div id="loading">📚 Loading words from library...</div>
+    
+    <div id="game-area">
+        <div id="timer-display" class="timer-badge">⏱️ 00:00 | 🏆 PB: --:--</div>
+
+        <div class="game-layout">
+            <div class="word-list" id="word-list"></div>
+            <div id="ws-grid"></div>
+        </div>
+        <button class="btn-action" style="background:#f1f5f9; color:#64748b; border: 4px solid #e2e8f0; box-shadow: 0 6px 0 #cbd5e1;" onclick="window.location.href='https://andydang2007.github.io/valerie-venessa-learn/index.html'">← Back to Hub</button>
+    </div>
+</div>
+
+<script>
+    const SYNC_API_URL = "https://script.google.com/macros/s/AKfycbzbNOgg7deW9uVVyfYGTfKGOtVgNs_9ZfUQ9J_9cYpG2Ufow9KLDICHgsinBXrPJlmz/exec";
+    const SHEET_ID = "1vQlpdRHnR9ybEHHgX6fouRI-vXOh8KQNLSjsbt0TYh9R3No_9i7QNv_4ELwJZJGQpTe3oZVXaZijaW4";
+    const ENG_GID = "1893311738"; 
+
+    let curUser = localStorage.getItem('currentPlayer') || 'Valerie';
+    let curGrade = localStorage.getItem('currentGrade') || 'P3';
+    
+    // 🌟 动态计算姐姐和妹妹的难度档位
+    const isValerie = (curUser === 'Valerie' || curUser === 'Velarie');
+    const gridSize = isValerie ? 10 : 8;  // 姐姐 10x10，妹妹 8x8
+    const maxTargetWords = isValerie ? 8 : 5; // 姐姐找 8 个词，妹妹找 5 个词
+
+    let grid = [];
+    let targetWords = [];
+    let foundWordsCount = 0;
+    
+    let isDragging = false;
+    let startCell = null;
+    let currentHighlight = [];
+    
+    let startTime = 0;
+    let timerInterval = null;
+
+    const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    
+    function playSound(type) {
+        if (audioCtx.state === 'suspended') audioCtx.resume();
+        const masterGain = audioCtx.createGain();
+        masterGain.connect(audioCtx.destination);
+
+        if (type === 'ding') {
+            const osc = audioCtx.createOscillator();
+            osc.type = 'sine';
+            osc.frequency.setValueAtTime(800, audioCtx.currentTime);
+            osc.frequency.exponentialRampToValueAtTime(1200, audioCtx.currentTime + 0.1);
+            masterGain.gain.setValueAtTime(0.3, audioCtx.currentTime);
+            masterGain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.2);
+            osc.connect(masterGain);
+            osc.start();
+            osc.stop(audioCtx.currentTime + 0.2);
+        } else if (type === 'tada') {
+            const playNote = (freq, startTime, duration) => {
+                const osc = audioCtx.createOscillator();
+                const gain = audioCtx.createGain();
+                osc.type = 'triangle';
+                osc.frequency.value = freq;
+                gain.gain.setValueAtTime(0.2, startTime);
+                gain.gain.exponentialRampToValueAtTime(0.01, startTime + duration);
+                osc.connect(gain);
+                gain.connect(masterGain);
+                osc.start(startTime);
+                osc.stop(startTime + duration);
+            };
+            let now = audioCtx.currentTime;
+            playNote(523.25, now, 0.4);      
+            playNote(659.25, now + 0.15, 0.4); 
+            playNote(783.99, now + 0.3, 0.5);  
+            playNote(1046.50, now + 0.45, 0.8);
+        }
+    }
+
+    // 格式化秒数为 MM:SS
+    function formatTime(seconds) {
+        let m = String(Math.floor(seconds / 60)).padStart(2, '0');
+        let s = String(seconds % 60).padStart(2, '0');
+        return `${m}:${s}`;
+    }
+
+    // 读取本地最高纪录
+    function getPBText() {
+        let pb = localStorage.getItem(`wordsearch_pb_${curUser}`);
+        return pb ? formatTime(parseInt(pb)) : "--:--";
+    }
+
+    async function init() {
+        document.getElementById('player-tag').innerText = `🔍 ${curUser} - Word Search`;
+        
+        Papa.parse(`https://docs.google.com/spreadsheets/d/e/2PACX-${SHEET_ID}/pub?gid=${ENG_GID}&single=true&output=csv&t=${Date.now()}`, {
+            download: true, header: true, skipEmptyLines: 'greedy',
+            complete: function(results) {
+                let allWords = [];
+                if (results.data.length === 0) return;
+                
+                // 动态获取表格中所有的列标题
+                let headers = Object.keys(results.data[0]);
+
+                results.data.forEach(row => {
+                    let grade = (row.Grade || row.GRADE || row[headers[1]] || "").toString().toUpperCase().trim();
+                    if (grade !== curGrade) return; 
+
+                    // 🌟 升级：扫描 C, E, F, G 四个列 (对应的 index 是 2, 4, 5, 6)
+                    let checkIndices = [2, 4, 5, 6];
+                    checkIndices.forEach(idx => {
+                        if (idx < headers.length) {
+                            let ans = (row[headers[idx]] || "").toString().trim().toUpperCase();
+                            // 只抓取长度在 3 到 11 之间的纯英文有效单词
+                            if (ans && /^[A-Z]{3,10}$/.test(ans)) {
+                                allWords.push(ans);
+                            }
+                        }
+                    });
+                });
+                
+                allWords = [...new Set(allWords)].sort(() => 0.5 - Math.random());
+                
+                if (allWords.length < maxTargetWords) {
+                    allWords = ["APPLE", "WHEEL", "HAPPY", "SCHOOL", "BOOK", "ORANGE", "BANANA", "FLOWER", "SUMMER"];
+                }
+                
+                targetWords = allWords.slice(0, maxTargetWords);
+                generateGrid();
+                renderGame();
+            },
+            error: function() { document.getElementById('loading').innerText = "⚠️ Network Error!"; }
+        });
+    }
+
+    function generateGrid() {
+        grid = Array.from({ length: gridSize }, () => Array(gridSize).fill(''));
+        
+        // 🌟 升级：如果是姐姐，开启 8 方向排列模式；妹妹保持 3 方向正向排列
+        const dirs = isValerie ? [
+            { dr: 0, dc: 1 },   // 右
+            { dr: 0, dc: -1 },  // 左（反向）
+            { dr: 1, dc: 0 },   // 下
+            { dr: -1, dc: 0 },  // 上（反向）
+            { dr: 1, dc: 1 },   // 右下斜
+            { dr: -1, dc: -1 }, // 左上斜
+            { dr: 1, dc: -1 },  // 左下斜
+            { dr: -1, dc: 1 }   // 右上斜
+        ] : [
+            { dr: 0, dc: 1 },   // 右
+            { dr: 1, dc: 0 },   // 下
+            { dr: 1, dc: 1 }    // 右下斜
+        ];
+
+        targetWords.forEach(word => {
+            let placed = false;
+            let attempts = 0;
+            while (!placed && attempts < 200) {
+                let dirObj = dirs[Math.floor(Math.random() * dirs.length)];
+                let r = Math.floor(Math.random() * gridSize);
+                let c = Math.floor(Math.random() * gridSize);
+                
+                let dr = dirObj.dr;
+                let dc = dirObj.dc;
+                
+                let endR = r + dr * (word.length - 1);
+                let endC = c + dc * (word.length - 1);
+                
+                if (endR >= 0 && endR < gridSize && endC >= 0 && endC < gridSize) {
+                    let canPlace = true;
+                    for (let i = 0; i < word.length; i++) {
+                        let currR = r + i * dr;
+                        let currC = c + i * dc;
+                        let existing = grid[currR][currC];
+                        if (existing !== '' && existing !== word[i]) { canPlace = false; break; }
+                    }
+                    if (canPlace) {
+                        for (let i = 0; i < word.length; i++) { 
+                            grid[r + i * dr][c + i * dc] = word[i]; 
+                        }
+                        placed = true;
+                    }
+                }
+                attempts++;
+            }
+        });
+
+        // 🌟 升级：如果是姐姐，干扰字母有 60% 概率从目标词里抽取，产生大量“高仿”词，极具迷惑性
+        const letters = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
+        let targetLettersPool = targetWords.join('');
+        
+        for (let r = 0; r < gridSize; r++) {
+            for (let c = 0; c < gridSize; c++) {
+                if (grid[r][c] === '') {
+                    if (isValerie && targetLettersPool.length > 0 && Math.random() < 0.6) {
+                        grid[r][c] = targetLettersPool.charAt(Math.floor(Math.random() * targetLettersPool.length));
+                    } else {
+                        grid[r][c] = letters.charAt(Math.floor(Math.random() * letters.length));
+                    }
+                }
+            }
+        }
+    }
+
+    function updateTimer() {
+        let diff = Math.floor((Date.now() - startTime) / 1000);
+        document.getElementById('timer-display').innerText = `⏱️ ${formatTime(diff)} | 🏆 Personal Best: ${getPBText()}`;
+    }
+
+    function renderGame() {
+        document.getElementById('loading').style.display = 'none';
+        document.getElementById('game-area').style.display = 'flex';
+        
+        document.getElementById('timer-display').style.display = 'inline-block';
+        startTime = Date.now();
+        if(timerInterval) clearInterval(timerInterval);
+        timerInterval = setInterval(updateTimer, 1000);
+        
+        const wl = document.getElementById('word-list');
+        wl.innerHTML = targetWords.map(w => `<div class="word-item" id="word-${w}">${w}</div>`).join('');
+        
+        const wsGrid = document.getElementById('ws-grid');
+        wsGrid.style.gridTemplateColumns = `repeat(${gridSize}, 1fr)`;
+        wsGrid.innerHTML = '';
+        
+        for (let r = 0; r < gridSize; r++) {
+            for (let c = 0; c < gridSize; c++) {
+                let cell = document.createElement('div');
+                cell.className = 'ws-cell';
+                cell.innerText = grid[r][c];
+                cell.dataset.r = r;
+                cell.dataset.c = c;
+                wsGrid.appendChild(cell);
+            }
+        }
+
+        wsGrid.addEventListener('mousedown', handleStart);
+        wsGrid.addEventListener('touchstart', handleStart, {passive: false});
+        window.addEventListener('mousemove', handleMove);
+        window.addEventListener('touchmove', handleMove, {passive: false});
+        window.addEventListener('mouseup', handleEnd);
+        window.addEventListener('touchend', handleEnd);
+    }
+
+    function getCellFromEvent(e) {
+        let clientX = e.touches ? e.touches[0].clientX : e.clientX;
+        let clientY = e.touches ? e.touches[0].clientY : e.clientY;
+        let el = document.elementFromPoint(clientX, clientY);
+        return el && el.classList.contains('ws-cell') ? el : null;
+    }
+
+    function handleStart(e) {
+        if (audioCtx.state === 'suspended') audioCtx.resume(); 
+        let cell = getCellFromEvent(e);
+        if (cell) {
+            isDragging = true;
+            startCell = { r: parseInt(cell.dataset.r), c: parseInt(cell.dataset.c), el: cell };
+            clearHighlight();
+            highlightCell(cell);
+            currentHighlight = [cell];
+            if(e.cancelable) e.preventDefault();
+        }
+    }
+
+    function handleMove(e) {
+        if (!isDragging || !startCell) return;
+        let cell = getCellFromEvent(e);
+        if (cell) {
+            let r2 = parseInt(cell.dataset.r), c2 = parseInt(cell.dataset.c);
+            let r1 = startCell.r, c1 = startCell.c;
+            
+            if (r1 === r2 || c1 === c2 || Math.abs(r1 - r2) === Math.abs(c1 - c2)) {
+                clearHighlight();
+                currentHighlight = [];
+                let steps = Math.max(Math.abs(r1 - r2), Math.abs(c1 - c2));
+                let dr = steps === 0 ? 0 : (r2 - r1) / steps;
+                let dc = steps === 0 ? 0 : (c2 - c1) / steps;
+                
+                for (let i = 0; i <= steps; i++) {
+                    let curR = Math.round(r1 + i * dr);
+                    let curC = Math.round(c1 + i * dc);
+                    let targetCell = document.querySelector(`.ws-cell[data-r="${curR}"][data-c="${curC}"]`);
+                    if (targetCell) {
+                        highlightCell(targetCell);
+                        currentHighlight.push(targetCell);
+                    }
+                }
+            }
+        }
+        if(e.cancelable) e.preventDefault();
+    }
+
+    function handleEnd(e) {
+        if (!isDragging) return;
+        isDragging = false;
+        
+        let selectedWord = currentHighlight.map(cell => cell.innerText).join('');
+        let reversedWord = selectedWord.split('').reverse().join(''); 
+
+        if (targetWords.includes(selectedWord) || targetWords.includes(reversedWord)) {
+            let actualWord = targetWords.includes(selectedWord) ? selectedWord : reversedWord;
+            let badge = document.getElementById(`word-${actualWord}`);
+            if (!badge.classList.contains('found')) {
+                playSound('ding'); 
+                badge.classList.add('found');
+                currentHighlight.forEach(cell => {
+                    cell.classList.remove('highlight');
+                    cell.classList.add('found');
+                });
+                foundWordsCount++;
+                checkWin();
+            }
+        }
+        
+        clearHighlight();
+        currentHighlight = [];
+    }
+
+    function highlightCell(cell) { if (!cell.classList.contains('found')) cell.classList.add('highlight'); }
+    function clearHighlight() { document.querySelectorAll('.ws-cell.highlight').forEach(c => c.classList.remove('highlight')); }
+
+    function checkWin() {
+        if (foundWordsCount >= targetWords.length) {
+            if(timerInterval) clearInterval(timerInterval);
+            
+            let finalTimeSec = Math.floor((Date.now() - startTime) / 1000);
+            let oldPB = localStorage.getItem(`wordsearch_pb_${curUser}`);
+            let isNewPB = false;
+
+            // 🌟 核心：计算和更新最高纪录 Personal Best
+            if (!oldPB || finalTimeSec < parseInt(oldPB)) {
+                localStorage.setItem(`wordsearch_pb_${curUser}`, finalTimeSec);
+                isNewPB = true;
+            }
+
+            playSound('tada'); 
+            confetti({ particleCount: 300, spread: 100, origin: { y: 0.5 } });
+            
+            try {
+                fetch(SYNC_API_URL, { method: 'POST', mode: 'no-cors', body: JSON.stringify({ type: 'badge', user: curUser, grade: curGrade, subject: 'English', icon: '🔍', title: '火眼金睛', desc: `完成找单词游戏, 用时: ${formatTime(finalTimeSec)}` }) });
+            } catch(e) {}
+
+            setTimeout(() => {
+                let winHtml = `
+                    <div style="font-size:80px; margin:20px 0;">🎉</div>
+                    <h2 style="color:#0f172a; font-weight:900; font-size: 28px; margin-bottom: 5px;">You found them all!</h2>
+                    <p style="color:#d97706; font-weight:900; font-size:24px; margin-top: 10px;">⏱️ Time: ${formatTime(finalTimeSec)}</p>
+                `;
+                
+                if (isNewPB) {
+                    winHtml += `<div style="background:#ef4444; color:white; font-weight:900; padding:5px 15px; border-radius:15px; display:inline-block; margin-bottom:10px; animation: pulse 1s infinite alternate;">🔥 NEW RECORD! 新历史纪录!</div>`;
+                }
+
+                winHtml += `
+                    <div style="display:flex; gap: 15px; width: 100%; margin-top: 30px;">
+                        <button class="btn-action" style="flex:1; background:#f1f5f9; color:#64748b; border: 4px solid #e2e8f0; box-shadow: 0 6px 0 #cbd5e1; font-size: 16px;" onclick="window.location.href='https://andydang2007.github.io/valerie-venessa-learn/index.html'">← Home</button>
+                        <button class="btn-action" style="flex:1; background:#3b82f6; color:white; box-shadow: 0 6px 0 #2563eb; font-size: 16px;" onclick="window.location.reload()">Play Again 🔄</button>
+                    </div>
+                `;
+                document.getElementById('game-area').innerHTML = winHtml;
+            }, 1500);
+        }
+    }
+
+    window.onload = init;
+</script>
+
+</body>
+</html>
