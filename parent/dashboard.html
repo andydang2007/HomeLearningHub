@@ -1,0 +1,298 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Parent Dashboard — Family Learning Hub</title>
+    <link rel="apple-touch-icon" href="https://img.icons8.com/fluency/240/paper-plane.png">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@600;800;900&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="parent.css">
+    <style>
+        .dashboard-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            width: 100%;
+            margin-bottom: 24px;
+        }
+
+        .parent-greeting { text-align: left; }
+        .parent-greeting h2 { margin: 0; font-size: 22px; font-weight: 900; color: #0f172a; }
+        .parent-greeting p  { margin: 2px 0 0; font-size: 13px; color: #64748b; font-weight: 800; }
+
+        .btn-icon {
+            background: white;
+            border: 2px solid #e2e8f0;
+            border-radius: 12px;
+            padding: 8px 12px;
+            font-size: 13px;
+            font-weight: 900;
+            color: #64748b;
+            cursor: pointer;
+            font-family: inherit;
+            box-shadow: 0 2px 0 #cbd5e1;
+        }
+
+        .btn-icon:active { transform: translateY(2px); box-shadow: none; }
+
+        /* ── Kids list ── */
+        .section-heading {
+            width: 100%;
+            text-align: left;
+            font-size: 16px;
+            font-weight: 900;
+            color: #334155;
+            margin: 0 0 12px;
+            padding-bottom: 8px;
+            border-bottom: 2px dashed #e2e8f0;
+        }
+
+        .kid-list {
+            width: 100%;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            margin-bottom: 20px;
+        }
+
+        .kid-card {
+            display: flex;
+            align-items: center;
+            gap: 14px;
+            background: #f8fafc;
+            border: 3px solid #e2e8f0;
+            border-radius: 20px;
+            padding: 14px 16px;
+        }
+
+        .kid-avatar { font-size: 34px; }
+
+        .kid-info { flex: 1; text-align: left; }
+        .kid-info .kid-name  { font-size: 17px; font-weight: 900; color: #0f172a; }
+        .kid-info .kid-grade { font-size: 13px; font-weight: 800; color: #64748b; }
+
+        .btn-remove {
+            background: none;
+            border: none;
+            font-size: 18px;
+            cursor: pointer;
+            color: #cbd5e1;
+            padding: 4px;
+            line-height: 1;
+        }
+
+        .btn-remove:hover { color: #ef4444; }
+
+        .no-kids-msg {
+            color: #94a3b8;
+            font-size: 15px;
+            font-weight: 800;
+            padding: 16px 0;
+        }
+
+        /* ── Add profile modal ── */
+        .modal-backdrop {
+            position: fixed;
+            inset: 0;
+            background: rgba(0,0,0,0.45);
+            display: none;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+            z-index: 100;
+        }
+
+        .modal-backdrop.open { display: flex; }
+
+        .modal-card {
+            background: white;
+            border-radius: 30px;
+            padding: 28px 24px;
+            width: 100%;
+            max-width: 380px;
+            box-shadow: 0 20px 50px rgba(0,0,0,0.2);
+            animation: fadeUp 0.25s ease-out;
+        }
+
+        .modal-title {
+            font-size: 22px;
+            font-weight: 900;
+            color: #0f172a;
+            margin: 0 0 20px;
+        }
+
+        .avatar-picker {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+            margin-bottom: 4px;
+        }
+
+        .avatar-opt {
+            font-size: 28px;
+            padding: 6px 8px;
+            border: 3px solid #e2e8f0;
+            border-radius: 14px;
+            background: white;
+            cursor: pointer;
+            line-height: 1;
+            transition: border-color 0.15s;
+        }
+
+        .avatar-opt.selected {
+            border-color: #7c3aed;
+            background: #faf5ff;
+        }
+
+        .grade-picker-modal {
+            display: flex;
+            gap: 6px;
+            flex-wrap: wrap;
+            margin-bottom: 6px;
+        }
+
+        .grade-opt {
+            padding: 8px 13px;
+            border: 3px solid #e2e8f0;
+            border-radius: 12px;
+            background: white;
+            font-size: 14px;
+            font-weight: 900;
+            font-family: inherit;
+            color: #64748b;
+            cursor: pointer;
+            box-shadow: 0 3px 0 #cbd5e1;
+        }
+
+        .grade-opt:active { transform: translateY(3px); box-shadow: none; }
+
+        .grade-opt.selected {
+            background: #7c3aed;
+            border-color: #5b21b6;
+            color: white;
+            box-shadow: 0 3px 0 #4c1d95;
+        }
+
+        .gender-picker-modal,
+        .chinese-picker-modal {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 10px;
+        }
+
+        .gender-opt,
+        .chinese-opt {
+            padding: 12px 10px;
+            border: 3px solid #e2e8f0;
+            border-radius: 14px;
+            background: white;
+            font-size: 14px;
+            font-weight: 900;
+            font-family: inherit;
+            color: #64748b;
+            cursor: pointer;
+            box-shadow: 0 3px 0 #cbd5e1;
+        }
+
+        .gender-opt.selected,
+        .chinese-opt.selected {
+            background: #faf5ff;
+            border-color: #7c3aed;
+            color: #5b21b6;
+            box-shadow: 0 3px 0 #4c1d95;
+        }
+
+        .avatar-picker {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 8px;
+        }
+    </style>
+</head>
+<body>
+
+<div class="container" style="max-width:520px;">
+
+    <!-- Header -->
+    <div class="dashboard-header">
+        <div class="parent-greeting">
+            <h2 id="parent-name">👋 Hello!</h2>
+            <p>Parent Dashboard</p>
+        </div>
+        <button class="btn-icon" id="signout-btn">Sign Out</button>
+    </div>
+
+    <div class="msg-error" id="msg-error"></div>
+
+    <!-- Kids list -->
+    <div class="section-heading">👧 Kids Profiles</div>
+    <div class="kid-list" id="kid-list">
+        <div class="no-kids-msg">No profiles yet. Add your first child below!</div>
+    </div>
+
+    <button class="btn-primary" id="add-kid-btn">＋ Add Kid Profile</button>
+
+    <button class="btn-secondary" id="back-hub-btn">← Back to Learning Hub</button>
+
+</div>
+
+<!-- Add Profile Modal -->
+<div class="modal-backdrop" id="add-modal">
+    <div class="modal-card">
+        <h3 class="modal-title">Add Kid Profile</h3>
+
+        <div class="msg-error" id="modal-error" style="display:none;"></div>
+
+        <div class="form-group">
+            <label class="form-label">Name</label>
+            <input class="form-input" type="text" id="modal-name"
+                   placeholder="Child's name" maxlength="20" autocomplete="off">
+        </div>
+
+        <div class="form-group">
+            <label class="form-label">Grade</label>
+            <div class="grade-picker-modal" id="modal-grade-picker">
+                <button class="grade-opt" data-grade="P1">P1</button>
+                <button class="grade-opt" data-grade="P2">P2</button>
+                <button class="grade-opt" data-grade="P3">P3</button>
+                <button class="grade-opt" data-grade="P4">P4</button>
+                <button class="grade-opt" data-grade="P5">P5</button>
+                <button class="grade-opt" data-grade="P6">P6</button>
+            </div>
+        </div>
+
+        <div class="form-group">
+            <label class="form-label" id="modal-school-label">School (optional)</label>
+            <input class="form-input" type="text" id="modal-school"
+                   placeholder="e.g. Nan Hua Primary / UWC" maxlength="80" autocomplete="off">
+        </div>
+
+        <div class="form-group">
+            <label class="form-label" id="modal-gender-label">Gender</label>
+            <div class="gender-picker-modal" id="modal-gender-picker"></div>
+        </div>
+
+        <div class="form-group">
+            <label class="form-label" id="modal-chinese-label">Chinese subject</label>
+            <div class="chinese-picker-modal" id="modal-chinese-picker"></div>
+        </div>
+
+        <div class="form-group">
+            <label class="form-label" id="modal-avatar-label">Avatar</label>
+            <div class="avatar-picker" id="modal-avatar-picker"></div>
+        </div>
+
+        <button class="btn-primary" id="modal-save-btn">Save Profile</button>
+        <button class="btn-secondary" id="modal-cancel-btn">Cancel</button>
+    </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+<script src="../common/js/supabase-client.js"></script>
+<script src="../common/js/i18n.js"></script>
+<script src="../common/js/profile-catalog.js"></script>
+<script src="../common/js/auth.js"></script>
+<script src="dashboard.js"></script>
+</body>
+</html>

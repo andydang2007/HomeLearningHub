@@ -1,0 +1,179 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Parent PIN — Family Learning Hub</title>
+    <link rel="apple-touch-icon" href="https://img.icons8.com/fluency/240/paper-plane.png">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@600;800;900&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="parent.css">
+    <style>
+        /* ── Disney+ style PIN display ── */
+        .pin-dots {
+            display: flex;
+            gap: 18px;
+            margin: 24px 0 8px;
+        }
+
+        .pin-dot {
+            width: 22px;
+            height: 22px;
+            border-radius: 50%;
+            border: 3px solid #a78bfa;
+            background: white;
+            transition: background 0.15s, border-color 0.15s, transform 0.15s;
+        }
+
+        .pin-dot.filled {
+            background: #7c3aed;
+            border-color: #7c3aed;
+            transform: scale(1.15);
+        }
+
+        .pin-dot.error {
+            background: #ef4444;
+            border-color: #ef4444;
+            animation: shake 0.4s ease;
+        }
+
+        @keyframes shake {
+            0%, 100% { transform: translateX(0); }
+            20%       { transform: translateX(-6px); }
+            40%       { transform: translateX(6px); }
+            60%       { transform: translateX(-4px); }
+            80%       { transform: translateX(4px); }
+        }
+
+        .pin-hidden-input {
+            position: absolute;
+            opacity: 0;
+            pointer-events: none;
+            width: 1px;
+            height: 1px;
+        }
+
+        .pin-keypad {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 12px;
+            width: 100%;
+            max-width: 300px;
+            margin: 16px 0 8px;
+        }
+
+        .pin-key {
+            padding: 18px 0;
+            background: white;
+            border: 3px solid #e2e8f0;
+            border-radius: 18px;
+            font-size: 22px;
+            font-weight: 900;
+            font-family: inherit;
+            color: #1e293b;
+            cursor: pointer;
+            box-shadow: 0 5px 0 #cbd5e1;
+            transition: transform 0.1s, box-shadow 0.1s;
+        }
+
+        .pin-key:active { transform: translateY(5px); box-shadow: none; }
+
+        .pin-key.key-del {
+            font-size: 18px;
+            color: #64748b;
+        }
+
+        .pin-key.key-blank {
+            background: transparent;
+            border: none;
+            box-shadow: none;
+            cursor: default;
+        }
+
+        .pin-attempt-msg {
+            min-height: 22px;
+            font-size: 13px;
+            font-weight: 900;
+            color: #ef4444;
+            margin: 4px 0;
+        }
+
+        .pin-lock-msg {
+            font-size: 15px;
+            font-weight: 900;
+            color: #d97706;
+            background: #fffbeb;
+            border: 2px solid #fde68a;
+            border-radius: 14px;
+            padding: 12px 16px;
+            margin: 12px 0;
+            display: none;
+        }
+
+        .pin-lock-msg.visible { display: block; }
+
+        /* Set-PIN confirmation row */
+        .pin-confirm-row {
+            width: 100%;
+            max-width: 300px;
+        }
+
+        .pin-step-label {
+            font-size: 13px;
+            font-weight: 900;
+            color: #64748b;
+            margin-bottom: 4px;
+        }
+    </style>
+</head>
+<body>
+
+<div class="container">
+
+    <div class="page-logo" id="pin-logo">🔐</div>
+    <h1 class="page-title" id="pin-title">Parent PIN</h1>
+    <p class="page-subtitle" id="pin-subtitle">Enter your 4-digit PIN to continue.</p>
+
+    <!-- PIN dots indicator -->
+    <div class="pin-dots" id="pin-dots">
+        <div class="pin-dot" id="dot-0"></div>
+        <div class="pin-dot" id="dot-1"></div>
+        <div class="pin-dot" id="dot-2"></div>
+        <div class="pin-dot" id="dot-3"></div>
+    </div>
+
+    <div class="pin-attempt-msg" id="pin-attempt-msg"></div>
+
+    <div class="pin-lock-msg" id="pin-lock-msg">
+        🔒 Too many attempts. Please wait <span id="lock-countdown">30</span>s.
+    </div>
+
+    <!-- Hidden input (receives keyboard input on mobile) -->
+    <input class="pin-hidden-input" type="tel" id="pin-input"
+           maxlength="4" inputmode="numeric" pattern="[0-9]*" autocomplete="off">
+
+    <!-- On-screen keypad -->
+    <div class="pin-keypad" id="pin-keypad">
+        <button class="pin-key" data-digit="1">1</button>
+        <button class="pin-key" data-digit="2">2</button>
+        <button class="pin-key" data-digit="3">3</button>
+        <button class="pin-key" data-digit="4">4</button>
+        <button class="pin-key" data-digit="5">5</button>
+        <button class="pin-key" data-digit="6">6</button>
+        <button class="pin-key" data-digit="7">7</button>
+        <button class="pin-key" data-digit="8">8</button>
+        <button class="pin-key" data-digit="9">9</button>
+        <div  class="pin-key key-blank"></div>
+        <button class="pin-key" data-digit="0">0</button>
+        <button class="pin-key key-del" id="pin-del">⌫</button>
+    </div>
+
+    <button class="btn-secondary" id="signout-btn" style="margin-top:20px;">Sign Out</button>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+<script src="../common/js/supabase-client.js"></script>
+<script src="../common/js/auth.js"></script>
+<script src="pin.js"></script>
+</body>
+</html>

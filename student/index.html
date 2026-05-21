@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Learning Hub</title>
+    <title>Family Learning Hub</title>
     <link rel="apple-touch-icon" href="https://img.icons8.com/fluency/240/paper-plane.png">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
@@ -12,46 +12,110 @@
 </head>
 <body>
 
-<div class="container">
-    <div class="hub-header">
-        <div class="player-badge" id="player-badge">🌟 ...</div>
-        <div class="header-right">
-            <div class="asset-row">
-                <span class="asset-chip crystal-chip">💎 <span id="crystal-count">--</span></span>
-                <span class="asset-chip coin-chip">🪙 <span id="coin-count">--</span></span>
+<div class="container" id="main-container">
+
+    <!-- Always-visible top navigation -->
+    <div class="top-nav">
+        <button class="top-nav-btn lang-toggle" id="lang-toggle" aria-label="Switch language">中文</button>
+        <a class="top-nav-btn parent-login-btn" href="../parent/index.html" data-i18n="index.parent_login">🔒 Parent</a>
+    </div>
+
+    <div id="school-term-display"></div>
+
+    <!-- User picker / name gate (JS renders content dynamically) -->
+    <div id="user-screen" class="screen is-hidden">
+        <!-- populated by buildUserScreen() -->
+    </div>
+
+    <!-- Main dashboard -->
+    <div id="dashboard-screen" class="screen">
+
+        <div class="dashboard-header">
+            <div class="avatar-row">
+                <div class="avatar" id="dash-avatar">👱‍♀️</div>
+                <h2 id="dash-name">Hello!</h2>
             </div>
-            <button class="lang-toggle" id="lang-toggle" aria-label="Switch language">中文</button>
+            <div class="streak-info-box">
+                <div class="streak-badge pending" id="dash-streak"></div>
+            </div>
         </div>
+
+        <div class="section-title" data-i18n="index.select_subject">Select Subject</div>
+        <div class="grid-cards">
+            <button class="card-btn eng" data-action="english-menu" type="button">
+                <span class="emoji">🔤</span>
+                <span>English</span>
+            </button>
+            <button class="card-btn math" data-subject="Math" type="button">
+                <span class="emoji">🔢</span>
+                <span>Math</span>
+            </button>
+            <button class="card-btn cn" data-action="chinese-menu" type="button">
+                <span class="emoji" id="cn-emoji">🐼</span>
+                <span id="cn-label" data-i18n="index.subject_cn_short">华文</span>
+            </button>
+            <button class="card-btn sci" data-subject="Science" type="button">
+                <span class="emoji">🌱</span>
+                <span>Science</span>
+            </button>
+        </div>
+
+        <div class="honor-wall">
+            <h3 class="honor-wall-heading">
+                <div class="honor-wall-heading-left">
+                    <span data-i18n="index.badges_title">🏆 My Badges</span>
+                    <div class="total-trophies">
+                        <span data-i18n="index.badge_total_label">Total:</span>
+                        <span class="total-number" id="total-badge-count">0</span>
+                    </div>
+                </div>
+                <button class="shop-btn" id="shop-btn" type="button" data-i18n="index.shop_btn">🎁 Mystery Shop</button>
+            </h3>
+            <div class="badges-container" id="badges-container"></div>
+        </div>
+
+        <button class="btn-action switch-user-btn" id="switch-user-btn" type="button" data-i18n="index.switch_user">👤 Switch User</button>
     </div>
 
-    <h1 class="hub-title" data-i18n="index.title">What to practice today?</h1>
-
-    <div class="subject-grid" id="subject-grid">
-        <button class="subject-card" data-subject="English">
-            <span class="subject-icon">🚀</span>
-            <span class="subject-name">English</span>
-        </button>
-        <button class="subject-card" data-subject="Math">
-            <span class="subject-icon">🔢</span>
-            <span class="subject-name">Math</span>
-        </button>
-        <button class="subject-card" data-subject="华文">
-            <span class="subject-icon">🐼</span>
-            <span class="subject-name">华文</span>
-        </button>
-        <button class="subject-card" data-subject="Science">
-            <span class="subject-icon">🌱</span>
-            <span class="subject-name">Science</span>
-        </button>
+    <!-- English submenu -->
+    <div id="english-menu" class="screen is-hidden">
+        <h2 class="submenu-title">🔤 English Modes</h2>
+        <div class="menu-row">
+            <button class="menu-btn menu-btn--eng" data-subject="English" type="button">
+                <span class="emoji">🚀</span> Practice
+            </button>
+            <button class="menu-btn menu-btn--eng" data-link="../_legacy_backup/subjects/english/spelling.html" type="button">
+                <span class="emoji">✍️</span> Spelling
+            </button>
+        </div>
+        <button class="btn-action back-hub-btn" data-screen="dashboard-screen" type="button" data-i18n="index.back_hub">← Back to Hub</button>
     </div>
 
-    <div class="streak-row">
-        <span id="streak-info"></span>
-        <span id="total-days-info"></span>
+    <!-- Chinese submenu -->
+    <div id="chinese-menu" class="screen is-hidden">
+        <h2 class="submenu-title" data-i18n="index.cn_practice">🐼 Chinese Practice</h2>
+        <div class="menu-row">
+            <button class="menu-btn menu-btn--cn" data-subject="华文" type="button">
+                <span class="emoji">📝</span>
+                <span data-i18n="index.cn_review">Review</span>
+            </button>
+            <button class="menu-btn menu-btn--cn" data-link="../_legacy_backup/subjects/chinese/tingxie.html" type="button">
+                <span class="emoji">✍️</span>
+                <span data-i18n="index.cn_tingxie">Dictation</span>
+            </button>
+            <button class="menu-btn menu-btn--cn" data-link="../_legacy_backup/subjects/chinese/pinyin/pinyin.html" type="button">
+                <span class="emoji">🎮</span>
+                <span data-i18n="index.cn_pinyin">Pinyin Game</span>
+            </button>
+        </div>
+        <button class="btn-action back-hub-btn" data-screen="dashboard-screen" type="button" data-i18n="index.back_hub_cn">← Back to Hub</button>
     </div>
+
 </div>
 
 <script src="../common/js/i18n.js"></script>
+<script src="../common/js/profile-catalog.js"></script>
+<script src="../common/js/auth.js"></script>
 <script src="index.js"></script>
 </body>
 </html>

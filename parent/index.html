@@ -1,0 +1,105 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Parent Login — Family Learning Hub</title>
+    <link rel="apple-touch-icon" href="https://img.icons8.com/fluency/240/paper-plane.png">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@600;800;900&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="parent.css">
+</head>
+<body>
+
+<div class="container">
+
+    <a class="back-link" href="../student/index.html">← Back to Hub</a>
+
+    <div class="page-logo">🔒</div>
+    <h1 class="page-title">Parent Access</h1>
+    <p class="page-subtitle" id="form-subtitle">Sign in to manage your kids' profiles.</p>
+
+    <div class="msg-error" id="msg-error"></div>
+    <div class="msg-info"  id="msg-info"></div>
+
+    <!-- Sign-in form -->
+    <form id="signin-form" style="width:100%">
+        <div class="form-group">
+            <label class="form-label" for="signin-email">Email</label>
+            <input class="form-input" type="email" id="signin-email"
+                   placeholder="parent@email.com" autocomplete="email" required>
+        </div>
+        <div class="form-group">
+            <label class="form-label" for="signin-password">Password</label>
+            <input class="form-input" type="password" id="signin-password"
+                   placeholder="••••••••" autocomplete="current-password" required>
+        </div>
+        <p class="auth-helper">
+            <a href="#" id="forgot-link">Forgot password?</a>
+        </p>
+        <button class="btn-primary" type="submit" id="signin-btn">Sign In</button>
+    </form>
+
+    <!-- Register form (hidden by default) -->
+    <form id="register-form" style="width:100%; display:none;">
+        <div class="form-group">
+            <label class="form-label" for="reg-name">Your Name</label>
+            <input class="form-input" type="text" id="reg-name"
+                   placeholder="Mum / Dad" maxlength="40" required>
+        </div>
+        <div class="form-group">
+            <label class="form-label" for="reg-email">Email</label>
+            <input class="form-input" type="email" id="reg-email"
+                   placeholder="parent@email.com" autocomplete="email" required>
+        </div>
+        <div class="form-group">
+            <label class="form-label" for="reg-password">Password (min 8 chars)</label>
+            <input class="form-input" type="password" id="reg-password"
+                   placeholder="••••••••" autocomplete="new-password" minlength="8" required>
+        </div>
+        <div class="form-group">
+            <label class="form-label" for="reg-password-confirm">Confirm Password</label>
+            <input class="form-input" type="password" id="reg-password-confirm"
+                   placeholder="••••••••" autocomplete="new-password" minlength="8" required>
+        </div>
+        <button class="btn-primary" type="submit" id="register-btn">Create Account</button>
+    </form>
+
+    <!-- Forgot password (hidden) -->
+    <form id="forgot-form" style="width:100%; display:none;">
+        <div class="form-group">
+            <label class="form-label" for="forgot-email">Email</label>
+            <input class="form-input" type="email" id="forgot-email"
+                   placeholder="parent@email.com" autocomplete="email" required>
+        </div>
+        <button class="btn-primary" type="submit" id="forgot-btn">Send Reset Link</button>
+        <button class="btn-secondary" type="button" id="forgot-cancel-btn">← Back to Sign In</button>
+    </form>
+
+    <!-- New password after email reset link (hidden) -->
+    <form id="reset-form" style="width:100%; display:none;">
+        <div class="form-group">
+            <label class="form-label" for="reset-password">New Password</label>
+            <input class="form-input" type="password" id="reset-password"
+                   placeholder="••••••••" autocomplete="new-password" minlength="8" required>
+        </div>
+        <div class="form-group">
+            <label class="form-label" for="reset-password-confirm">Confirm New Password</label>
+            <input class="form-input" type="password" id="reset-password-confirm"
+                   placeholder="••••••••" autocomplete="new-password" minlength="8" required>
+        </div>
+        <button class="btn-primary" type="submit" id="reset-btn">Update Password</button>
+    </form>
+
+    <div class="auth-toggle" id="auth-toggle">
+        Don't have an account? <a href="#" id="toggle-link">Register</a>
+    </div>
+
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+<script src="../common/js/supabase-client.js"></script>
+<script src="../common/js/auth.js"></script>
+<script src="index.js"></script>
+</body>
+</html>

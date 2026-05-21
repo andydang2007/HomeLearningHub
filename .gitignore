@@ -1,0 +1,12 @@
+# Dependencies
+node_modules/
+
+# Environment & secrets
+.env
+.env.*
+
+# OS
+.DS_Store
+
+# Editor
+.cursor/

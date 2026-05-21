@@ -1,65 +1,180 @@
-📦 项目进度总结报告 (V8.0)
+📦 项目进度总结报告 (V9.0)
+📅 更新日期：2026-05-21
+
 🎯 整体状态
-家庭学习系统已完成前端骨架 + 学生端核心模块 + Supabase 数据库大一统重构与数据全量灌入。代码已安全 commit 并 push 到 GitHub (andydang2007/HomeLearningHub)。旧版逻辑完全隔离在 _legacy_backup/，不进入生产路径。本地一次性迁移脚本及 5 个原始 CSV 题库在确认导入成功后已从根目录安全清除。
-🛠️ 已完成开发进度
-第一阶段：目录与资产规范
-标准目录：assets/、common/js/、student/（含 subjects/、games/ 占位）、parent/（空，Git 暂不显示）。
-资产重命名：全局图片移至 assets/images/，商品图正式规范化（如 reward_hamburger.png 等）。拼音模块图安全隔离在 student/subjects/pinyin/images/。
-全局共享件：assets/css/global.css、common/js/supabase-client.js 已建好。
-第二阶段：大一统题库与独立字库（最新重构成果）
-我们彻底废除了旧的零散表结构，在云端完成了大一统关系型重构与全量数据灌入：
-public.questions (大一统题库表)：全面合并了 English, Math, Science, 华文 四科的所有标准题目。字段包含 id(UUID), grade, subject, topic, type, question_text, options (管道符 | 分割), correct_answer, term。
-public.dict_chinese_characters (独立生字元数据表)：单独存放华文生字、拼音和拆字部首（parts 字段采用高扩展性的 JSONB 数组，如 ["八", "刀", "皿"]）。此表无错题本挂钩，专门供未来 pinyinshooter、radical 等各种外围小游戏高性能只读抽卡。
-资产大搬家：5 大 CSV 数据已全量清洗完毕，并在云端成功激活了 RLS（行级安全）防线。
-第三阶段：学生练习模块与全新的动态切换算法
-学生主控台 (student/index.html)：实现四科选择、双轨资产（金币/水晶）动态展示。
-升级版动态抽题算法 (15题铁律)：
-练习固定生成 15 道题。系统每次自动查询 student_mistakes_book 中该学生的活跃错题总数（weight > 0），并动态切换以下两套抽题模板：
-【模式 A：3-2-10 黄金法则】（当活跃错题数 ≤ 30 题时触发）：3题优先错题 + 2题降维复习 (weight=0) + 10题当前年级未做新题。
-【模式 B：5-2-8 强力消错法则】（当活跃错题数 >30 题时触发）：5题强力错题 + 2题降维复习 + 8题新题。
-记忆曲线：初始权重为 3，用户在综合练习中做对一次减 1（3 → 2 → 1 → 0 移出）。再错则权重加 1，上限锁死为 8。草稿板、进度条、徽章流程、每日一次限制已自旧版重构进入状态机。
-第四阶段：商店模块与双轨经济
-UI 布局：student/shop.html 实现分区，严密划分为【水晶区（Crystal - 奖励毅力打卡）】与【金币区（Gold - 奖励卓越成就）】。
-安全铁律：全量实施 requestRewardExchange() RPC 占位。前端绝对禁止通过 JS 直接修改任何资产余额或错题本，所有数据变动必须走后端安全事务。
-第五阶段：Supabase 与细节体验优化
-配置打通 supabase-client.js 的 URL 与 Publishable Key；临时 Mock Auth 填入 Valerie 真实 UUID。
-建立 common/js/i18n.js（默认英文，首页提供语言开关，其他页读取 localStorage）。
-全局去除了老旧的 DYR 前缀与 Google Apps Script 逻辑。修复了首页科目点击、AppI18n解构中断、空数组缓存及输入框自动聚焦等遗留碎 Bug。
-📊 当前可运行程度清单
-功能模块	运行状态	当前技术链路实现度
-首页选科 → 进入练习	✅ 可用	前端主控台页面跳转与核心 UI 渲染已跑通。
-从 Supabase 拉题并组卷	✅ 已打通	数据库结构已规范化，英数理华四科数据全量入库。
-3-2-10 / 5-2-8 动态算法	✅ 逻辑已就位	前端状态机已写好，错题触发阈值 30 题的切换规则已锁定。
-商店 UI + 兑换申请占位	✅ UI 在线	水晶/金币 Tab 隔离，后端消费逻辑预留。余额依赖 profiles 表。
-登录 / 注册 / 真实 Auth	❌ 未做	当前为 Mock 用户（Valerie 临时 UUID）。
-错题本从 localStorage 迁回云端	❌ 待对接	student_mistakes_book 物理表已建好，需将前端逻辑对接。
-家长端控制台 (parent/)	❌ 未建	暂无页面，空文件夹。
-Edge Functions / RPC 真实扣款	❌ 仅占位	需要在下一阶段编写真正的数据库事务。
-学科小游戏（拼音射击等）	❌ 仅图片就位	属于后续增量模块，字库元数据已为其做好了独立预留。
-📂 生产代码目录一览
+家庭学习系统已完成 **Phase A：家长 Auth + PIN 门 + 孩子 Profile 建档（本地）**。学生端主控台支持多孩子切换、头像库、双语顶栏；家长端具备注册/登录/忘记密码、4 位 PIN 门、后台添加孩子档案。Supabase 侧已提供 `001`–`008` 迁移脚本（需按顺序在 SQL Editor 执行；PIN 哈希最终使用 **`007_pin_builtin_sha256.sql`**，勿再依赖 pgcrypto `digest()`）。代码在本地开发中，**尚未要求今日 commit**。
+
+---
+
+🛠️ 今日完成（2026-05-21）
+
+### 一、家长端 Phase A（`parent/` 从空目录到可跑通）
+
+| 模块 | 文件 | 说明 |
+|------|------|------|
+| 登录 / 注册 | `parent/index.html` + `index.js` | Supabase Auth；注册需**两遍密码**；**忘记密码** + 邮件重置后设新密码 |
+| PIN 门 | `parent/pin.html` + `pin.js` | Disney+ 式 4 位 PIN；首次设 PIN 需确认；5 次错误前端锁定 |
+| 家长后台 | `parent/dashboard.html` + `dashboard.js` | 查看/删除本机孩子；**Add Profile** 弹窗 |
+| 样式 | `parent/parent.css` | 家长端紫色主题 |
+
+**安全行为（已实现）：**
+- 离开 `dashboard.html`（返回学习中心 / 关标签）→ **立即作废 PIN**（`AUTH.revokeParentPinGate()`），防止孩子交还设备后直入后台。
+- PIN 校验 / 保存走 RPC：`verify_parent_pin`、`set_parent_pin`（禁止前端直读 `parent_pin` 哈希）。
+
+### 二、公共认证层（`common/js/auth.js` 重写）
+
+- `window.AUTH`：`getKidProfiles` / `addKidProfile` / `revokeParentPinGate` / 家长 session / PIN 节流。
+- 保留 `getCurrentUser()` 兼容 `practice.js`、`shop.js`（仍读 `currentPlayer`）。
+- 本机孩子档案上限 **3 人**（与 `Business.md` 家庭包一致，已由 4 人改为 3 人）。
+
+### 三、学生主控台（`student/index`）
+
+- 顶栏：**语言切换（左）** + **Parent Login（右）**。
+- 无本地 session → 名字 + 年级 + **头像库（12 个，`avatar_id`）**；不再用 Boy/Girl 绑头像。
+- **Switch User** 在多 Profile 间切换；i18n 在动态界面切换语言会刷新文案。
+- 移除所有 **6~7** 目标提示文案（`i18n` + 副标题）。
+- 年级按钮 **3×2 对称网格** + `clamp()` 响应式字号。
+
+### 四、Profile 数据模型（今日定稿）
+
+**`common/js/profile-catalog.js`**
+- 头像：`avatar_id`（稳定 ID）→ emoji 展示；后期可接 `custom` + `avatar_url`。
+- 科目分流（本阶段）：`CL`（华文）、`HCL`（高级华文）；`FCL` 预留 Phase B。
+- **性别与头像解耦**：性别 `M`/`F` 单独字段，不从头像推断。
+
+| 场景 | 字段 |
+|------|------|
+| 学生端进门（轻量） | 姓名、年级、头像 |
+| 家长端建档（完整） | 姓名、年级、学校（**选填自由文本**）、性别、华文/高级华文、头像 |
+
+**`supabase/migrations/008_profile_kid_fields.sql`**：云端 `profiles` 预留 `school_name`、`gender`、`chinese_level`、`avatar_id`（本机 `kid_profiles` 仍写 localStorage，尚未 RPC 同步）。
+
+### 五、Supabase 迁移与踩坑记录
+
+| 文件 | 用途 | 状态 |
+|------|------|------|
+| `003_profiles_upgrade_columns.sql` | 旧 `profiles` 表补列（`parent_user_id` 等） | 若表已存在必先跑 |
+| `004_parent_auth_rpcs.sql` | RLS、触发器、PIN/孩子 RPC | 替代 `001` 后半段（避免 `$$` 语法截断） |
+| `005_fix_profiles_username.sql` | 插入 profile 时填 `username` | 旧表 NOT NULL |
+| `006_fix_digest_pgcrypto.sql` | 尝试 pgcrypto `digest()` | ⚠️ 托管环境仍可能失败 |
+| **`007_pin_builtin_sha256.sql`** | **PIN 用内置 `sha256()`** | ✅ **当前应使用的 PIN 修复版** |
+| `008_profile_kid_fields.sql` | 孩子扩展字段 | 可选，云端建档前跑 |
+
+**运维备忘：**
+- Auth **Site URL / Redirect URLs** 应设为 `http://127.0.0.1:5500/parent/index.html`（勿只用根路径 `/`）。
+- 测试期可在 Supabase 关闭 **Confirm email**，注册后可直接登录。
+- 早先注册用户可能只有 `auth.users` 无完整 `profiles` 行 → 设 PIN 时由 `005`/`007` 自动 upsert 家长行。
+
+### 六、文档
+
+- `Business.md`：家庭包 **最多 3 个孩子**；删除 `Speedy_Tiger` 随机昵称描述，改为真实姓名 + 未来 `school_id` RLS。
+
+---
+
+📊 当前可运行程度清单（更新）
+
+| 功能模块 | 运行状态 | 说明 |
+|----------|----------|------|
+| 学生首页 / 练习 / 商店 UI | ✅ 可用 | 练习仍可用 Mock / 本地 `currentPlayer` |
+| 学生多 Profile + 头像 | ✅ 本机 | `localStorage.kid_profiles` |
+| 家长注册 / 登录 / 忘密 | ✅ 需配好 Supabase URL | 邮件确认取决于后台开关 |
+| 家长 PIN 门 + 后台 | ✅ 需跑 **003→004→005→007**（008 可选） | 勿只跑 002 |
+| 家长 Add Profile（完整字段） | ✅ 本机 | 学校文本、性别、华文/高华、头像 |
+| 云端 kid profile 同步 | ❌ Phase B | `create_kid_profile` RPC 已有，前端未接 |
+| 错题本云端 `student_mistakes_book` | ❌ Phase B | 算法前端已写，未接云表 |
+| 题库按 CL / HCL 分流 | ❌ Phase B | `questions.subject` 需归类 + `practice.js` 过滤 |
+| MOE 学校下拉 + 国际/私立 | ❌ Phase C | 当前 `school_name` 自由文本 |
+| 商店 RPC 真实扣款 | ❌ | `requestRewardExchange` 仍占位 |
+| 自定义头像上传 | ❌ 未来 | 规则见白皮书 Canvas 压缩 |
+
+---
+
+📂 生产代码目录一览（更新）
+
+```
 HomeLearningHub/
-├── assets/
-│   ├── images/             # 5 张规范命名的商品 reward_*.png
-│   └── css/
-│       └── global.css      # 全局共享样式（含双币组件与 UI/CSS 专项铁律）
 ├── common/js/
-│   ├── supabase-client.js  # Supabase 客户端配置
-│   ├── auth.js             # 临时 Mock Auth 与 UUID
-│   └── i18n.js             # 国际化语言包
+│   ├── auth.js                 # AUTH 会话、本机 kid profiles、PIN 门状态
+│   ├── profile-catalog.js      # 头像库、华文 CL/HCL、标签工具
+│   ├── i18n.js
+│   └── supabase-client.js
+├── parent/
+│   ├── index.html / index.js   # 登录、注册、忘密、重置密码
+│   ├── pin.html / pin.js       # PIN 门
+│   ├── dashboard.html / dashboard.js
+│   └── parent.css
 ├── student/
-│   ├── index.html/.js/.css # 学生主控台（四科选择、资产展示）
-│   ├── practice.html/.js   # 核心练习战场（内置 3-2-10 / 5-2-8 状态机）
-│   ├── shop.html/.js/.css   # 双轨制积分商城（水晶/金币）
-│   └── subjects/pinyin/images/ # 拼音游戏专用图片隔离区
-├── parent/                 # 家长控制端（空，待建）
-├── _legacy_backup/         # 旧版本代码隔离区（仅作重构参考）
-└── README.md               # 核心系统宪法（包含最新 SQL 字典与动态算法描述）
-🎯 下次继续的最高优先级任务
-全面对接 student_mistakes_book：
-修改 student/practice.js 的 fetchQuestions() 逻辑，正式对接云端错题本表。让它根据学生当前的活跃错题数，在前端完美拉取并实现 模式 A (3-2-10) 或 模式 B (5-2-8) 的精准组卷。
-打通真实登录（Auth）与 profiles 余额展示：
-接入 Supabase 的原生 Auth 登录注册，废除 Mock UUID。确保商店能实时读取 profiles 表中的 crystal_balance 和 gold_balance。
-编写安全 RPC 扣款事务：
-在 Supabase 后台编写安全扣款函数，确保前端调用 requestRewardExchange() 时，数据库能够原子化地“扣减余额 + 计入背包”。
-追加样式微调铁律：
-在让 Cursor 辅助后续样式调优时，务必提醒其遵循追加的 .cursorrules（只改皮毛，不踩地基），使用 Auto 模式只在 CSS 文件修补，确保不触碰任何 JS 账本逻辑。
+│   ├── index.html / index.js / index.css
+│   ├── practice.html / practice.js
+│   └── shop.html / shop.js / shop.css
+├── supabase/migrations/
+│   ├── 003_profiles_upgrade_columns.sql
+│   ├── 004_parent_auth_rpcs.sql
+│   ├── 005_fix_profiles_username.sql
+│   ├── 007_pin_builtin_sha256.sql   ← PIN 必跑
+│   └── 008_profile_kid_fields.sql
+├── _legacy_backup/
+├── Business.md
+└── progress.md（本文件）
+```
+
+---
+
+🎯 下一阶段建议（按优先级）
+
+### Phase B1 — 数据库与 Auth 收尾（建议最先做）
+
+1. **确认 Supabase 迁移已就位**  
+   新环境 checklist：`003` → `004` → `005` → `007`；需要云端字段时加 `008`。  
+   用 SQL 验证：`verify_parent_pin`、`set_parent_pin`、`check_pin_exists` 存在。
+
+2. **家长注册后云端孩子同步（RPC）**  
+   - 调用已有 `create_kid_profile`（需扩展传入 `school_name`、`gender`、`chinese_level`、`avatar_id`）。  
+   - 首次登录检测本机 `kid_profiles` → 弹窗「是否导入到家庭账户？」（幂等导入）。  
+   - 学生端写入 `active_kid_profile_id`（UUID），替代纯字符串 `currentPlayer`。
+
+3. **Auth 运维**  
+   - 生产 Site URL 改为 GitHub Pages / 正式域名。  
+   - 决定是否开启邮箱确认。
+
+### Phase B2 — 学习数据上云（核心业务）
+
+4. **`student_mistakes_book` 对接**  
+   `practice.js`：读写云端错题本；按活跃错题数触发 **3-2-10 / 5-2-8** 组卷（替换纯 localStorage `hub_mistakes`）。
+
+5. **题库华文分流**  
+   - `questions` 表 `subject` 区分 `华文` / `高级华文`（及日后 `基础华文`）。  
+   - `practice.js` 按孩子 `chineseLevel`（CL/HCL）过滤出题。  
+   - 一次性数据清洗脚本（归类现有华文题）。
+
+6. **`profiles` 余额**  
+   商店 `fetchUserBalance()` 用真实 `profile_id` + RLS；仍禁止前端直改余额。
+
+### Phase B3 — 经济与后台
+
+7. **`requestRewardExchange` 真实 RPC**  
+   原子扣款 + `coin_ledger` 审计 + 兑换单状态。
+
+8. **家长后台增强**  
+   审批兑换、基础学习统计（只读）、编辑孩子档案（含学校/科目）。
+
+### Phase C — 学校与社交（产品化前）
+
+9. **`public.schools` 表**（MOE + 常见国际/私立列表 +「其他」手填）。  
+10. 排行榜 / 同校动态（RLS：`school_id` + `grade`）。  
+11. 自定义头像（Canvas 200×200 / 50KB → Storage）。
+
+---
+
+⚠️ 今日未做 / 已知限制
+
+- 家长与孩子 Profile **仍主要存本机** `localStorage`，换设备不同步。  
+- `001_parent_auth.sql` 整份在 SQL Editor 可能因 `$$` 截断报错 → 用 **003 + 004 + 005 + 007** 组合。  
+- `practice.js` 尚未使用 `chineseLevel` 查题。  
+- 未 commit / push（按用户节奏自行提交）。
+
+---
+
+📌 下次开工第一句建议
+
+> 「从 progress V9 Phase B1 开始：扩展 `create_kid_profile` + 本机 profile 导入云端。」
