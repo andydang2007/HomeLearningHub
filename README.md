@@ -45,3 +45,33 @@
 ### 🛡️ 安全与账本铁律（AI 编码必读）
 1. **禁止前端直写**: 前端绝对禁止通过 JS 直接修改金币/水晶余额。所有资产变动、高并发扣款必须走 Edge Function 或 RPC 触发数据库事务。
 2. **解耦拆分**: 严格遵循大纲优先设计，单一 HTML/JS/CSS 文件绝对不能超过 **500 行**。表现、样式、逻辑必须彻底分离。
+# DYR Family Learning Hub (家庭学习中心)
+
+## 🎯 项目定位
+一款面向家庭的“SaaS 版多邻国（Duolingo）”学习打卡与奖励系统（6周极速商业化 MVP 冲刺跑）。
+
+## 🏗️ 技术栈与架构基石
+- **前端表示层**: 纯 HTML5 + Vanilla JS + CSS3（绝对禁用 React/Vue）。使用 Vercel 托管部署。
+- **后端数据层**: Supabase (PostgreSQL + Auth + Storage)。开启全局 RLS 防线。
+
+## 🗄️ 数据库物理表结构 (Supabase/Postgres)
+AI 编码或编写查询时，必须完全对接以下三张表：
+
+1. **`public.questions` (大一统题库表)**
+   - `id` (UUID, 主键)
+   - `grade` (VARCHAR, 年级，如: P1, P3)
+   - `subject` (VARCHAR, 学科，如: English, Math, Science, 华文)
+   - `topic` (VARCHAR, 章节)
+   - `type` (VARCHAR, 题型: MCQ, FITB, SPELLING)
+   - `question_text` (TEXT, 题目内容)
+   - `options` (TEXT, 选项，多选项用管道符 '|' 隔开)
+   - `correct_answer` (TEXT, 正确答案)
+   - `term` (VARCHAR, 学期，可为 NULL)
+
+2. **`public.dict_chinese_characters` (独立生字元数据表)**
+   - 专门供 `pinyinshooter`, `radical` 等小游戏只读调用，**无错题本挂钩**。
+   - 字段: `id`(UUID), `grade`, `subject`, `topic`, `character`(生字), `pinyin`(带声调), `parts`(JSONB数组，如`["八","刀","皿"]`)
+
+3. **`public.student_mistakes_book` (错题本中间表 - profiles的级联子表)**
+   - 字段: `id`(UUID), `profile_id`(UUID), `question_id`(UUID), `weight`(INT, 0-3)
+   - 联合唯一索引: `idx_student_q_unique (profile_id, question_id)` 确保记录不重复。

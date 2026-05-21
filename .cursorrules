@@ -52,3 +52,11 @@
   - Formats allowed: JPEG or WebP exclusively.
 - **Safe Engineering Logging:** Implement cohesive try-catch fault containment boundaries across all network calls. Log error metrics cleanly to protect UI stability.
 - **Data Privacy Masking:** High-verbosity diagnostic logs MUST NEVER print or output plaintext user PIN strings, authorization tokens, or comprehensive multi-tenant payload arrays.
+
+# 🎨 UI/CSS 专项铁律 (针对样式微调与 Fast 模型)
+1. **只改皮毛，不踩地基**：当你被要求修改样式、布局、颜色、字号或响应式适配时，**绝对禁止**修改或重写任何 `<script>` 标签内的 JS 逻辑、事件监听器（EventListener）、API 请求路径以及与 Supabase 交互的变量名。
+2. **禁止破坏 HTML 结构**：修改 CSS 时，禁止随意增删或重命名已有的 HTML `id` 或 `class` 名，防止导致 JS 的 `document.getElementById` 或 `querySelector` 找不到节点。
+3. **样式隔离原则**：
+   - 属于具体模块（如 `practice`, `shop`）的特殊样式，必须写在各自对应的独立 CSS 文件中（如 `student/practice.css`）。
+   - 禁止污染 `assets/css/global.css` 全局样式表，除非用户明确要求修改全局核心组件。
+4. **安全审查机制**：每次完成样式修改后，必须自我检查：*“我刚才改动的地方，有没有可能影响到数据的流向和双轨经济的账本安全？”* 如果有，立刻回滚并报错。
