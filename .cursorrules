@@ -1,5 +1,5 @@
 # ==============================================================================
-# DYR Family Learning Hub - AI Coding Rules & Architectural Specification (V2)
+# Home Learning Hub - AI Coding Rules & Architectural Specification (V2)
 # ==============================================================================
 
 # Rule Priority
@@ -23,6 +23,11 @@
   - *Conditional Stop:* For medium-to-high complexity tasks, DO NOT generate code immediately. Present a natural language plan detailing file creations, schema changes, and data flows first. Wait for "Approved".
   - *Trigger Conditions:* Mandatory ONLY for (1) New module instantiation, (2) Supabase schema/migration alterations, (3) Cross-module multi-file changes, and (4) Auth, Payment, or Coin-ledger modifications.
   - *Fast-Track:* Bug fixes, local CSS visual adjustments, or single-file logic modifications are exempt; proceed to direct code output.
+- **Model Suitability Gate (run before every task):**
+  - Before writing or changing code, briefly assess complexity: file count, schema/RPC/auth/coin-ledger touch, cross-module coupling, and regression risk.
+  - **Auto / Fast model OK:** single-file bug fix, CSS-only tweak, copy/i18n, docs, or isolated change with clear scope and no security/schema impact.
+  - **Requires stronger model (not Auto/Fast):** new modules, Supabase migrations, auth/PIN/ledger paths, multi-file refactors, or ambiguous requirements.
+  - If the current session model is insufficient, **stop**, state why in one short paragraph, ask the user to switch model (e.g. Sonnet / thinking), and **wait for explicit confirmation** before implementing. Do not proceed on high-risk work under an under-powered model.
 - **Atomic Changes with Loose Coupling:** Limit scope to a single distinct task per cycle. However, tightly-coupled changes (e.g., a specific UI component paired with its corresponding API data-fetch method, or a modal window alongside its immediate localized CSS) can be combined to optimize execution efficiency.
 - **Refactor & Expansion Constraints:**
   - If a JavaScript file exceeds 300-500 lines, handles multiple business domains, or causes regression bugs, proactively propose a modular code split.

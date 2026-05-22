@@ -31,6 +31,9 @@ function profileSubtitle(p) {
 
 function showError(msg) {
     const el = document.getElementById('msg-error');
+    el.style.color = '';
+    el.style.background = '';
+    el.style.borderColor = '';
     el.textContent = msg;
     el.classList.add('visible');
 }
@@ -153,9 +156,10 @@ function closeModal() {
     document.getElementById('add-modal').classList.remove('open');
 }
 
-function saveProfile() {
+async function saveProfile() {
     const name = document.getElementById('modal-name').value.trim();
     const school = document.getElementById('modal-school').value.trim();
+    const btn = document.getElementById('modal-save-btn');
 
     if (name.length < 2) { showModalError('Name must be at least 2 characters.'); return; }
     if (!modalGrade)     { showModalError('Please select a grade.'); return; }
@@ -163,25 +167,113 @@ function saveProfile() {
     if (!modalChineseLevel) { showModalError('Please select Chinese subject.'); return; }
     if (!modalAvatarId)  { showModalError('Please pick an avatar.'); return; }
 
-    const ok = AUTH.addKidProfile({
+    const profilePayload = {
         name,
         grade: modalGrade,
         avatarId: modalAvatarId,
         gender: modalGender,
         schoolName: school,
         chineseLevel: modalChineseLevel,
-    });
+    };
 
-    if (!ok) {
-        const profiles = AUTH.getKidProfiles();
-        showModalError(profiles.length >= 3
-            ? 'Maximum 3 profiles per device.'
-            : `A profile named "${name}" already exists.`);
+    const profiles = AUTH.getKidProfiles();
+    if (profiles.length >= 3 && !profiles.find((p) => p.name.toLowerCase() === name.toLowerCase())) {
+        showModalError('Maximum 3 profiles per device.');
         return;
+    }
+
+    btn.disabled = true;
+    const { cloudId, error } = await AUTH.createKidProfileOnCloud(profilePayload);
+    btn.disabled = false;
+
+    if (error) {
+        showModalError(t('parent.sync_cloud_error'));
+        return;
+    }
+
+    const existing = profiles.find((p) => p.name.toLowerCase() === name.toLowerCase());
+    if (existing) {
+        AUTH.updateKidProfile(name, { ...profilePayload, cloudId: cloudId || existing.cloudId });
+    } else {
+        const ok = AUTH.addKidProfile({ ...profilePayload, cloudId });
+        if (!ok) {
+            showModalError(`A profile named "${name}" already exists.`);
+            return;
+        }
     }
 
     closeModal();
     renderKidList();
+}
+
+function showImportModal(count, parentUserId) {
+    const modal = document.getElementById('import-modal');
+    const desc  = document.getElementById('import-modal-desc');
+    document.getElementById('import-modal-error').style.display = 'none';
+    desc.textContent = t('parent.import_desc', { n: count });
+    if (typeof AppI18n !== 'undefined') AppI18n.applyTranslations();
+    modal.classList.add('open');
+
+    const onSkip = () => {
+        AUTH.setKidImportDismissed(parentUserId);
+        modal.classList.remove('open');
+        cleanup();
+    };
+
+    const onConfirm = async () => {
+        const confirmBtn = document.getElementById('import-confirm-btn');
+        confirmBtn.disabled = true;
+        const result = await AUTH.importLocalKidsToCloud();
+        confirmBtn.disabled = false;
+
+        if (result.failed > 0) {
+            const errEl = document.getElementById('import-modal-error');
+            errEl.textContent = t('parent.import_partial', { ok: result.imported, fail: result.failed });
+            errEl.style.display = 'block';
+        }
+
+        const { kids } = await AUTH.fetchCloudKidProfiles();
+        AUTH.mergeCloudKidsIntoLocal(kids);
+        renderKidList();
+
+        if (result.imported > 0) {
+            showInfo(t('parent.import_success', { n: result.imported }));
+        }
+
+        AUTH.setKidImportDismissed(parentUserId);
+        modal.classList.remove('open');
+        cleanup();
+    };
+
+    function cleanup() {
+        document.getElementById('import-skip-btn').removeEventListener('click', onSkip);
+        document.getElementById('import-confirm-btn').removeEventListener('click', onConfirm);
+    }
+
+    document.getElementById('import-skip-btn').addEventListener('click', onSkip);
+    document.getElementById('import-confirm-btn').addEventListener('click', onConfirm);
+}
+
+function showInfo(msg) {
+    const el = document.getElementById('msg-error');
+    el.style.color = '#15803d';
+    el.style.background = '#f0fdf4';
+    el.style.borderColor = '#86efac';
+    el.textContent = msg;
+    el.classList.add('visible');
+}
+
+async function syncCloudKidsOnLoad(parentUserId) {
+    const { kids, error } = await AUTH.fetchCloudKidProfiles();
+    if (!error && kids.length) {
+        AUTH.mergeCloudKidsIntoLocal(kids);
+        renderKidList();
+    }
+
+    const pending = AUTH.getKidsNeedingCloudSync();
+    if (pending.length > 0 && !AUTH.isKidImportDismissed(parentUserId)) {
+        showImportModal(pending.length, parentUserId);
+    }
 }
 
 function leaveParentArea() {
@@ -207,6 +299,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     document.getElementById('parent-name').textContent = `👋 Hi, ${displayName}!`;
 
     renderKidList();
+    await syncCloudKidsOnLoad(session.user.id);
 
     document.getElementById('add-kid-btn').addEventListener('click', openModal);
     document.getElementById('modal-save-btn').addEventListener('click', saveProfile);
