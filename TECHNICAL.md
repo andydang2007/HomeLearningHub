@@ -582,6 +582,10 @@ AI 输出模板必须版本化，例如 `template_version`，避免后续提示�
 | `ocr_extracted_items` | AI 识别候选项 |
 | `custom_spelling_lists` | 英文听写表 |
 | `custom_tingxie_lists` | 华文听写表 |
+| `parent_imported_questions` | 家长上传错题/自定义题；**RLS 仅本 kid `profile_id` 可见**（§Whitepaper 4.2.2） |
+| `referrals` / `subscription_entitlements` | 邀请裂变、试用与赠送时长上限 90 天 |
+| `profile_badge_levels` / `badge_level_config` | 等级、段位、升级消耗徽章/水晶 |
+| `leaderboard_entries`（或视图） | 匿名名人堂；脱敏 ID、无学校、按段位分组 |
 
 建表原则：
 
