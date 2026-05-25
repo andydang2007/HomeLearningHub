@@ -717,3 +717,44 @@ AI 输出模板必须版本化，例如 `template_version`，避免后续提示�
 - 不要假设「打开页面时本地必有上次的数据」。新机器全空，所有界面必须能从云端摘要冷启动。
 - 不要在 `localStorage` 里写「最终余额」「今日是否已打卡」之类的真相键；缓存键必须带过期或可作废。
 - 详细规则见 §5.3 与 §3.1。
+
+### 15.4 本地时区与新加坡日历日
+
+**症状（已踩坑）：**
+
+- 早起鸟儿（7:00 前）/ 小猫头鹰（22:00 后）徽章用 `new Date().getHours()` 判断，孩子在国外旅行时设备时区不是 SGT，会被错发或漏发。
+- 每日练习限额、打卡连击、`daily_subject_completions` 用 `new Date().toISOString().slice(0,10)`（UTC）或 `toLocaleDateString()`（设备本地）拿日期，结果新加坡的「今天」和设备的「今天」对不上：
+  - 设备在 UTC：00:00–08:00 SGT 之间，UTC 日期还停在前一天 → 当天限额没重置。
+  - 设备在 UTC+10（如澳洲东岸）：当地 06:00 已是新加坡 04:00 的「今天早起鸟儿」时段，凭设备时间会错发。
+- 孩子假期飞往 UTC-8 等远时区，新加坡跨过零点很久之后设备还显示昨天，重新打开 App 会把昨天的打卡又触发一次或反过来直接没法打卡。
+
+**根因：** 把「日历日」「时段」交给设备本地时间或 UTC 截取来表达，而本项目的产品规则全部按**新加坡日历日 (SGT, UTC+8, 无 DST)** 定义。
+
+**自查清单（任何涉及「今天 / 今晚 / 早上 / 晚上 / 连续 N 天」判定的代码必做）：**
+
+- **唯一权威时钟 = 新加坡时间。** 服务端用 PostgreSQL `timezone('Asia/Singapore', now())`；前端展示也按 SGT 转换，禁止直接用 `new Date()` 的本地分量做业务判定。
+- **统一封装日期工具**（建议 `common/js/time.js`）：
+  - `sgtNow()` → SGT 当前时刻。
+  - `sgtDateStr()` → `YYYY-MM-DD`，按 SGT 截取（用 `Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Singapore' })` 或等价方式，**不**用 `toISOString` 截 10 字符，**不**用 `toLocaleDateString` 隐式本地时区）。
+  - `sgtHour()` / `sgtIsBetween(startHour, endHour)` → 时段判定（早起鸟儿 / 小猫头鹰）。
+  - 所有调用方一律走这些函数；禁止在业务代码里再写 `new Date().getHours()` / `slice(0,10)`。
+- **数据库列定义：**
+  - 所有时间列使用 `timestamptz`（带时区）写入；查询「今天」一律 `(occurred_at AT TIME ZONE 'Asia/Singapore')::date = (now() AT TIME ZONE 'Asia/Singapore')::date`。
+  - 「日历日」键列（如 `daily_subject_completions.practice_date_sgt`、连击表 `last_checkin_date_sgt`）显式命名 `_sgt` 后缀，提醒读者它是 SGT 截取的，不是设备日历日。
+- **服务端判定优先：** 每日限额、打卡水晶解锁、连击是否中断这种关键判定**只在 RPC 服务端做**；前端只展示，不参与判定。客户端时钟可以被乱调，必须不可信。
+- **跨时区旅行场景：**
+  - 孩子在 UTC-5（如美东）凌晨 23:00 完成练习 → SGT 已是次日中午 12:00。系统视为「次日打卡」，正常重置每日限额、可解锁次日水晶。
+  - 早起鸟儿 / 小猫头鹰按 SGT 7:00 / 22:00 判定，孩子在国外的「早上 7 点」未必是 SGT 早起鸟儿时段；产品上接受这一选择（按新加坡学校生活节奏），不补设备本地时区版。
+  - 不要给前端「按设备本地时间显示完成与否」的兜底，避免出现设备和服务端展示不一致、孩子误以为额度还在。
+- **测试用例（写代码前请覆盖）：**
+  - 设备时区设为 UTC、UTC+10、UTC-8 各做一次：早起鸟儿、夜猫子、限额重置、连击是否中断的结果要与服务端 SGT 一致。
+  - SGT 23:50 完成练习 + SGT 00:10 再次打开 App：连击 +1、限额重置正常发生。
+  - 跨夏令时国家（如美东 11 月）旅行：判定不抖动（SGT 不受 DST 影响）。
+
+涉及的产品规则与表（实现时需逐一检查）：
+
+- `daily_subject_completions(profile_id, subject, practice_date_sgt)`：每日每科只能完成一次的唯一键。
+- `profile_check_ins(profile_id, check_in_date_sgt)`：打卡 / 连击。
+- 早起鸟儿、小猫头鹰：由服务端在 `record_learning_session` 中根据 `completed_at AT TIME ZONE 'Asia/Singapore'` 的小时数判定。
+- 周末狂人：「周末」= SGT 周六、周日。
+- 假期充电：`school_calendar` 的日期同样以 SGT 表达。
