@@ -1,13 +1,23 @@
-📦 项目进度总结报告 (V10.0)
-📅 更新日期：2026-05-22
+📦 项目进度总结报告 (V10.1)
+📅 更新日期：2026-05-25
 
 🎯 整体状态
 
 - **Phase A** 已在仓库中（家长 Auth、PIN、本机孩子 Profile、学生端 hub）。
+- **2026-05-25** 增量：白皮书 + 技术文档补产品规则；`ParentGuide.md` 改为中英文对照、纯家长用户口吻。
 - **2026-05-22** 主要工作：**文档收拢 + 产品与数据架构定稿 + B1 前端代码预备**；**未**在 Supabase 执行 `009`，**未**重建数据库。
-- 产品/设计事实来源：`Whitepaper.md`；工程事实来源：`TECHNICAL.md`；入口：`README.md`。
+- 产品/设计事实来源：`Whitepaper.md`；工程事实来源：`TECHNICAL.md`；家长可读说明：`ParentGuide.md`；入口：`README.md`。
 - 内部项目名统一为 **Home Learning Hub**；旧三字母项目代号禁止再用于文档/代码（见 `README.md`）。
-- **下一步**：检查白皮书逻辑 → `010_rebuild_core_schema.sql` 草案 → Approved 后在测试库重建。
+- **下一步**：用户确认 010 方案 6 项默认值 → `010_rebuild_core_schema.sql` 草案 → Approved 后在测试库重建。
+
+### 2026-05-25 增量
+
+| 文件 | 变更 |
+|------|------|
+| `Whitepaper.md` | §4.2.1.1 改为「全科出题范围模式」；§4.3 / §4.5 加入「系统默认听写表」；§6 明确金币兑实物、个人水晶兑非实物、1 徽章 = 1 金币、打卡水晶需当天至少 1 徽章解锁；§8 修正孩子 PIN 目的、学习报告 PDF/7 天保留、反馈与建议入口、手动调账暂不开放；§9 改为一孩/多孩 × 基础/高级账户模型 |
+| `TECHNICAL.md` | §5.1 `kid_profiles` 加全科范围模式概念；§5.4 / §5.5 同步学习报告、错题详情、手动调账边界；§6.4.1 改为 `profile_subject_settings`（范围模式、基础正确率、目标正确率、目标完成时间）；§12 / §13 加入 `default_spelling_lists` / `default_tingxie_lists` / `parent_feedback` |
+| `ParentGuide.md` | 改为中英文对照、纯家长用户口吻；补一孩/多孩 × 基础/高级账户模型；移除开发者文档引用、邀请机制、手动调账开放说法；修正金币/水晶用途、孩子 PIN 目的、错题展示、兑换退款、奖励游戏、等级段位与隐私说明 |
+| `README.md` | 文档索引补 `ParentGuide.md` |
 
 ---
 
@@ -104,7 +114,7 @@
 
 **注册后必须上云（含当前缺陷项）**
 
-- 团队金币、个人水晶、徽章、打卡连击、错题、`learning_sessions`、兑换单、ticket 等。
+- 金币、个人水晶、徽章、打卡连击、错题、`learning_sessions`、兑换单、ticket 等。
 - **每日每科练习限制** 不得仅靠本地 `limit_*`（当前换机可绕过）→ 目标表 `daily_subject_completions`。
 
 **同步（相对 Google Sheet）**

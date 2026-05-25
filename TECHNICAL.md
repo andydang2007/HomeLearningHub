@@ -118,6 +118,7 @@ game/
 | `chineseLevel` | `CL` / `HCL`，未来可扩 `FCL` |
 | `cloudId` | 云端 `profiles.id`，B1 导入或云端建档后才有 |
 | `uiLang` | 孩子界面语言 `en` / `zh`（注册后存 `profiles.ui_lang`） |
+| `subjectScopeMode` | 每科出题范围模式 `selected_scope` / `full_grade`（注册后按科目存 `profile_subject_settings.scope_mode`，见 §6.4.1） |
 
 当前选中的孩子使用：
 
@@ -137,13 +138,13 @@ game/
 | 当前连击 | `current_streak_${name}` |
 | 最后打卡日期 | `last_date_${name}` / `last_checkin_date_${name}` |
 | 水晶 | `crystals_${name}` |
-| 团队金币 | `gold_coins_vault` |
+| 金币 | `gold_coins_vault`（旧本地 key；目标迁移到孩子档案名下） |
 | 练习统计 | `practice_stats_${name}_...` |
 | 每日限制 | `limit_${date}_${name}_${subject}` |
 | 错题本 | `hub_mistakes` |
 | 徽章记录 | 当前分散在 `practice_stats_*`、`pinyin_badge_count_*`、`tingxie_badge_count_*`、`easter_*` 等 key |
 
-注意：当前金币 `gold_coins_vault` 是家庭团队资产，不按孩子拆分。
+注意：当前旧本地金币 key 是全局 `gold_coins_vault`，但目标架构中金币应迁移到孩子档案名下，避免多孩家庭身份混淆和刷低年级题骗奖励。
 
 ### 5.3 游客模式 vs 注册后（数据生命周期）
 
@@ -166,7 +167,7 @@ game/
 首次导入上云（注册转化）至少包括：
 
 - `profile_badge_counters` / `badge_events`（来自分散的 badge localStorage）
-- `family_wallets` + `profile_wallets` + 期初 `wallet_ledger` 条目（团队金币、个人水晶）
+- `profile_wallets` + 期初 `wallet_ledger` 条目（孩子档案名下金币、个人水晶）
 - `student_mistakes_book`（本地题干需匹配 `questions.id` 后写入）
 - `learning_sessions` 摘要（若本机有练习统计可还原）
 - 连击、打卡天数写入孩子档案或专用 streak 表
@@ -181,16 +182,17 @@ Legacy 家长 Log 曾包含 `coin_update`、`badge`、`redemption`、`refund` �
 |------|----------------|--------------|
 | 练习赚币、徽章 | `wallet_ledger`、`badge_events` | **否**（仅学习报告**汇总**） |
 | 兑换 / 退款 | `reward_redemptions` + `wallet_ledger` | **是**（兑换记录列表） |
-| 家长手动调账 | `wallet_ledger` | 可选记入兑换/调整备注，或仅报告说明 |
+| 家长手动调账 | MVP 暂不开放 | 后期如开放，必须走 RPC + `wallet_ledger` + 必填备注 |
 
 - **`wallet_ledger`**：全量流水，对账与防作弊，**不对家长默认展示**。
 - **`reward_redemptions`**：家长主界面财务相关唯一列表（待审批、已批准、已拒绝、已退款）。
-- **`learning_reports` / 周报聚合**：从 `learning_sessions`、`badge_events`、ledger 汇总“某段时间练习次数、徽章数、金币/水晶净增”，替代逐条奖励 Log。
+- **`learning_reports` / 周报聚合**：从 `learning_sessions`、`badge_events`、ledger 汇总“某段时间练习次数、徽章数、金币/水晶净增、典型错题和错误答案”，替代逐条奖励 Log。
+- 家长可一键保存学习报告为 PDF；系统内生成的报告缓存 / PDF 文件只保留最近 7 天，避免后台长期堆积。底层结构化学习数据仍按产品与合规需要保留，用于后续报告重新生成和趋势分析。
 - 可不建面向家长的 `audit_logs` 全量镜像；若需运维排查，再建内部审计表。
 
 新代码：所有资产变动先 **RPC 写 ledger + 业务表**；家长 UI 只订阅兑换状态与报告聚合，避免回到“本地先改数再同步 Sheet”的模式。
 
-### 5.5 账本、防作弊与家长手动调整
+### 5.5 账本、防作弊与手动调整边界
 
 **账本（`wallet_ledger`）给谁用？**
 
@@ -204,11 +206,11 @@ Legacy 家长 Log 曾包含 `coin_update`、`badge`、`redemption`、`refund` �
 - 不能单靠代码防：**孩子乱填、家长不管的“学习质量”**；经济最终由**家长审批兑换**兜底。
 - 所有 earning/spend 应服务端判定（练习完成、徽章规则、ticket 发放），客户端只展示结果。
 
-**家长手动调整（需 RPC + 流水）：**
+**家长手动调整（MVP 暂不开放）：**
 
-- 允许家长增加/扣减金币或水晶，必填备注（如 `parent_bonus_chore`、`parent_correction`）。
-- 禁止孩子端调用；禁止无流水改余额。
-- 与“平台外任务”（做家务、早睡）连接方式：家长手动发币或创建**非学习类自定义奖励**，不把生活打卡做成与学习会话同级的自动判分，避免 scope creep 和隐私争议。
+- MVP 阶段不提供家长手动增加/扣减金币或水晶，避免资产规则过早复杂化。
+- 后期如果开放，必须作为高级功能实现：仅家长可调用、必须走 RPC、必须写 `wallet_ledger`、必须填写备注。
+- 与“平台外任务”（做家务、早睡）连接方式：优先作为**非实物奖励**或家庭约定呈现，不把生活打卡做成与学习会话同级的自动判分，避免 scope creep 和隐私争议。
 
 注册后同步要求（补充）：
 
@@ -292,7 +294,7 @@ Legacy 家长 Log 曾包含 `coin_update`、`badge`、`redemption`、`refund` �
 - 前端不直接 update；通过 RPC 调整权重。
 - 一个 session 内同一道题最多增加一次权重。
 - 每次答错应记录本次错误答案、标准答案、时间、session id。
-- 错误答案历史用于孩子复盘、家长报告和后续 AI 分析。
+- 错误答案历史不在孩子端作为独立错题本展示；孩子只是在练习中抽到错题并把它做对。错误答案历史用于家长学习报告、典型错误分析和后续 AI 分析。
 
 ### 6.4 学期与学习范围
 
@@ -311,16 +313,37 @@ Legacy 家长 Log 曾包含 `coin_update`、`badge`、`redemption`、`refund` �
 | `school_calendar` | 年份、term、week、起止日期、是否假期 |
 | `subject_topics` | English/Math/Science topic 目录 |
 | `chinese_lessons` | 华文课文/第几课目录 |
-| `profile_learning_scope` | 每个孩子当前已学到哪些 topic/lesson |
+| `profile_learning_scope` | 每个孩子当前已点选哪些 topic/chapter/lesson |
+| `profile_subject_settings` | 每个孩子每科设置：范围模式、基础正确率、目标正确率、目标完成时间 |
 
-`profile_learning_scope` 应由家长后台维护，也可以允许孩子在入口处选择“我学到这里了”，但最终应由家长确认或覆盖。
+`profile_learning_scope` 应由家长后台维护，也可以允许孩子在入口处选择"我学到这里了"，但最终应由家长确认或覆盖。
 
 出题时：
 
 - C 题只从已学 topic/lesson 里抽。
-- A 错题只从当前可复习范围内抽，或明确标为“历史错题复习”。
+- A 错题只从当前可复习范围内抽，或明确标为"历史错题复习"。
 - B 题从低一年级可复习范围抽。
 - 临近期末、假期复习可有独立模式，另行设计。
+
+#### 6.4.1 各科范围模式与达标阈值（每孩独立）
+
+所有科目支持每孩每科可选的两种出题范围模式（产品规则见 Whitepaper §4.2.1.1）：
+
+| 字段 | 取值 | 默认 | 含义 |
+|------|------|------|------|
+| `profile_subject_settings.scope_mode` | `'selected_scope'` / `'full_grade'` | `'selected_scope'` | 该孩子该科 C 题抽取范围 |
+| `profile_subject_settings.base_accuracy_pct` | integer | 待定 | 获得科目徽章的基础正确率 |
+| `profile_subject_settings.target_accuracy_pct` | integer | 待定 | 获得额外技能徽章的目标正确率 |
+| `profile_subject_settings.target_time_seconds` | integer | 待定 | 获得速度类额外徽章的目标完成时间 |
+
+实现要点：
+
+- 在 `record_learning_session` / 出题 RPC（或 `practice.js` 拉题逻辑）里：
+- 按 `profile_id + subject` 读取 `profile_subject_settings`。
+- `selected_scope` 模式：C 题 `WHERE grade = profile.grade AND topic/chapter/lesson IN (profile_learning_scope entries for this subject) AND is_active`。
+- `full_grade` 模式：C 题 `WHERE grade = profile.grade AND subject = ? AND is_active`，忽略 `profile_learning_scope`。
+- A 错题、B 降维复习抽取规则**不受**此开关影响。
+- 仅家长后台 RPC 可改这些设置，写入需家长 PIN 已通过。
 
 ## 7. 练习模块技术规则
 
@@ -336,6 +359,7 @@ Legacy 家长 Log 曾包含 `coin_update`、`badge`、`redemption`、`refund` �
 - 必须在最后一题完成并结算后，才写入 `limit_${date}_${name}_${subject}`。
 - 中途退出不应锁死当天。
 - 错题加权必须以 session 为边界防重复。
+- **答案对比前必须先做字符归一化**，否则会把对的判错（见 §15.1）。
 
 标准练习完成后应写入 `learning_sessions`：
 
@@ -355,6 +379,13 @@ Legacy 家长 Log 曾包含 `coin_update`、`badge`、`redemption`、`refund` �
 - `mistakes_added`
 - `mistakes_cleared`
 
+奖励结算规则：
+
+- 达到该孩子该科 `base_accuracy_pct`：获得 1 枚科目徽章；**1 徽章 = 1 金币**，同步在孩子档案名下记 1 个金币并写 `wallet_ledger`。
+- 达到 `target_accuracy_pct`：可获得额外技能徽章。
+- 达到 `target_accuracy_pct` 且 `duration_seconds <= target_time_seconds`：可获得速度类额外徽章。
+- 当天至少获得 1 枚徽章后，才可解锁当天打卡水晶；水晶仍按每孩每日最多 1 颗限制。
+
 每题答题记录写入 `question_attempts`：
 
 - `session_id`
@@ -365,7 +396,7 @@ Legacy 家长 Log 曾包含 `coin_update`、`badge`、`redemption`、`refund` �
 - `time_spent_seconds`
 - `attempt_order`
 
-这两张表是家长后台核心数据、每周报告、错题复盘和 AI 分析的基础。
+这两张表是家长后台核心数据、每周报告、家长查看错题细节和 AI 分析的基础。
 
 ## 8. 家长 Auth 与 PIN
 
@@ -386,6 +417,23 @@ Legacy 家长 Log 曾包含 `coin_update`、`badge`、`redemption`、`refund` �
 - `set_parent_pin(raw_pin)`
 - `verify_parent_pin(raw_pin)`
 - `check_pin_exists()`
+- `set_kid_pin(kid_profile_id, raw_pin)` — 设置/修改 3 位孩子身份 PIN；调用前需家长 PIN 已通过
+- `verify_kid_pin(kid_profile_id, raw_pin)` — 学生端切换孩子时校验
+- `disable_kid_pin(kid_profile_id)` — 家长后台一键关闭
+- `reset_kid_pin(kid_profile_id, new_pin)` — 孩子忘记时家长重置（同样需家长 PIN 已通过）
+
+孩子身份 PIN 字段（写入 `profiles` 或独立小表）：
+
+- `kid_pin_enabled` (bool)
+- `kid_pin_hash` (text, SHA-256)
+- `kid_pin_fail_count` (int) / `kid_pin_lock_until` (timestamptz) 或复用现有 PIN 节流模式
+
+规则：
+
+- 3 位数仅作家庭内部软门；威胁模型不含外部黑客。
+- 客户端 5 次错误 → 30 秒指数退避；服务端 RPC 必须同样节流。
+- `kid_pin_hash` 永不返回前端；前端只拿 `kid_pin_enabled` 决定是否弹窗。
+- 孩子端不可调用 `set_kid_pin` / `reset_kid_pin` / `disable_kid_pin`，仅家长会话可。
 
 当前推荐迁移顺序：
 
@@ -450,7 +498,7 @@ supabase/migrations/009_b1_kid_profile_sync.sql
 
 目标规则：
 
-- 金币是家庭团队资产。
+- 金币记在孩子档案名下，用于兑换实物奖励；每获得 1 枚徽章同步获得 1 个金币。
 - 水晶是孩子个人资产。
 - 前端禁止直接改云端余额。
 - 商品兑换必须走 RPC 或 Edge Function。
@@ -501,6 +549,7 @@ ticket 规则目标：
 
 - 达到基础正确率的正式练习发 1 张 ticket。
 - 2 张 ticket 玩 1 次奖励游戏。
+- 奖励游戏时长定位为 2-3 分钟短暂放松。
 - ticket 消耗应进入可审计记录，避免刷新重复消耗或绕过。
 
 ## 12. 图片、OCR 与上传
@@ -540,9 +589,17 @@ OCR 上传场景：
 |----|------|
 | `ocr_uploads` | 上传文件、来源、状态、家长、孩子 |
 | `ocr_extracted_items` | AI 识别出来的候选词/题/错题 |
-| `custom_spelling_lists` | 家长确认后的英文听写表 |
-| `custom_tingxie_lists` | 家长确认后的华文听写表 |
-| `parent_imported_questions` | 家长确认后的自定义题/错题材料 |
+| `default_spelling_lists` | **系统默认英文听写表**（按 `grade + term + week`），所有家庭可读不可写；家长不上传时学生端使用 |
+| `default_tingxie_lists` | **系统默认华文听写表**（按 `grade + term + week + lesson`），所有家庭可读不可写 |
+| `custom_spelling_lists` | 家长确认后的英文听写表（仅本孩 `profile_id` 可见，与默认表合并出题） |
+| `custom_tingxie_lists` | 家长确认后的华文听写表（仅本孩 `profile_id` 可见，与默认表合并出题） |
+| `parent_imported_questions` | 家长确认后的自定义题/错题材料（仅本孩 `profile_id` 可见） |
+
+听写出题合并规则（写在 RPC 或 `practice.js` 听写拉题函数）：
+
+1. 先读该孩子年级 + 当前 Term/Week 范围内的 `custom_*_lists` 条目；
+2. 若 `custom_*_lists` 为空或不足，回退到 `default_*_lists`；
+3. 家长可在后台勾选「优先使用我上传的 / 与默认表合并 / 仅使用默认表」三档（字段建议挂 `profile_settings` 或 `profiles.dictation_source_mode`，默认「优先使用我上传的，否则用默认」）。
 
 AI 输出模板必须版本化，例如 `template_version`，避免后续提示词变更导致旧数据无法解释。
 
@@ -554,14 +611,15 @@ AI 输出模板必须版本化，例如 `template_version`，避免后续提示�
 
 | 表 | 用途 |
 |----|------|
-| `families` | 家庭账号，承载家庭级资产和订阅 |
-| `profiles` | 家长与孩子档案，`role=parent/kid`；孩子含 `ui_lang` |
-| `parent_settings` | 家长配置：正确率阈值、极速秒数、奖励游戏规则、`parent_ui_lang` |
-| `learning_reports` | 周报/区间汇总（练习数、徽章、资产净增、时长等，可选物化或视图） |
+| `families` | 家庭账号，承载账户类别与订阅；`account_type=single_child/multi_child`，`plan_tier=basic/premium` |
+| `profiles` | 家长与孩子档案，`role=parent/kid`；孩子含 `ui_lang`、`kid_pin_enabled`、`kid_pin_hash` |
+| `parent_settings` | 家长配置：`parent_ui_lang`、奖励游戏规则等家庭级设置 |
+| `profile_subject_settings` | 每孩每科配置：范围模式、基础正确率、目标正确率、目标完成时间 |
+| `learning_reports` | 周报汇总/报告缓存（练习数、徽章、资产净增、时长、典型错题与错误答案；生成文件保留 7 天，可重新生成） |
 | `questions` | 标准题库 |
 | `subject_topics` | 学科 topic 目录 |
 | `chinese_lessons` | 华文课文/lesson 目录 |
-| `profile_learning_scope` | 孩子已学范围 |
+| `profile_learning_scope` | 家长为孩子点选的每科 topic/chapter/lesson 范围 |
 | `school_calendar` | Term/Week/假期日历 |
 | `learning_sessions` | 单次练习宏观记录 |
 | `daily_subject_completions` | 注册后每日每科是否已完成（防换机绕过） |
@@ -571,8 +629,7 @@ AI 输出模板必须版本化，例如 `template_version`，避免后续提示�
 | `badge_definitions` | 徽章定义 |
 | `profile_badge_counters` | 徽章累计与展示状态 |
 | `badge_events` | 徽章获得事件 |
-| `family_wallets` | 家庭团队金币 |
-| `profile_wallets` | 孩子个人水晶 |
+| `profile_wallets` | 孩子档案名下金币与个人水晶 |
 | `wallet_ledger` | 金币/水晶流水 |
 | `reward_catalog` | 家长奖励商品 |
 | `reward_redemptions` | 兑换申请与审批 |
@@ -580,12 +637,15 @@ AI 输出模板必须版本化，例如 `template_version`，避免后续提示�
 | `game_sessions` | 奖励游戏游玩记录 |
 | `ocr_uploads` | OCR 上传任务 |
 | `ocr_extracted_items` | AI 识别候选项 |
-| `custom_spelling_lists` | 英文听写表 |
-| `custom_tingxie_lists` | 华文听写表 |
+| `default_spelling_lists` | **系统**英文默认听写表（不上传也能用） |
+| `default_tingxie_lists` | **系统**华文默认听写表 |
+| `custom_spelling_lists` | 家长自定义英文听写表（仅本孩） |
+| `custom_tingxie_lists` | 家长自定义华文听写表（仅本孩） |
 | `parent_imported_questions` | 家长上传错题/自定义题；**RLS 仅本 kid `profile_id` 可见**（§Whitepaper 4.2.2） |
-| `referrals` / `subscription_entitlements` | 邀请裂变、试用与赠送时长上限 90 天 |
+| `referrals` / `subscription_entitlements` | 邀请裂变、试用与赠送时长上限 90 天；entitlement 需区分一孩/多孩与基础/高级 |
 | `profile_badge_levels` / `badge_level_config` | 等级、段位、升级消耗徽章/水晶 |
 | `leaderboard_entries`（或视图） | 匿名名人堂；脱敏 ID、无学校、按段位分组 |
+| `parent_feedback` | 家长反馈与建议：题目错误、功能问题、体验建议、奖励建议；绑定 `family_id`，可选 `profile_id` / `question_id` |
 
 建表原则：
 
@@ -613,3 +673,47 @@ AI 输出模板必须版本化，例如 `template_version`，避免后续提示�
 7. 设计徽章云端记录与注册后同步。
 8. 设计商店 RPC：兑换、审批、ledger。
 9. 重新设计英文/华文 OCR + AI 听写流程。
+
+## 15. 历史踩坑与自查表
+
+> 这里记录已经踩过、容易复发的坑。新功能或重构前**对照自查**，避免回归。
+
+### 15.1 答案对比：先归一化再判对错
+
+**症状：** 题库答案里写的是 `it’s`（curly apostrophe），孩子输入 `it's`（直引号），或者标准答案带尾随空格 / 大小写不同 / 全半角混用，都会被判成错。
+
+**根因：** 字符层不一致就直接 `===` 比较。
+
+**自查清单（实现答题判分时必做）：**
+
+- 去首尾空白：`trim()`。
+- **统一引号**：将 `’ ‘ ` `"` `"`  等智能引号转成 ASCII `'` 和 `"`。
+- **统一空格**：全角空格 `　` → 半角；多空格折叠为 1 个；中文之间的空格按题型决定是否消除。
+- **统一大小写**：英文题目 `toLowerCase()`（华文不动）。
+- **统一全/半角数字与标点**：全角 `，。！？（）` → 半角，按题型决定（华文题应保留中文标点，英文题改 ASCII）。
+- **去末尾标点容差**：英文句子题目最后一个 `.` / `!` / `?` 缺漏不算错，可选。
+- **Unicode 归一化**：`String.prototype.normalize('NFKC')` 处理组合字符与兼容形式。
+- **多答案分隔**：题库 `correct_answer` 若用 `|` 列出多个可接受答案，每个分别归一化后再做集合判断。
+
+应统一封装一个 `normalizeAnswer(input, locale)` 工具函数，所有判分调用它；禁止在每个题型里各写一份。OCR / AI 导入题库时**入库前**也应同步归一化或保留原文 + 规范化字段两列，避免出题时再做。
+
+### 15.2 写后立即读：本地新数据被云端旧数据覆盖
+
+**症状（Google Sheet 时代）：** 孩子先完成练习（本地刚加好打卡天数）然后直接去商店；商店进入时拉取「云端打卡天数」，但本地新值还没上传完，远端拉回的是旧值，于是显示倒退或对不上。
+
+**根因：** 两条路径同时存在「本地真相 + 云端真相」，并且写入是异步、读取不等待写完成。
+
+**自查清单（Supabase + RPC 模式应避免）：**
+
+- 注册后**云端是唯一权威**；本地不再把「打卡天数 / 余额 / 今日完成」当真相（参见 §3.1）。
+- 写敏感数据**全部走 RPC**，并以 RPC 的返回值作为最新状态来源；不要写完就立刻发起一次独立的 read 去「确认」。
+- 切换页面（练习 → 商店）时若必须刷新摘要：等待上一笔 RPC `await` 完成后再 pull，或在 RPC 响应里直接返回新摘要（如新的 `streak_days`、`balance_after`），让前端**无需二次拉取**。
+- 不允许「先在本地累加，回头再 sync」的模式——这正是 Google Sheet 时期问题的来源。
+- 若一定要做乐观 UI，最少要带 `updated_at` 或版本号，写成功后**作废**相关 sessionStorage 缓存，下次再读以服务端为准。
+- 跨页面共享的内存状态（如 `window.AUTH` 里的余额/打卡）应在 RPC 成功后**立即更新**，避免子页面读旧值。
+
+### 15.3 跨设备/换机的隐性假设（兼并入 §5.3）
+
+- 不要假设「打开页面时本地必有上次的数据」。新机器全空，所有界面必须能从云端摘要冷启动。
+- 不要在 `localStorage` 里写「最终余额」「今日是否已打卡」之类的真相键；缓存键必须带过期或可作废。
+- 详细规则见 §5.3 与 §3.1。
