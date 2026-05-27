@@ -1,9 +1,10 @@
-📦 项目进度总结报告 (V10.1)
-📅 更新日期：2026-05-25
+📦 项目进度总结报告 (V10.2)
+📅 更新日期：2026-05-27
 
 🎯 整体状态
 
 - **Phase A** 已在仓库中（家长 Auth、PIN、本机孩子 Profile、学生端 hub）。
+- **2026-05-27** 增量：家长 PIN Forgot/密码门、徽章合成 Forge 全流程（前端 + RPC 草案）、打卡连击上云、`student` 徽章/等级云端优先、`parent/admin` 运维测试页、Premium 路线图写入本文档。**需在 Supabase 依次执行迁移 017～019（及已存在的 018）后联调验收。**
 - **2026-05-25** 增量：白皮书 + 技术文档补产品规则；`ParentGuide.md` 改为中英文对照、纯家长用户口吻。
 - **2026-05-22** 主要工作：**文档收拢 + 产品与数据架构定稿 + B1 前端代码预备**；**未**在 Supabase 执行 `009`，**未**重建数据库。
 - 产品/设计事实来源：`Whitepaper.md`；工程事实来源：`TECHNICAL.md`；家长可读说明：`ParentGuide.md`；入口：`README.md`。
@@ -19,7 +20,20 @@
 | `ParentGuide.md` | 改为中英文对照、纯家长用户口吻；补一孩/多孩 × 基础/高级账户模型；移除开发者文档引用、邀请机制、手动调账开放说法；修正金币/水晶用途、孩子 PIN 目的、错题展示、兑换退款、奖励游戏、等级段位与隐私说明 |
 | `TECHNICAL.md` §15.4 | 新增「本地时区与新加坡日历日」踩坑：早起鸟儿/夜猫子、每日限额、连击、跨时区旅行的判定一律走 SGT；要求服务端 RPC 判定、统一 `sgtDateStr()` 工具与 `_sgt` 后缀列；同步在 `Whitepaper.md` §3.3、§7.5 注明按 SGT |
 | `Whitepaper.md` / `TECHNICAL.md` / `ParentGuide.md` | 新增 PDPA / 儿童数据边界：全程昵称、不鼓励真实姓名；学校名和性别可选；MVP 不开放真人头像上传；名人堂只展示昵称和级别且不可搜索；暂不做同校/好友/私信；明确数据保留期限、删除场景、家长导出/更正/删除请求；技术侧加入成人注册确认、`consent_records`、`privacy_requests`、`data_deletion_jobs`、`data_retention_policies` |
+| `supabase/migrations/010_rebuild_core_schema.sql` | 新建核心 schema 重建草案：破坏性清空 `public` 后重建家庭/孩子档案、每科设置、题库、练习、错题、徽章、钱包、兑换、OCR、订阅、名人堂、反馈、PDPA/保留删除相关表；预置现有徽章；`schools` 与等级公式保持空表；尚未在 Supabase 执行 |
 | `README.md` | 文档索引补 `ParentGuide.md` |
+
+### 2026-05-27 今日完成（工程交付）
+
+| 范围 | 内容 |
+|------|------|
+| 家长 PIN | `pin.html` / `pin.js`：`Forgot PIN` → 主账户密码校验 → 重置 PIN；数字键圆形、底部操作横向；attempts/i18n 修复 |
+| 学生 Hub | `index.js`：注册孩子有 `cloudId` 时徽章自 Supabase（`badge_definitions` + `profile_badge_counters`）优先；皇冠不计入徽章总数；等级芯片跳转合成页；打卡连击走 `018` RPC |
+| 合成 Forge | `synthesis.html` / `.css` / `.js`：`get_synthesis_data` / `level_up_profile` UI；亮色主题、徽章 5 列网格、进度条、`streak` 不参与合成；隐藏徽章 Premium 中间弹窗、实时滑块、`0/0` 水晶绿色满条、Forge 火焰装饰；不按默认消耗钱包水晶（仅 hidden 折算 + RPC 直连参数为 0） |
+| 数据库迁移 | `017_level_up_rpc.sql`（徽章升级/`level_up_spend` 等）；`018_checkin_streak_cloud.sql`（`profile_checkin_streaks` + `get/upsert_checkin_streak`）；`019_admin_test_rpcs.sql`（`admin_users` 白名单 + 搜索用户/改 plan/徽章与钱包校正 RPC；`owner_user_id`、`deleted_at` 过滤等在迭代中修正） |
+| 运维测试 | `parent/admin.html`：邮箱检索家庭与孩子、改 `plan_tier`/`account_type`、调徽章数与金币水晶（仅白名单管理员） |
+| 国际化 | `common/js/i18n.js`：PIN、合成、`synth.title` 等中英 key |
+| 产品规划 | 本文档 §「下一步新增（Premium 功能隔离专题）」：错题/商城自定义、报告 PDF、护盾、头像分级、名人堂入口与 consent 等 |
 
 ---
 
@@ -210,6 +224,44 @@ supabase/migrations/
 - `daily_subject_completions`、错题上云、`ui_lang`。
 - 练习完成才锁当日；错题 session 内只加权一次。
 - 家长后台：兑换记录 + 学习报告；手动调账走 RPC。
+
+### 下一步新增（Premium 功能隔离专题）
+
+1. **Premium 功能隔离总开关与路由守卫**
+   - 统一定义 Premium gating（前端入口灰显 + 后端 RPC 二次校验）。
+   - 所有受限功能给出一致提示文案（免费版不可用 / 引导升级）。
+
+2. **自定义错题（Premium）**
+   - 家长端新增“自定义错题”入口与管理页。
+   - 免费版仅可见灰色入口，不可操作。
+
+3. **自定义商城商品（Premium）**
+   - 家长端可新增/编辑自定义兑换商品。
+   - 免费版入口灰显，防止调用写入接口。
+
+4. **详细版学习报告 + 一键导出 PDF（Premium）**
+   - 家长端报告分基础版/详细版。
+   - 详细版提供导出 PDF 按钮与下载链路。
+
+5. **连击护盾（Premium 每月 3 个）**
+   - 若错过打卡：默认连击清零；Premium 可自动消耗护盾保留连击。
+   - 护盾按自然月重置为 3（需服务端判定，不依赖本地时间）。
+
+6. **自定义头像权限改造**
+   - 学生端保留头像入口，但仅 Premium 可选择自定义头像；免费版头像选项灰显。
+   - 家长端头像池先收敛为：男孩 2 个 + 女孩 2 个。
+
+7. **合成页新增“名人堂”入口（Premium）**
+   - `synthesis` 页面增加名人堂按钮。
+   - 免费版按钮灰显，并提示仅高级用户可进入。
+
+8. **名人堂访问需家长 consent**
+   - 仅 Premium 家长可看到 consent 开关。
+   - 家长开启后，学生端才可进入名人堂。
+
+9. **名人堂 MVP 展示规则**
+   - 按各级别展示前十学生昵称（仅昵称，不暴露敏感信息）。
+   - 暂不做搜索、私信、同校关系链。
 
 ---
 

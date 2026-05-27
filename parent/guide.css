@@ -1,0 +1,152 @@
+/* parent/guide.css — readable parent guide (language toggle, not bilingual columns) */
+
+.guide-page {
+    align-items: stretch;
+}
+
+.guide-shell {
+    width: 100%;
+    max-width: 720px;
+    margin: 0 auto 40px;
+    padding: 0 4px;
+}
+
+.guide-topbar {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+    margin-bottom: 20px;
+}
+
+.guide-topbar .back-link {
+    margin: 0;
+    font-size: 14px;
+}
+
+.guide-lang-btn {
+    border: 2px solid var(--border);
+    background: #fff;
+    color: var(--primary);
+    font-weight: 900;
+    font-size: 13px;
+    padding: 8px 14px;
+    border-radius: 999px;
+    cursor: pointer;
+    box-shadow: 0 3px 0 var(--shadow-border);
+}
+
+.guide-lang-btn:active {
+    transform: translateY(2px);
+    box-shadow: none;
+}
+
+.guide-header {
+    text-align: left;
+    margin-bottom: 24px;
+}
+
+.guide-header .page-title {
+    text-align: left;
+    font-size: 32px;
+}
+
+.guide-header .page-subtitle {
+    text-align: left;
+    margin-bottom: 8px;
+}
+
+.guide-updated {
+    margin: 0;
+    font-size: 13px;
+    font-weight: 700;
+    color: var(--text-muted);
+}
+
+.guide-body {
+    width: 100%;
+    text-align: left;
+    background: #fff;
+    border-radius: 28px;
+    padding: 24px 22px 32px;
+    border: 3px solid #fff;
+    box-shadow: 0 12px 32px rgba(0, 0, 0, 0.08);
+}
+
+.guide-body section {
+    margin-bottom: 28px;
+    scroll-margin-top: 20px;
+}
+
+.guide-body section:last-child {
+    margin-bottom: 0;
+}
+
+.guide-body h2 {
+    margin: 0 0 12px;
+    font-size: 20px;
+    font-weight: 900;
+    color: #0f172a;
+    padding-bottom: 8px;
+    border-bottom: 2px solid #ede9fe;
+}
+
+.guide-body h3 {
+    margin: 14px 0 6px;
+    font-size: 16px;
+    font-weight: 900;
+    color: var(--primary-dark);
+}
+
+.guide-body p,
+.guide-body li {
+    margin: 0 0 10px;
+    font-size: 15px;
+    font-weight: 700;
+    line-height: 1.55;
+    color: #334155;
+}
+
+.guide-body ul {
+    margin: 0 0 12px;
+    padding-left: 1.25rem;
+}
+
+.guide-body li {
+    margin-bottom: 6px;
+}
+
+.guide-privacy {
+    background: #f5f3ff;
+    border-radius: 18px;
+    padding: 18px 16px 6px;
+    border: 2px solid #ddd6fe;
+}
+
+.guide-privacy .guide-privacy-version {
+    font-weight: 900;
+    color: var(--primary-dark);
+}
+
+.guide-faq dt {
+    font-weight: 900;
+    color: #0f172a;
+    margin: 12px 0 4px;
+    font-size: 15px;
+}
+
+.guide-faq dd {
+    margin: 0 0 8px 0;
+    padding: 0;
+    font-size: 15px;
+    font-weight: 700;
+    line-height: 1.5;
+    color: #475569;
+}
+
+@media (max-width: 520px) {
+    .guide-body {
+        padding: 18px 14px 24px;
+    }
+}

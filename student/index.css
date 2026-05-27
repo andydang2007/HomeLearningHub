@@ -195,6 +195,35 @@ button.name-btn:active {
     font-weight: 900;
 }
 
+.dashboard-header-right {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 8px;
+}
+
+.level-chip {
+    display: none; /* shown by JS once level loads */
+    align-items: center;
+    gap: 5px;
+    padding: 5px 12px;
+    background: linear-gradient(135deg, #f5f3ff, #ede9fe);
+    border: 2px solid #c4b5fd;
+    border-radius: 999px;
+    font-size: 13px;
+    font-weight: 900;
+    font-family: inherit;
+    color: #5b21b6;
+    cursor: pointer;
+    box-shadow: 0 2px 8px rgba(124,58,237,0.18);
+    transition: transform 0.12s, box-shadow 0.12s;
+}
+
+.level-chip:active {
+    transform: scale(0.95);
+    box-shadow: 0 1px 4px rgba(124,58,237,0.12);
+}
+
 .streak-info-box {
     display: flex;
     flex-direction: column;
@@ -860,3 +889,114 @@ button.name-btn:active {
         padding: 10px 4px;
     }
 }
+
+/* ── Child PIN gate ── */
+.kid-pin-header { margin-bottom: 8px; }
+
+.kid-pin-avatar {
+    font-size: 48px;
+    line-height: 1;
+    margin-bottom: 8px;
+}
+
+.kid-pin-title {
+    margin: 0 0 4px;
+    font-size: 22px;
+    font-weight: 900;
+    color: var(--text-main);
+}
+
+.kid-pin-subtitle {
+    margin: 0 0 12px;
+    font-size: 14px;
+    font-weight: 800;
+    color: var(--text-muted);
+}
+
+.kid-pin-dots {
+    display: flex;
+    gap: 16px;
+    justify-content: center;
+    margin: 8px 0;
+}
+
+.kid-pin-dot {
+    width: 20px;
+    height: 20px;
+    border-radius: 50%;
+    border: 3px solid #34d399;
+    background: #fff;
+    transition: background 0.15s, transform 0.15s;
+}
+
+.kid-pin-dot.filled {
+    background: var(--primary);
+    border-color: var(--primary);
+    transform: scale(1.12);
+}
+
+.kid-pin-dot.error {
+    background: #ef4444;
+    border-color: #ef4444;
+    animation: kidPinShake 0.4s ease;
+}
+
+@keyframes kidPinShake {
+    0%, 100% { transform: translateX(0); }
+    25% { transform: translateX(-5px); }
+    75% { transform: translateX(5px); }
+}
+
+.kid-pin-msg {
+    min-height: 20px;
+    font-size: 13px;
+    font-weight: 900;
+    color: #ef4444;
+    margin: 4px 0 8px;
+}
+
+.kid-pin-hidden-input {
+    position: absolute;
+    opacity: 0;
+    pointer-events: none;
+    width: 1px;
+    height: 1px;
+}
+
+.kid-pin-keypad {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 10px;
+    width: 100%;
+    max-width: 280px;
+    margin: 12px 0 16px;
+}
+
+.kid-pin-key {
+    padding: 16px 0;
+    background: white;
+    border: 3px solid var(--border);
+    border-radius: 16px;
+    font-size: 20px;
+    font-weight: 900;
+    font-family: inherit;
+    color: var(--text-main);
+    cursor: pointer;
+    box-shadow: 0 4px 0 var(--shadow-border);
+}
+
+.kid-pin-key:active {
+    transform: translateY(4px);
+    box-shadow: none;
+}
+
+.kid-pin-key-blank {
+    background: transparent;
+    border: none;
+    box-shadow: none;
+    cursor: default;
+}
+
+.kid-pin-key-del { color: var(--text-muted); font-size: 17px; }
+
+#kid-pin-cancel-btn { margin-top: 4px; }

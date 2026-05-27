@@ -27,6 +27,38 @@
         <!-- populated by buildUserScreen() -->
     </div>
 
+    <!-- Child PIN gate (3 digits) -->
+    <div id="kid-pin-screen" class="screen is-hidden">
+        <div class="kid-pin-header">
+            <div class="kid-pin-avatar" id="kid-pin-avatar">🌟</div>
+            <h2 class="kid-pin-title" id="kid-pin-title" data-i18n="index.child_pin_title">Enter your PIN</h2>
+            <p class="kid-pin-subtitle" id="kid-pin-subtitle" data-i18n="index.child_pin_subtitle">3-digit PIN</p>
+        </div>
+        <div class="kid-pin-dots" id="kid-pin-dots">
+            <div class="kid-pin-dot" id="kid-dot-0"></div>
+            <div class="kid-pin-dot" id="kid-dot-1"></div>
+            <div class="kid-pin-dot" id="kid-dot-2"></div>
+        </div>
+        <p class="kid-pin-msg" id="kid-pin-msg"></p>
+        <input class="kid-pin-hidden-input" type="tel" id="kid-pin-input"
+               maxlength="3" inputmode="numeric" pattern="[0-9]*" autocomplete="off">
+        <div class="kid-pin-keypad" id="kid-pin-keypad">
+            <button type="button" class="kid-pin-key" data-digit="1">1</button>
+            <button type="button" class="kid-pin-key" data-digit="2">2</button>
+            <button type="button" class="kid-pin-key" data-digit="3">3</button>
+            <button type="button" class="kid-pin-key" data-digit="4">4</button>
+            <button type="button" class="kid-pin-key" data-digit="5">5</button>
+            <button type="button" class="kid-pin-key" data-digit="6">6</button>
+            <button type="button" class="kid-pin-key" data-digit="7">7</button>
+            <button type="button" class="kid-pin-key" data-digit="8">8</button>
+            <button type="button" class="kid-pin-key" data-digit="9">9</button>
+            <div class="kid-pin-key kid-pin-key-blank"></div>
+            <button type="button" class="kid-pin-key" data-digit="0">0</button>
+            <button type="button" class="kid-pin-key kid-pin-key-del" id="kid-pin-del">⌫</button>
+        </div>
+        <button type="button" class="btn-action" id="kid-pin-cancel-btn" data-i18n="index.back_profiles">← Back</button>
+    </div>
+
     <!-- Main dashboard -->
     <div id="dashboard-screen" class="screen">
 
@@ -35,8 +67,14 @@
                 <div class="avatar" id="dash-avatar">👱‍♀️</div>
                 <h2 id="dash-name">Hello!</h2>
             </div>
-            <div class="streak-info-box">
-                <div class="streak-badge pending" id="dash-streak"></div>
+            <div class="dashboard-header-right">
+                <button class="level-chip" id="level-chip" type="button" title="Open Forge">
+                    <span id="level-chip-emoji">🥉</span>
+                    <span id="level-chip-text">L1</span>
+                </button>
+                <div class="streak-info-box">
+                    <div class="streak-badge pending" id="dash-streak"></div>
+                </div>
             </div>
         </div>
 
@@ -113,6 +151,8 @@
 
 </div>
 
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+<script src="../common/js/supabase-client.js"></script>
 <script src="../common/js/i18n.js"></script>
 <script src="../common/js/profile-catalog.js"></script>
 <script src="../common/js/auth.js"></script>

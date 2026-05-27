@@ -1,7 +1,11 @@
 // Student hub — dynamic profile picker + badge wall
 
-let currentUser  = '';
-let currentGrade = '';
+let currentUser      = '';
+let currentGrade     = '';
+let currentCloudId   = '';  // Supabase profile UUID for the active kid
+let cloudStreakData  = null; // { current_streak, max_streak, last_checkin_date, total_checkin_days } | null
+
+const LEVEL_TIER_EMOJI = { Bronze: '🥉', Silver: '🥈', Gold: '🥇', Diamond: '💎', Legend: '⭐' };
 
 function getProfileAvatar(profile, index) {
     if (profile.avatarId) return ProfileCatalog.emojiForId(profile.avatarId);
@@ -53,11 +57,61 @@ function initDate() {
         <div class="term-label">${termStr}</div>`;
 }
 
+// Fetch streak from cloud; if first visit, sync local localStorage values up.
+// Populates the module-level `cloudStreakData` and returns it (or null on error).
+async function loadCloudStreak(cloudId) {
+    if (!cloudId || typeof window.SupabaseClient === 'undefined') {
+        cloudStreakData = null;
+        return null;
+    }
+    const db = window.SupabaseClient;
+    try {
+        const { data: existing, error } = await db.rpc('get_checkin_streak', {
+            kid_profile_id: cloudId,
+        });
+        if (error) throw error;
+
+        // If the cloud has no row yet, push local values up so data isn't lost.
+        if (!existing || Object.keys(existing).length === 0) {
+            const u           = currentUser;
+            const localCurrent = parseInt(localStorage.getItem(`current_streak_${u}`) || '0', 10);
+            const localMax     = Math.max(parseInt(localStorage.getItem(`max_streak_${u}`) || '0', 10), localCurrent);
+            const localTotal   = parseInt(localStorage.getItem(`total_days_${u}`) || '0', 10);
+            const localDate    = localStorage.getItem(`last_checkin_date_${u}`)
+                              || localStorage.getItem(`last_date_${u}`)
+                              || null;
+            const { data: synced, error: syncErr } = await db.rpc('upsert_checkin_streak', {
+                kid_profile_id:       cloudId,
+                p_current_streak:     localCurrent,
+                p_max_streak:         localMax,
+                p_last_checkin_date:  localDate,
+                p_total_checkin_days: localTotal,
+            });
+            if (syncErr) throw syncErr;
+            cloudStreakData = synced;
+        } else {
+            cloudStreakData = existing;
+        }
+        return cloudStreakData;
+    } catch {
+        cloudStreakData = null;
+        return null;
+    }
+}
+
 function updateStreakUI() {
-    const totalDays   = parseInt(localStorage.getItem(`total_days_${currentUser}`) || '0', 10);
-    const lastCheckin = localStorage.getItem(`last_checkin_date_${currentUser}`)
-        || localStorage.getItem(`last_date_${currentUser}`);
-    const todayStr  = getSGTDateString();
+    let totalDays, lastCheckin;
+
+    if (cloudStreakData) {
+        totalDays   = cloudStreakData.total_checkin_days || 0;
+        lastCheckin = cloudStreakData.last_checkin_date  || null;
+    } else {
+        totalDays   = parseInt(localStorage.getItem(`total_days_${currentUser}`) || '0', 10);
+        lastCheckin = localStorage.getItem(`last_checkin_date_${currentUser}`)
+                   || localStorage.getItem(`last_date_${currentUser}`);
+    }
+
+    const todayStr = getSGTDateString();
     const streakEl = document.getElementById('dash-streak');
 
     if (totalDays === 0) {
@@ -73,7 +127,7 @@ function updateStreakUI() {
 }
 
 function renderBadgeItemHTML(b, totalRef) {
-    totalRef.count += b.count > 0 ? b.count : (b.isCrown ? 1 : 0);
+    if (!b.isCrown) totalRef.count += b.count > 0 ? b.count : 0;
 
     const classes = ['badge-item'];
     if (b.count > 0 || b.isCrown) {
@@ -105,17 +159,127 @@ function renderBadgeItemHTML(b, totalRef) {
         </div>`;
 }
 
-function renderBadges() {
+// Fetch full badge catalog + this profile's counts from cloud (two parallel queries).
+// Returns array of {id, badge_code, display_name_en, display_name_zh, icon, category, is_hidden, count}
+// or null on error/unavailable.
+async function fetchAllCloudBadges(profileId) {
+    if (!profileId || typeof window.SupabaseClient === 'undefined') return null;
+    const db = window.SupabaseClient;
+    try {
+        const [defsRes, cntRes] = await Promise.all([
+            db.from('badge_definitions')
+              .select('id, badge_code, display_name_en, display_name_zh, icon, category, is_hidden')
+              .eq('is_active', true),
+            db.from('profile_badge_counters')
+              .select('badge_id, count_available')
+              .eq('profile_id', profileId),
+        ]);
+        if (defsRes.error || cntRes.error) return null;
+
+        const countMap = {};
+        (cntRes.data || []).forEach(r => { countMap[r.badge_id] = r.count_available || 0; });
+
+        return (defsRes.data || []).map(bd => ({ ...bd, count: countMap[bd.id] || 0 }));
+    } catch {
+        return null;
+    }
+}
+
+async function renderBadges() {
     const container = document.getElementById('badges-container');
     container.innerHTML = '';
+    const totalRef = { count: 0 };
+    const u    = currentUser;
+    const lang = AppI18n.getLang();
 
+    // ── CLOUD PATH — authoritative for all registered profiles ──────────────
+    if (currentCloudId) {
+        const allBadges = await fetchAllCloudBadges(currentCloudId);
+        if (allBadges) {
+            const bycat = { subject: [], skill: [], streak: [], hidden: [] };
+            allBadges.forEach(b => {
+                const c = bycat[b.category] ? b.category : 'subject';
+                bycat[c].push(b);
+            });
+
+            const bdName = b => (lang === 'zh' && b.display_name_zh) ? b.display_name_zh : b.display_name_en;
+
+            // Subject badges (all shown; locked if count = 0)
+            if (bycat.subject.length) {
+                const items = bycat.subject.map(b => ({ icon: b.icon || '🏅', name: bdName(b), count: b.count }));
+                container.innerHTML += `
+                    <div class="badge-category">
+                        <div class="badge-category-title">🎓 ${AppI18n.t('index.badge_subject')}</div>
+                        <div class="badge-grid">${items.map(b => renderBadgeItemHTML(b, totalRef)).join('')}</div>
+                    </div>`;
+            }
+
+            // Skill badges
+            if (bycat.skill.length) {
+                const items = bycat.skill.map(b => ({ icon: b.icon || '🌟', name: bdName(b), count: b.count }));
+                container.innerHTML += `
+                    <div class="badge-category">
+                        <div class="badge-category-title">🌟 ${AppI18n.t('index.badge_core')}</div>
+                        <div class="badge-grid">${items.map(b => renderBadgeItemHTML(b, totalRef)).join('')}</div>
+                    </div>`;
+            }
+
+            // Streak badges — use cloud streak if available, else fall back to local
+            if (bycat.streak.length) {
+                const currentStreak = cloudStreakData
+                    ? (cloudStreakData.current_streak || 0)
+                    : parseInt(localStorage.getItem(`current_streak_${u}`) || '0', 10);
+                const maxStreak = cloudStreakData
+                    ? (cloudStreakData.max_streak || 0)
+                    : Math.max(parseInt(localStorage.getItem(`max_streak_${u}`) || '0', 10), currentStreak);
+                const STREAK_DAYS = { streak_3: 3, streak_5: 5, streak_10: 10, streak_15: 15, streak_30: 30 };
+
+                const streakItems = [{
+                    icon: '👑', name: AppI18n.t('index.badge_max_streak'),
+                    count: 1, tier: 'gold',
+                    currentStreak: maxStreak, targetStreak: maxStreak, isCrown: true,
+                }];
+                bycat.streak.forEach(b => {
+                    const target  = STREAK_DAYS[b.badge_code] || 0;
+                    const achieved = b.count > 0 || currentStreak >= target;
+                    streakItems.push({
+                        icon: b.icon || '🔥', name: bdName(b),
+                        count: achieved ? Math.max(b.count, 1) : 0,
+                        tier: target >= 15 ? 'gold' : (target >= 10 ? 'silver' : 'bronze'),
+                        targetStreak: target, currentStreak,
+                    });
+                });
+                container.innerHTML += `
+                    <div class="badge-category">
+                        <div class="badge-category-title">📅 ${AppI18n.t('index.badge_streak_current', { n: currentStreak })}</div>
+                        <div class="badge-grid">${streakItems.map(b => renderBadgeItemHTML(b, totalRef)).join('')}</div>
+                    </div>`;
+            }
+
+            // Hidden badges — only show ones already earned (count > 0)
+            const earnedHidden = bycat.hidden.filter(b => b.count > 0);
+            if (earnedHidden.length) {
+                const items = earnedHidden.map(b => ({ icon: b.icon || '✨', name: bdName(b), count: b.count, tier: 'gold' }));
+                container.innerHTML += `
+                    <div class="badge-category">
+                        <div class="badge-category-title easter">🎁 ${AppI18n.t('index.badge_easter')}</div>
+                        <div class="badge-grid">${items.map(b => renderBadgeItemHTML(b, totalRef)).join('')}</div>
+                    </div>`;
+            }
+
+            document.getElementById('total-badge-count').textContent = totalRef.count;
+            return;
+        }
+        // Cloud fetch failed — fall through to local path as graceful degradation
+    }
+
+    // ── LOCAL PATH — no registered account or cloud unreachable ─────────────
     let localPerfects = 0;
     let localGames = 0;
     const subPerfects = { English: 0, Math: 0, '华文': 0, Science: 0 };
-
     for (let i = 0; i < localStorage.length; i++) {
         const key = localStorage.key(i);
-        if (!key.startsWith('practice_stats_') || !key.includes(`_${currentUser}_`)) continue;
+        if (!key.startsWith('practice_stats_') || !key.includes(`_${u}_`)) continue;
         try {
             const parts = key.split('_');
             const sub   = parts[4];
@@ -126,8 +290,6 @@ function renderBadges() {
         } catch (e) { /* skip */ }
     }
 
-    const totalRef = { count: 0 };
-    const u = currentUser;
     const ls = (k) => parseInt(localStorage.getItem(`${k}_${u}`) || '0', 10);
 
     const coreBadges = [
@@ -135,7 +297,6 @@ function renderBadges() {
         { icon: '⚡️', name: AppI18n.t('index.badge_speed'),        count: ls('speed_breaks') },
         { icon: '🎈', name: AppI18n.t('index.badge_balloon'),      count: Math.max(localGames, ls('games_count')) },
     ];
-
     container.innerHTML += `
         <div class="badge-category">
             <div class="badge-category-title">🌟 ${AppI18n.t('index.badge_core')}</div>
@@ -151,7 +312,6 @@ function renderBadges() {
         { icon: '👑', name: AppI18n.t('index.badge_tingxie'), count: ls('tingxie_badge_count') },
         { icon: '🧚', name: AppI18n.t('index.badge_hanzi'),   count: ls('hanzi_badge_count') },
     ];
-
     container.innerHTML += `
         <div class="badge-category">
             <div class="badge-category-title">🎓 ${AppI18n.t('index.badge_subject')}</div>
@@ -160,37 +320,24 @@ function renderBadges() {
 
     const currentStreak = parseInt(localStorage.getItem(`current_streak_${u}`) || '0', 10);
     const maxStreak     = Math.max(parseInt(localStorage.getItem(`max_streak_${u}`) || '0', 10), currentStreak);
-
     let streakMilestones = [3, 5, 10, 15, 30];
     if (currentStreak >= 30) {
         const nextTarget = (Math.floor(currentStreak / 5) + 1) * 5;
         streakMilestones = [nextTarget - 20, nextTarget - 15, nextTarget - 10, nextTarget - 5, nextTarget];
     }
-
-    const streakBadges = [
-        {
-            icon: '👑',
-            name: AppI18n.t('index.badge_max_streak'),
-            count: 1,
-            tier: 'gold',
-            targetStreak: maxStreak,
-            currentStreak: maxStreak,
-            isCrown: true,
-        },
-    ];
-
+    const streakBadges = [{
+        icon: '👑', name: AppI18n.t('index.badge_max_streak'),
+        count: 1, tier: 'gold',
+        targetStreak: maxStreak, currentStreak: maxStreak, isCrown: true,
+    }];
     streakMilestones.forEach(day => {
-        const achieved = currentStreak >= day;
         streakBadges.push({
-            icon: '🔥',
-            name: AppI18n.t('index.streak_milestone', { n: day }),
-            count: achieved ? 1 : 0,
+            icon: '🔥', name: AppI18n.t('index.streak_milestone', { n: day }),
+            count: currentStreak >= day ? 1 : 0,
             tier: day >= 15 ? 'gold' : (day >= 10 ? 'silver' : 'bronze'),
-            targetStreak: day,
-            currentStreak: currentStreak,
+            targetStreak: day, currentStreak,
         });
     });
-
     container.innerHTML += `
         <div class="badge-category">
             <div class="badge-category-title">📅 ${AppI18n.t('index.badge_streak_current', { n: currentStreak })}</div>
@@ -200,12 +347,11 @@ function renderBadges() {
     const easterData = [
         { icon: '🌅', name: AppI18n.t('index.badge_earlybird'), count: ls('easter_earlybird'), tier: 'gold' },
         { icon: '🦉', name: AppI18n.t('index.badge_nightowl'),  count: ls('easter_nightowl'),  tier: 'gold' },
-        { icon: '🔥', name: AppI18n.t('index.badge_hattrick'),   count: ls('easter_hattrick'),   tier: 'gold' },
+        { icon: '🔥', name: AppI18n.t('index.badge_hattrick'),  count: ls('easter_hattrick'),  tier: 'gold' },
         { icon: '🎉', name: AppI18n.t('index.badge_weekend'),   count: ls('easter_weekend'),   tier: 'gold' },
         { icon: '🔋', name: AppI18n.t('index.badge_holiday'),   count: ls('easter_holiday'),   tier: 'gold' },
     ].filter(b => b.count > 0);
-
-    if (easterData.length > 0) {
+    if (easterData.length) {
         container.innerHTML += `
             <div class="badge-category">
                 <div class="badge-category-title easter">🎁 ${AppI18n.t('index.badge_easter')}</div>
@@ -216,10 +362,18 @@ function renderBadges() {
     document.getElementById('total-badge-count').textContent = totalRef.count;
 }
 
+let pendingKidSwitch = null;
+let kidPinValue = '';
+
 function executeSwitchUser(name, grade) {
     currentUser  = name;
     currentGrade = grade;
     AUTH.setActiveKid(name, grade);
+
+    // Resolve cloudId for the selected profile
+    const profiles = AUTH.getKidProfiles();
+    const profile  = profiles.find(p => p.name === name);
+    currentCloudId = profile?.cloudId || '';
 
     document.getElementById('dash-avatar').textContent = getAvatarForName(name);
     document.getElementById('dash-name').textContent   = AppI18n.t('index.greeting', { name });
@@ -228,9 +382,50 @@ function executeSwitchUser(name, grade) {
             ? AppI18n.t('index.subject_cn')
             : AppI18n.t('index.subject_cn_short');
 
-    updateStreakUI();
-    renderBadges();
+    cloudStreakData = null; // reset until cloud fetch resolves
+    updateStreakUI();       // immediate render from local while we wait
+
+    // Kick off all async cloud loads in parallel; streak UI refreshes once cloud responds.
+    Promise.all([
+        loadCloudStreak(currentCloudId).then(() => updateStreakUI()),
+        renderBadges(),
+        loadAndShowLevel(currentCloudId, name),
+    ]);
+
     showScreen('dashboard-screen');
+}
+
+async function loadAndShowLevel(cloudId, name) {
+    const chip     = document.getElementById('level-chip');
+    const chipEmoji = document.getElementById('level-chip-emoji');
+    const chipText  = document.getElementById('level-chip-text');
+
+    if (!chip) return;
+
+    // Default display while loading
+    chipEmoji.textContent = '🥉';
+    chipText.textContent  = 'L1';
+    chip.style.display    = 'flex';
+
+    chip.onclick = () => {
+        if (!cloudId) return;
+        window.location.href =
+            `synthesis.html?kid=${encodeURIComponent(cloudId)}&name=${encodeURIComponent(name)}`;
+    };
+
+    if (!cloudId || typeof window.SupabaseClient === 'undefined') return;
+
+    try {
+        const { data } = await window.SupabaseClient
+            .from('profile_badge_levels')
+            .select('level_no, tier_name')
+            .eq('profile_id', cloudId)
+            .single();
+        if (data) {
+            chipEmoji.textContent = LEVEL_TIER_EMOJI[data.tier_name] || '🥉';
+            chipText.textContent  = `L${data.level_no}`;
+        }
+    } catch (_) { /* silent — chip keeps default */ }
 }
 
 function getAvatarForName(name) {
@@ -243,6 +438,126 @@ function getAvatarForName(name) {
 function launchPractice(subject) {
     localStorage.setItem('currentSubject', subject);
     window.location.href = 'practice.html';
+}
+
+function updateKidPinDots(isError = false) {
+    for (let i = 0; i < 3; i++) {
+        const dot = document.getElementById(`kid-dot-${i}`);
+        if (!dot) continue;
+        dot.classList.toggle('filled', i < kidPinValue.length);
+        dot.classList.toggle('error', isError);
+    }
+}
+
+function resetKidPinEntry() {
+    kidPinValue = '';
+    const input = document.getElementById('kid-pin-input');
+    if (input) input.value = '';
+    updateKidPinDots(false);
+    const msg = document.getElementById('kid-pin-msg');
+    if (msg) msg.textContent = '';
+}
+
+function showKidPinScreen(profile) {
+    pendingKidSwitch = { name: profile.name, grade: profile.grade, cloudId: profile.cloudId || '' };
+    resetKidPinEntry();
+
+    const idx = AUTH.getKidProfiles().findIndex((p) => p.name === profile.name);
+    document.getElementById('kid-pin-avatar').textContent = getProfileAvatar(profile, idx >= 0 ? idx : 0);
+    document.getElementById('kid-pin-title').textContent = AppI18n.t('index.child_pin_title', { name: profile.name });
+    document.getElementById('kid-pin-subtitle').textContent = AppI18n.t('index.child_pin_subtitle');
+
+    showScreen('kid-pin-screen');
+    setTimeout(() => document.getElementById('kid-pin-input')?.focus(), 100);
+}
+
+async function submitKidPin() {
+    const pin = kidPinValue;
+    kidPinValue = '';
+    document.getElementById('kid-pin-input').value = '';
+
+    if (!pendingKidSwitch) return;
+
+    const { cloudId, name, grade } = pendingKidSwitch;
+    if (!cloudId) {
+        document.getElementById('kid-pin-msg').textContent = AppI18n.t('index.child_pin_no_cloud');
+        updateKidPinDots(true);
+        setTimeout(resetKidPinEntry, 600);
+        return;
+    }
+
+    const { ok, error } = await AUTH.verifyKidPinOnCloud(cloudId, pin);
+    if (error && error.includes('Not authenticated')) {
+        document.getElementById('kid-pin-msg').textContent = AppI18n.t('index.child_pin_need_parent');
+        updateKidPinDots(true);
+        setTimeout(resetKidPinEntry, 800);
+        return;
+    }
+    if (!ok) {
+        document.getElementById('kid-pin-msg').textContent = AppI18n.t('index.child_pin_wrong');
+        updateKidPinDots(true);
+        setTimeout(resetKidPinEntry, 600);
+        return;
+    }
+
+    AUTH.setKidPinSessionVerified(cloudId);
+    const target = pendingKidSwitch;
+    pendingKidSwitch = null;
+    executeSwitchUser(target.name, target.grade);
+}
+
+function requestProfileSwitch(profile) {
+    if (!profile.kidPinEnabled) {
+        executeSwitchUser(profile.name, profile.grade);
+        return;
+    }
+    if (profile.cloudId && AUTH.isKidPinSessionVerified(profile.cloudId)) {
+        executeSwitchUser(profile.name, profile.grade);
+        return;
+    }
+    showKidPinScreen(profile);
+}
+
+function appendKidPinDigit(d) {
+    if (kidPinValue.length >= 3) return;
+    kidPinValue += d;
+    document.getElementById('kid-pin-input').value = kidPinValue;
+    updateKidPinDots(false);
+    if (kidPinValue.length === 3) submitKidPin();
+}
+
+function deleteKidPinDigit() {
+    kidPinValue = kidPinValue.slice(0, -1);
+    document.getElementById('kid-pin-input').value = kidPinValue;
+    updateKidPinDots(false);
+}
+
+function wireKidPinScreen() {
+    document.querySelectorAll('.kid-pin-key[data-digit]').forEach((btn) => {
+        btn.addEventListener('click', () => {
+            appendKidPinDigit(btn.dataset.digit);
+            document.getElementById('kid-pin-input')?.focus();
+        });
+    });
+    document.getElementById('kid-pin-del')?.addEventListener('click', () => {
+        deleteKidPinDigit();
+        document.getElementById('kid-pin-input')?.focus();
+    });
+
+    const input = document.getElementById('kid-pin-input');
+    input?.addEventListener('input', () => {
+        kidPinValue = input.value.replace(/\D/g, '').slice(0, 3);
+        input.value = kidPinValue;
+        updateKidPinDots(false);
+        if (kidPinValue.length === 3) submitKidPin();
+    });
+
+    document.getElementById('kid-pin-cancel-btn')?.addEventListener('click', () => {
+        pendingKidSwitch = null;
+        resetKidPinEntry();
+        buildUserScreen();
+        showScreen('user-screen');
+    });
 }
 
 // ── Dynamic user screen ──────────────────────────────────────────────────────
@@ -278,7 +593,11 @@ function renderProfilePicker(screen, profiles) {
     AppI18n.applyTranslations();
 
     screen.querySelectorAll('.name-btn').forEach(btn => {
-        btn.addEventListener('click', () => executeSwitchUser(btn.dataset.user, btn.dataset.grade));
+        btn.addEventListener('click', () => {
+            const profile = profiles.find((p) => p.name === btn.dataset.user);
+            if (profile) requestProfileSwitch(profile);
+            else executeSwitchUser(btn.dataset.user, btn.dataset.grade);
+        });
     });
 
     const gateBtn = screen.querySelector('#show-name-gate-btn');
@@ -418,9 +737,15 @@ function refreshHub() {
 
 // ── Bootstrap ────────────────────────────────────────────────────────────────
 
-document.addEventListener('DOMContentLoaded', () => {
+document.addEventListener('DOMContentLoaded', async () => {
     AppI18n.applyTranslations();
     initDate();
+    wireKidPinScreen();
+
+    const session = await AUTH.getParentSession();
+    if (session) {
+        await AUTH.syncKidProfilesFromCloud();
+    }
 
     // Top nav: lang toggle
     const langBtn = document.getElementById('lang-toggle');

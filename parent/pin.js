@@ -2,10 +2,23 @@
 
 const db = window.SupabaseClient;
 
-let pinValue    = '';
-let pinMode     = 'verify'; // 'verify' | 'set' | 'confirm'
-let firstPin    = '';
-let lockTimer   = null;
+let pinValue          = '';
+let pinMode           = 'verify'; // 'verify' | 'set' | 'confirm'
+let firstPin          = '';
+let lockTimer         = null;
+let isChangePinFlow   = false;
+let isForgotResetFlow = false;
+let parentSessionEmail = '';
+
+function t(key, vars) {
+    return (typeof AppI18n !== 'undefined') ? AppI18n.t(key, vars) : key;
+}
+
+function applyPinI18n() {
+    if (typeof AppI18n === 'undefined') return;
+    document.documentElement.lang = AppI18n.getLang() === 'zh' ? 'zh' : 'en';
+    AppI18n.applyTranslations();
+}
 
 // ── DOM helpers ───────────────────────────────────────────────────────────────
 
@@ -25,6 +38,11 @@ function flashError(msg) {
     }, 500);
     pinValue = '';
     document.getElementById('pin-input').value = '';
+}
+
+function flashPasswordError(msg) {
+    const el = document.getElementById('password-attempt-msg');
+    if (el) el.textContent = msg;
 }
 
 function setLocked(remainingMs) {
@@ -57,6 +75,67 @@ function setLocked(remainingMs) {
     countdown.textContent = Math.ceil(remainingMs / 1000);
 }
 
+function showPinUi() {
+    document.getElementById('pin-pin-ui')?.classList.remove('hidden');
+    document.getElementById('password-gate')?.classList.remove('visible');
+    document.getElementById('forgot-pin-btn').style.display = isChangePinFlow ? 'none' : 'inline-block';
+}
+
+function showPasswordGate() {
+    document.getElementById('pin-pin-ui')?.classList.add('hidden');
+    document.getElementById('password-gate')?.classList.add('visible');
+    document.getElementById('forgot-pin-btn').style.display = 'none';
+    document.getElementById('password-attempt-msg').textContent = '';
+    const verifyBtn = document.getElementById('forgot-verify-btn');
+    if (verifyBtn) verifyBtn.disabled = false;
+    const emailEl = document.getElementById('forgot-email');
+    if (emailEl) emailEl.value = parentSessionEmail;
+    document.getElementById('forgot-password').value = '';
+    setTimeout(() => document.getElementById('forgot-password')?.focus(), 100);
+}
+
+function enterNewPinSetup(titleKey, subtitleKey) {
+    pinMode = 'set';
+    firstPin = '';
+    document.getElementById('pin-logo').textContent = '🔑';
+    document.getElementById('pin-title').textContent = t(titleKey);
+    document.getElementById('pin-subtitle').textContent = t(subtitleKey);
+    let stepLabel = document.getElementById('pin-step-label');
+    if (!stepLabel) {
+        stepLabel = document.createElement('p');
+        stepLabel.className = 'pin-step-label';
+        stepLabel.id = 'pin-step-label';
+        document.getElementById('pin-dots').before(stepLabel);
+    }
+    stepLabel.textContent = t('parent.pin_step_new');
+    showPinUi();
+    updateDots();
+    document.getElementById('pin-attempt-msg').textContent = '';
+    document.getElementById('pin-input').focus();
+}
+
+function enterChangePinSetup() {
+    isForgotResetFlow = false;
+    enterNewPinSetup('parent.pin_change_title', 'parent.pin_change_subtitle');
+}
+
+function enterForgotPinReset() {
+    isForgotResetFlow = true;
+    AUTH.resetPinFail();
+    enterNewPinSetup('parent.pin_reset_title', 'parent.pin_reset_subtitle');
+}
+
+function resetPinSetupUI() {
+    pinMode  = 'set';
+    firstPin = '';
+    const stepLabel = document.getElementById('pin-step-label');
+    if (stepLabel) stepLabel.textContent = t('parent.pin_step_new');
+    document.getElementById('pin-subtitle').textContent = t(
+        isForgotResetFlow ? 'parent.pin_reset_subtitle' : 'parent.pin_set_subtitle'
+    );
+    updateDots();
+}
+
 // ── PIN submission ────────────────────────────────────────────────────────────
 
 async function submitPin() {
@@ -67,26 +146,26 @@ async function submitPin() {
     if (pinMode === 'set') {
         firstPin = submitted;
         pinMode  = 'confirm';
-        document.getElementById('pin-subtitle').textContent = 'Confirm your PIN.';
-        document.getElementById('pin-step-label').textContent = 'Confirm PIN';
+        document.getElementById('pin-subtitle').textContent = t('parent.pin_confirm_subtitle');
+        document.getElementById('pin-step-label').textContent = t('parent.pin_step_confirm');
         updateDots();
         return;
     }
 
     if (pinMode === 'confirm') {
         if (submitted !== firstPin) {
-            flashError("PINs don't match. Try again.");
+            flashError(t('parent.pin_mismatch'));
             pinMode  = 'set';
             firstPin = '';
-            document.getElementById('pin-subtitle').textContent = 'Choose a 4-digit PIN.';
+            document.getElementById('pin-subtitle').textContent = t(
+                isForgotResetFlow ? 'parent.pin_reset_subtitle' : 'parent.pin_set_subtitle'
+            );
             return;
         }
-        // Save PIN via RPC
         await savePin(submitted);
         return;
     }
 
-    // verify mode
     await verifyPin(submitted);
 }
 
@@ -97,45 +176,68 @@ async function verifyPin(raw) {
             const fails    = AUTH.incrementPinFail();
             const lockLeft = AUTH.getPinLockRemaining();
             if (lockLeft > 0) {
-                flashError(`Wrong PIN. Locked for ${Math.ceil(lockLeft / 1000)}s.`);
+                flashError(t('parent.pin_locked', { s: Math.ceil(lockLeft / 1000) }));
                 setLocked(lockLeft);
             } else {
                 const remaining = 5 - fails;
                 flashError(remaining > 0
-                    ? `Wrong PIN. ${remaining} attempt${remaining !== 1 ? 's' : ''} left.`
-                    : 'Wrong PIN.');
+                    ? t('parent.pin_wrong_attempts', { n: remaining })
+                    : t('parent.pin_wrong'));
             }
         } else {
             AUTH.resetPinFail();
+            if (isChangePinFlow) {
+                enterChangePinSetup();
+                return;
+            }
             AUTH.setPinVerified(true);
             window.location.href = 'dashboard.html';
         }
     } catch {
-        flashError('Network error. Please try again.');
+        flashError(t('parent.pin_network_error'));
     }
 }
 
-function resetPinSetupUI() {
-    pinMode  = 'set';
-    firstPin = '';
-    const stepLabel = document.getElementById('pin-step-label');
-    if (stepLabel) stepLabel.textContent = 'New PIN';
-    document.getElementById('pin-subtitle').textContent = 'Choose a 4-digit PIN.';
-    updateDots();
+async function verifyPasswordAndReset() {
+    const password = document.getElementById('forgot-password').value;
+    const btn = document.getElementById('forgot-verify-btn');
+    if (!password) {
+        flashPasswordError(t('parent.pin_forgot_password_required'));
+        return;
+    }
+
+    btn.disabled = true;
+    flashPasswordError('');
+
+    try {
+        const { error } = await db.auth.signInWithPassword({
+            email: parentSessionEmail,
+            password,
+        });
+        if (error) {
+            flashPasswordError(t('parent.pin_forgot_password_wrong'));
+            btn.disabled = false;
+            return;
+        }
+        enterForgotPinReset();
+    } catch {
+        flashPasswordError(t('parent.pin_network_error'));
+        btn.disabled = false;
+    }
 }
 
 async function savePin(raw) {
     try {
         const { error } = await db.rpc('set_parent_pin', { raw_pin: raw });
         if (error) {
-            flashError(error.message || 'Could not save PIN. Please try again.');
+            flashError(error.message || t('parent.pin_save_error'));
             resetPinSetupUI();
             return;
         }
         AUTH.setPinVerified(true);
         window.location.href = 'dashboard.html';
     } catch (err) {
-        flashError(err.message || 'Network error. Please try again.');
+        flashError(err.message || t('parent.pin_network_error'));
         resetPinSetupUI();
     }
 }
@@ -161,47 +263,73 @@ function deleteDigit() {
 // ── Bootstrap ─────────────────────────────────────────────────────────────────
 
 document.addEventListener('DOMContentLoaded', async () => {
-    // Guard: must be authenticated
+    applyPinI18n();
+    isChangePinFlow = new URLSearchParams(window.location.search).get('change') === '1';
+
     const session = await AUTH.getParentSession();
     if (!session) {
         window.location.href = 'index.html';
         return;
     }
+    parentSessionEmail = session.user.email || '';
 
-    // Guard: already verified this session
-    if (AUTH.isPinVerified()) {
+    const { error: familyError } = await AUTH.ensureFamilyRegisteredFromSession(session);
+    if (familyError) {
+        sessionStorage.setItem('parent_setup_error', familyError);
+        window.location.href = 'index.html';
+        return;
+    }
+
+    if (AUTH.isPinVerified() && !isChangePinFlow) {
         window.location.href = 'dashboard.html';
         return;
     }
 
-    // Check if lockout is in effect from a previous failed run this session
+    if (isChangePinFlow) {
+        document.getElementById('pin-title').textContent = t('parent.pin_verify_current_title');
+        document.getElementById('pin-subtitle').textContent = t('parent.pin_verify_current_subtitle');
+        document.getElementById('cancel-pin-btn').style.display = 'block';
+    } else {
+        document.getElementById('pin-title').textContent = t('parent.pin_gate_title');
+        document.getElementById('pin-subtitle').textContent = t('parent.pin_gate_subtitle');
+    }
+
     const lockLeft = AUTH.getPinLockRemaining();
     if (lockLeft > 0) setLocked(lockLeft);
 
-    // Check if PIN has been set yet
+    let hasPinSet = true;
     try {
-        const { data: hasPinSet } = await db.rpc('check_pin_exists');
+        const { data } = await db.rpc('check_pin_exists');
+        hasPinSet = !!data;
         if (!hasPinSet) {
             pinMode = 'set';
-            document.getElementById('pin-logo').textContent    = '🔑';
-            document.getElementById('pin-title').textContent   = 'Set Your PIN';
-            document.getElementById('pin-subtitle').textContent = 'Choose a 4-digit PIN.';
-            // Insert step label above dots
+            document.getElementById('pin-logo').textContent = '🔑';
+            document.getElementById('pin-title').textContent = t('parent.pin_set_title');
+            document.getElementById('pin-subtitle').textContent = t('parent.pin_set_subtitle');
             const stepLabel = document.createElement('p');
             stepLabel.className = 'pin-step-label';
-            stepLabel.id        = 'pin-step-label';
-            stepLabel.textContent = 'New PIN';
+            stepLabel.id = 'pin-step-label';
+            stepLabel.textContent = t('parent.pin_step_new');
             document.getElementById('pin-dots').before(stepLabel);
+            document.getElementById('forgot-pin-btn').style.display = 'none';
         }
-    } catch { /* fallback to verify mode */ }
+    } catch { /* fallback */ }
 
-    // Keypad
+    if (!isChangePinFlow && hasPinSet) {
+        document.getElementById('forgot-pin-btn').style.display = 'inline-block';
+    }
+
     document.querySelectorAll('.pin-key[data-digit]').forEach(btn => {
-        btn.addEventListener('click', () => appendDigit(btn.dataset.digit));
+        btn.addEventListener('click', () => {
+            appendDigit(btn.dataset.digit);
+            hiddenInput.focus();
+        });
     });
-    document.getElementById('pin-del').addEventListener('click', deleteDigit);
+    document.getElementById('pin-del').addEventListener('click', () => {
+        deleteDigit();
+        hiddenInput.focus();
+    });
 
-    // Hidden input (physical keyboard / iOS keyboard)
     const hiddenInput = document.getElementById('pin-input');
     hiddenInput.addEventListener('input', () => {
         const clean = hiddenInput.value.replace(/\D/g, '').slice(0, 4);
@@ -210,13 +338,37 @@ document.addEventListener('DOMContentLoaded', async () => {
         updateDots();
         if (pinValue.length === 4) submitPin();
     });
+    hiddenInput.addEventListener('keydown', (e) => {
+        if (e.key === 'Backspace') {
+            e.preventDefault();
+            deleteDigit();
+            hiddenInput.value = pinValue;
+        }
+    });
 
-    // Tap anywhere on the dots area to focus hidden input
     document.getElementById('pin-dots').addEventListener('click', () => hiddenInput.focus());
+    document.querySelector('.container')?.addEventListener('click', (e) => {
+        if (!e.target.closest('.pin-key')
+            && !e.target.closest('#cancel-pin-btn')
+            && !e.target.closest('#forgot-pin-btn')
+            && !e.target.closest('#password-gate')
+            && !e.target.closest('#forgot-back-btn')) {
+            hiddenInput.focus();
+        }
+    });
 
-    // Sign out
-    document.getElementById('signout-btn').addEventListener('click', async () => {
-        await AUTH.signOut();
-        window.location.href = 'index.html';
+    hiddenInput.focus();
+
+    document.getElementById('forgot-pin-btn')?.addEventListener('click', () => showPasswordGate());
+    document.getElementById('forgot-back-btn')?.addEventListener('click', () => showPinUi());
+    document.getElementById('forgot-verify-btn')?.addEventListener('click', verifyPasswordAndReset);
+    document.getElementById('forgot-password')?.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter') {
+            e.preventDefault();
+            verifyPasswordAndReset();
+        }
+    });
+    document.getElementById('cancel-pin-btn')?.addEventListener('click', () => {
+        window.location.href = 'dashboard.html';
     });
 });

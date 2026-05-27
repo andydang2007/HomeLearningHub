@@ -1,0 +1,622 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Admin Console — HomeLearningHub</title>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --bg:      #0f1117;
+    --surface: #1a1d27;
+    --card:    #22263a;
+    --border:  #2e3350;
+    --accent:  #5b8dee;
+    --green:   #43c97a;
+    --red:     #e05454;
+    --yellow:  #f0c060;
+    --text:    #e8eaf6;
+    --muted:   #7b82a6;
+    --radius:  10px;
+  }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'Segoe UI', system-ui, sans-serif;
+    font-size: 14px;
+    min-height: 100vh;
+    padding: 24px 16px;
+  }
+
+  h1 { font-size: 20px; font-weight: 700; color: var(--accent); margin-bottom: 4px; }
+  h2 { font-size: 15px; font-weight: 600; margin-bottom: 12px; color: var(--text); }
+  h3 { font-size: 13px; font-weight: 600; color: var(--muted); text-transform: uppercase;
+       letter-spacing: .06em; margin-bottom: 8px; }
+
+  .wrap { max-width: 860px; margin: 0 auto; }
+
+  /* ── Topbar ── */
+  .topbar {
+    display: flex; align-items: center; justify-content: space-between;
+    margin-bottom: 28px;
+  }
+  .topbar-right { display: flex; align-items: center; gap: 10px; font-size: 12px; color: var(--muted); }
+
+  /* ── Cards ── */
+  .card {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 18px 20px;
+    margin-bottom: 16px;
+  }
+
+  /* ── Forms / Inputs ── */
+  input[type="text"],
+  input[type="email"],
+  input[type="password"],
+  input[type="number"],
+  select {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    color: var(--text);
+    padding: 7px 10px;
+    font-size: 13px;
+    outline: none;
+    transition: border-color .2s;
+  }
+  input:focus, select:focus { border-color: var(--accent); }
+
+  /* ── Buttons ── */
+  button {
+    cursor: pointer;
+    border: none;
+    border-radius: 6px;
+    font-size: 13px;
+    font-weight: 600;
+    padding: 7px 14px;
+    transition: opacity .15s, transform .1s;
+  }
+  button:active { transform: scale(.97); }
+  button:disabled { opacity: .4; cursor: default; }
+
+  .btn-primary  { background: var(--accent); color: #fff; }
+  .btn-success  { background: var(--green);  color: #fff; }
+  .btn-danger   { background: var(--red);    color: #fff; }
+  .btn-ghost    { background: transparent; color: var(--muted);
+                  border: 1px solid var(--border); }
+  .btn-sm       { padding: 5px 10px; font-size: 12px; }
+
+  /* ── Login screen ── */
+  #login-screen {
+    max-width: 380px; margin: 60px auto;
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    padding: 32px 28px;
+  }
+  #login-screen h1 { text-align: center; margin-bottom: 6px; }
+  #login-screen p  { text-align: center; color: var(--muted); margin-bottom: 22px; font-size: 13px; }
+  .field { display: flex; flex-direction: column; gap: 5px; margin-bottom: 14px; }
+  .field label { font-size: 12px; color: var(--muted); }
+  .field input  { width: 100%; }
+  #login-btn    { width: 100%; padding: 10px; font-size: 14px; }
+  #login-err    { color: var(--red); font-size: 12px; margin-top: 10px; text-align: center; min-height: 16px; }
+
+  /* ── Search row ── */
+  .search-row { display: flex; gap: 8px; align-items: center; }
+  .search-row input { flex: 1; }
+
+  /* ── User info ── */
+  .info-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+    gap: 12px;
+    margin-bottom: 14px;
+  }
+  .info-item { display: flex; flex-direction: column; gap: 3px; }
+  .info-item .lbl { font-size: 11px; color: var(--muted); text-transform: uppercase; }
+  .info-item .val { font-weight: 600; font-size: 14px; }
+
+  .plan-row { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+  .plan-row label { font-size: 12px; color: var(--muted); }
+  .plan-row select { flex: 1; min-width: 100px; max-width: 160px; }
+
+  /* ── Profile list ── */
+  .profile-list { display: flex; flex-direction: column; gap: 20px; }
+
+  .profile-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    overflow: hidden;
+  }
+  .profile-header {
+    display: flex; align-items: center; gap: 12px;
+    padding: 14px 16px;
+    background: var(--card);
+    border-bottom: 1px solid var(--border);
+    cursor: pointer;
+    user-select: none;
+  }
+  .profile-avatar { font-size: 28px; }
+  .profile-meta   { flex: 1; }
+  .profile-name   { font-weight: 700; font-size: 15px; }
+  .profile-sub    { font-size: 12px; color: var(--muted); margin-top: 2px; }
+  .profile-toggle { color: var(--muted); font-size: 18px; transition: transform .2s; }
+  .profile-toggle.open { transform: rotate(180deg); }
+
+  .profile-body { padding: 16px; display: none; }
+  .profile-body.open { display: block; }
+
+  /* ── Wallet editor ── */
+  .wallet-row {
+    display: flex; gap: 10px; align-items: center;
+    flex-wrap: wrap; margin-bottom: 18px;
+  }
+  .wallet-input-group { display: flex; align-items: center; gap: 6px; }
+  .wallet-input-group span { font-size: 18px; }
+  .wallet-input-group input { width: 80px; }
+
+  /* ── Badge table ── */
+  .badge-editor { margin-top: 4px; }
+  .badge-category-header {
+    font-size: 11px; font-weight: 700; text-transform: uppercase;
+    letter-spacing: .07em; color: var(--accent);
+    padding: 8px 0 4px;
+    border-bottom: 1px solid var(--border);
+    margin-bottom: 6px;
+  }
+  .badge-table { width: 100%; border-collapse: collapse; margin-bottom: 12px; }
+  .badge-table th {
+    font-size: 11px; color: var(--muted); text-align: left;
+    padding: 4px 6px; border-bottom: 1px solid var(--border);
+  }
+  .badge-table td { padding: 5px 6px; vertical-align: middle; }
+  .badge-table tr:hover td { background: rgba(91,141,238,.05); }
+
+  .badge-icon-cell { font-size: 16px; width: 28px; text-align: center; }
+  .badge-code-cell { font-family: monospace; font-size: 12px; color: var(--muted); }
+  .badge-name-cell { font-size: 13px; }
+  .badge-cur-cell  { font-weight: 600; font-size: 13px; color: var(--yellow); width: 50px; text-align: right; }
+  .badge-inp-cell  { width: 64px; }
+  .badge-inp-cell input { width: 60px; }
+  .badge-act-cell  { width: 50px; }
+
+  /* ── Toast ── */
+  #toast {
+    position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%);
+    background: var(--card); border: 1px solid var(--border);
+    border-radius: 8px; padding: 10px 18px;
+    font-size: 13px; font-weight: 600;
+    box-shadow: 0 4px 20px rgba(0,0,0,.4);
+    opacity: 0; pointer-events: none;
+    transition: opacity .25s;
+    z-index: 9999;
+  }
+  #toast.show { opacity: 1; }
+  #toast.ok  { border-color: var(--green); color: var(--green); }
+  #toast.err { border-color: var(--red);   color: var(--red);   }
+
+  /* ── Misc ── */
+  .separator { height: 1px; background: var(--border); margin: 16px 0; }
+  .hidden { display: none !important; }
+  .spin {
+    display: inline-block; animation: spin .7s linear infinite;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+</style>
+</head>
+<body>
+
+<!-- ═══════════════════════════════════ LOGIN ═════════════════════════════════ -->
+<div id="login-screen">
+  <h1>🛠 Admin Console</h1>
+  <p>HomeLearningHub · Dev Tool</p>
+  <div class="field">
+    <label>Admin Email</label>
+    <input type="email" id="login-email" placeholder="you@example.com" autocomplete="username">
+  </div>
+  <div class="field">
+    <label>Password</label>
+    <input type="password" id="login-pass" placeholder="••••••••" autocomplete="current-password">
+  </div>
+  <button class="btn-primary" id="login-btn">Sign In</button>
+  <div id="login-err"></div>
+</div>
+
+<!-- ═══════════════════════════════════ MAIN ══════════════════════════════════ -->
+<div id="main-screen" class="wrap hidden">
+
+  <!-- Topbar -->
+  <div class="topbar">
+    <h1>🛠 Admin Console</h1>
+    <div class="topbar-right">
+      <span id="admin-email-label"></span>
+      <button class="btn-ghost btn-sm" id="signout-btn">Sign Out</button>
+    </div>
+  </div>
+
+  <!-- Search -->
+  <div class="card">
+    <h2>Search User by Email</h2>
+    <div class="search-row">
+      <input type="email" id="search-email" placeholder="user@example.com" style="max-width:320px">
+      <button class="btn-primary" id="search-btn">Search</button>
+    </div>
+  </div>
+
+  <!-- User info -->
+  <div id="user-section" class="hidden">
+    <div class="card">
+      <h2>Account Info</h2>
+      <div class="info-grid">
+        <div class="info-item">
+          <span class="lbl">Email</span>
+          <span class="val" id="ui-email">—</span>
+        </div>
+        <div class="info-item">
+          <span class="lbl">Family ID</span>
+          <span class="val" id="ui-family-id" style="font-size:11px;font-family:monospace">—</span>
+        </div>
+        <div class="info-item">
+          <span class="lbl">Account Type</span>
+          <span class="val" id="ui-account-type">—</span>
+        </div>
+        <div class="info-item">
+          <span class="lbl">Plan</span>
+          <span class="val" id="ui-plan">—</span>
+        </div>
+      </div>
+
+      <div class="separator"></div>
+
+      <h3>Change Plan</h3>
+      <div class="plan-row">
+        <label>Account type</label>
+        <select id="set-account-type">
+          <option value="single_child">single_child</option>
+          <option value="multi_child">multi_child</option>
+        </select>
+        <label>Plan tier</label>
+        <select id="set-plan-tier">
+          <option value="basic">basic</option>
+          <option value="premium">premium</option>
+        </select>
+        <button class="btn-success" id="save-plan-btn">Save Plan</button>
+      </div>
+    </div>
+
+    <!-- Profiles -->
+    <div class="card">
+      <h2>Kid Profiles</h2>
+      <div class="profile-list" id="profile-list"></div>
+    </div>
+  </div>
+
+</div>
+
+<!-- Toast -->
+<div id="toast"></div>
+
+<!-- ═══════════════════════════════════ JS ════════════════════════════════════ -->
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+<script>
+// ── Supabase init ──────────────────────────────────────────────────────────────
+const SUPABASE_URL      = 'https://dtrbawiimrfidsnxlfmw.supabase.co';
+const SUPABASE_ANON_KEY = 'sb_publishable_obiVpwztUSpIoeR8Qy69Zw_Xs4Mc1VH';
+const db = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+// ── State ──────────────────────────────────────────────────────────────────────
+let currentFamilyId = null;
+let badgeDefs       = [];       // [{badge_code, display_name_en, icon, category}]
+let profileBadges   = {};       // profileId → [{badge_code, count_available}]
+
+// ── Toast ──────────────────────────────────────────────────────────────────────
+let toastTimer;
+function toast(msg, type = 'ok') {
+  const el = document.getElementById('toast');
+  el.textContent = msg;
+  el.className   = `show ${type}`;
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => { el.className = ''; }, 2800);
+}
+
+// ── RPC helper ────────────────────────────────────────────────────────────────
+async function rpc(fn, args = {}) {
+  const { data, error } = await db.rpc(fn, args);
+  if (error) throw error;
+  return data;
+}
+
+// ── Auth ──────────────────────────────────────────────────────────────────────
+document.getElementById('login-btn').addEventListener('click', async () => {
+  const email = document.getElementById('login-email').value.trim();
+  const pass  = document.getElementById('login-pass').value;
+  const errEl = document.getElementById('login-err');
+  const btn   = document.getElementById('login-btn');
+  errEl.textContent = '';
+  btn.disabled = true;
+  btn.textContent = '⏳ Signing in…';
+
+  try {
+    const { error } = await db.auth.signInWithPassword({ email, password: pass });
+    if (error) throw error;
+
+    const ok = await rpc('is_admin');
+    if (!ok) {
+      await db.auth.signOut();
+      throw new Error('This account is not in the admin allow-list.');
+    }
+
+    // Load badge definitions once after login
+    badgeDefs = await rpc('admin_list_badge_definitions') || [];
+
+    document.getElementById('admin-email-label').textContent = email;
+    document.getElementById('login-screen').classList.add('hidden');
+    document.getElementById('main-screen').classList.remove('hidden');
+  } catch (e) {
+    errEl.textContent = e.message || 'Sign-in failed.';
+  } finally {
+    btn.disabled = false;
+    btn.textContent = 'Sign In';
+  }
+});
+
+document.getElementById('login-pass').addEventListener('keydown', e => {
+  if (e.key === 'Enter') document.getElementById('login-btn').click();
+});
+
+document.getElementById('signout-btn').addEventListener('click', async () => {
+  await db.auth.signOut();
+  location.reload();
+});
+
+// ── Search ────────────────────────────────────────────────────────────────────
+document.getElementById('search-btn').addEventListener('click', doSearch);
+document.getElementById('search-email').addEventListener('keydown', e => {
+  if (e.key === 'Enter') doSearch();
+});
+
+async function doSearch() {
+  const email = document.getElementById('search-email').value.trim();
+  if (!email) return;
+  const btn = document.getElementById('search-btn');
+  btn.disabled    = true;
+  btn.textContent = '⏳';
+
+  try {
+    const result = await rpc('admin_find_user_by_email', { p_email: email });
+    if (!result.found) {
+      toast('User not found: ' + email, 'err');
+      return;
+    }
+    renderUserSection(result);
+  } catch (e) {
+    toast(e.message, 'err');
+  } finally {
+    btn.disabled    = false;
+    btn.textContent = 'Search';
+  }
+}
+
+// ── User section ──────────────────────────────────────────────────────────────
+function renderUserSection(data) {
+  currentFamilyId = data.family_id;
+
+  document.getElementById('ui-email').textContent       = data.email;
+  document.getElementById('ui-family-id').textContent   = data.family_id || '—';
+  document.getElementById('ui-account-type').textContent = data.account_type || '—';
+  document.getElementById('ui-plan').textContent        = data.plan_tier || '—';
+
+  document.getElementById('set-account-type').value = data.account_type || 'single_child';
+  document.getElementById('set-plan-tier').value     = data.plan_tier    || 'basic';
+
+  const list = document.getElementById('profile-list');
+  list.innerHTML = '';
+  (data.profiles || []).forEach(p => renderProfileCard(p, list));
+
+  document.getElementById('user-section').classList.remove('hidden');
+}
+
+// ── Save plan ─────────────────────────────────────────────────────────────────
+document.getElementById('save-plan-btn').addEventListener('click', async () => {
+  if (!currentFamilyId) return;
+  const btn = document.getElementById('save-plan-btn');
+  btn.disabled = true; btn.textContent = '…';
+  try {
+    await rpc('admin_set_family_plan', {
+      p_family_id:    currentFamilyId,
+      p_plan_tier:    document.getElementById('set-plan-tier').value,
+      p_account_type: document.getElementById('set-account-type').value,
+    });
+    document.getElementById('ui-account-type').textContent = document.getElementById('set-account-type').value;
+    document.getElementById('ui-plan').textContent         = document.getElementById('set-plan-tier').value;
+    toast('Plan updated ✓');
+  } catch (e) {
+    toast(e.message, 'err');
+  } finally {
+    btn.disabled = false; btn.textContent = 'Save Plan';
+  }
+});
+
+// ── Profile card ──────────────────────────────────────────────────────────────
+function renderProfileCard(p, container) {
+  const card   = document.createElement('div');
+  card.className = 'profile-card';
+  card.dataset.profileId = p.id;
+
+  const tierEmoji = { Bronze: '🥉', Silver: '🥈', Gold: '🥇', Diamond: '💎', Legend: '⭐' };
+
+  card.innerHTML = `
+    <div class="profile-header" data-toggle>
+      <div class="profile-avatar">🧒</div>
+      <div class="profile-meta">
+        <div class="profile-name">${esc(p.display_name)} ${p.grade ? `<span style="font-size:12px;color:var(--muted)">(${esc(p.grade)})</span>` : ''}</div>
+        <div class="profile-sub">
+          Level ${p.level_no} ${tierEmoji[p.tier_name] || ''} ${esc(p.tier_name)}
+          &nbsp;·&nbsp; 💎 ${p.crystal_balance} &nbsp;·&nbsp; 🪙 ${p.coin_balance}
+          &nbsp;·&nbsp; 🏅 ${p.badge_total} badges
+        </div>
+      </div>
+      <span class="profile-toggle">▾</span>
+    </div>
+    <div class="profile-body">
+      <h3>Wallet</h3>
+      <div class="wallet-row">
+        <div class="wallet-input-group">
+          <span>💎</span>
+          <input type="number" min="0" class="inp-crystals" value="${p.crystal_balance}" style="width:80px">
+        </div>
+        <div class="wallet-input-group">
+          <span>🪙</span>
+          <input type="number" min="0" class="inp-coins" value="${p.coin_balance}" style="width:80px">
+        </div>
+        <button class="btn-success btn-sm save-wallet-btn">Set Wallet</button>
+      </div>
+      <div class="separator"></div>
+      <h3>Badges</h3>
+      <div class="badge-editor" id="badges-${p.id}">
+        <span class="spin">⏳</span> Loading badges…
+      </div>
+    </div>`;
+
+  // Toggle collapse
+  card.querySelector('[data-toggle]').addEventListener('click', async () => {
+    const body   = card.querySelector('.profile-body');
+    const toggle = card.querySelector('.profile-toggle');
+    const isOpen = body.classList.toggle('open');
+    toggle.classList.toggle('open', isOpen);
+    if (isOpen && !profileBadges[p.id]) {
+      await loadProfileBadges(p.id, card);
+    }
+  });
+
+  // Save wallet
+  card.querySelector('.save-wallet-btn').addEventListener('click', async () => {
+    const btn = card.querySelector('.save-wallet-btn');
+    btn.disabled = true; btn.textContent = '…';
+    const crystals = parseInt(card.querySelector('.inp-crystals').value, 10);
+    const coins    = parseInt(card.querySelector('.inp-coins').value, 10);
+    try {
+      await rpc('admin_set_wallet', {
+        p_profile_id: p.id,
+        p_crystals: isNaN(crystals) ? 0 : crystals,
+        p_coins:    isNaN(coins)    ? 0 : coins,
+      });
+      toast(`Wallet saved ✓`);
+    } catch (e) {
+      toast(e.message, 'err');
+    } finally {
+      btn.disabled = false; btn.textContent = 'Set Wallet';
+    }
+  });
+
+  container.appendChild(card);
+}
+
+// ── Load & render badge editor ─────────────────────────────────────────────────
+async function loadProfileBadges(profileId, card) {
+  const container = card.querySelector(`#badges-${profileId}`);
+  try {
+    const badges = await rpc('admin_get_profile_badges', { p_profile_id: profileId });
+    profileBadges[profileId] = badges || [];
+    renderBadgeEditor(profileId, badges || [], container);
+  } catch (e) {
+    container.innerHTML = `<span style="color:var(--red)">${esc(e.message)}</span>`;
+  }
+}
+
+function renderBadgeEditor(profileId, badges, container) {
+  // Group by category
+  const cats = {};
+  badges.forEach(b => {
+    if (!cats[b.category]) cats[b.category] = [];
+    cats[b.category].push(b);
+  });
+
+  const catOrder = ['subject', 'skill', 'streak', 'hidden'];
+  const catLabel = { subject: '🎓 Subject', skill: '🌟 Skill', streak: '🔥 Streak', hidden: '🎁 Hidden' };
+
+  let html = '';
+  catOrder.forEach(cat => {
+    if (!cats[cat] || !cats[cat].length) return;
+    html += `<div class="badge-category-header">${catLabel[cat] || cat}</div>`;
+    html += `<table class="badge-table">
+      <thead><tr>
+        <th></th><th>Code</th><th>Name</th>
+        <th style="text-align:right">Current</th>
+        <th>New</th><th></th>
+      </tr></thead><tbody>`;
+    cats[cat].forEach(b => {
+      html += `
+        <tr data-badge-code="${esc(b.badge_code)}">
+          <td class="badge-icon-cell">${b.icon || '🏅'}</td>
+          <td class="badge-code-cell">${esc(b.badge_code)}</td>
+          <td class="badge-name-cell">${esc(b.display_name_en)}</td>
+          <td class="badge-cur-cell cur-val">${b.count_available}</td>
+          <td class="badge-inp-cell"><input type="number" min="0" value="${b.count_available}" class="badge-new-inp"></td>
+          <td class="badge-act-cell">
+            <button class="btn-primary btn-sm set-badge-btn">Set</button>
+          </td>
+        </tr>`;
+    });
+    html += '</tbody></table>';
+  });
+
+  container.innerHTML = html || '<span style="color:var(--muted)">No badges found.</span>';
+
+  // Wire Set buttons
+  container.querySelectorAll('.set-badge-btn').forEach(btn => {
+    btn.addEventListener('click', async () => {
+      const row      = btn.closest('tr');
+      const code     = row.dataset.badgeCode;
+      const newCount = parseInt(row.querySelector('.badge-new-inp').value, 10);
+      if (isNaN(newCount) || newCount < 0) {
+        toast('Invalid count', 'err'); return;
+      }
+      btn.disabled = true; btn.textContent = '…';
+      try {
+        await rpc('admin_set_badge_count', {
+          p_profile_id: profileId,
+          p_badge_code: code,
+          p_count:      newCount,
+        });
+        row.querySelector('.cur-val').textContent = newCount;
+        toast(`${code} → ${newCount} ✓`);
+      } catch (e) {
+        toast(e.message, 'err');
+      } finally {
+        btn.disabled = false; btn.textContent = 'Set';
+      }
+    });
+  });
+}
+
+// ── Util ──────────────────────────────────────────────────────────────────────
+function esc(s) {
+  return String(s ?? '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
+
+// ── Auto-restore session on page load ────────────────────────────────────────
+(async () => {
+  const { data: { session } } = await db.auth.getSession();
+  if (!session) return;
+
+  try {
+    const ok = await rpc('is_admin');
+    if (!ok) { await db.auth.signOut(); return; }
+
+    badgeDefs = await rpc('admin_list_badge_definitions') || [];
+    document.getElementById('admin-email-label').textContent = session.user.email;
+    document.getElementById('login-email').value = session.user.email;
+    document.getElementById('login-screen').classList.add('hidden');
+    document.getElementById('main-screen').classList.remove('hidden');
+  } catch { /* not admin or RPC missing, stay on login */ }
+})();
+</script>
+</body>
+</html>

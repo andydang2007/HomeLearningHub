@@ -2,6 +2,30 @@
 
 const db = window.SupabaseClient;
 
+function t(key) {
+    return (typeof AppI18n !== 'undefined') ? AppI18n.t(key) : key;
+}
+
+function applyParentAuthI18n() {
+    if (typeof AppI18n === 'undefined') return;
+    document.documentElement.lang = AppI18n.getLang() === 'zh' ? 'zh' : 'en';
+    AppI18n.applyTranslations();
+    const langBtn = document.getElementById('lang-toggle');
+    if (langBtn) langBtn.textContent = AppI18n.t('lang.toggle');
+}
+
+function setAuthToggleHtml(showRegisterPrompt) {
+    const el = authToggle();
+    if (!el) return;
+    if (showRegisterPrompt) {
+        el.innerHTML = `${t('auth.prompt_no_account')} <a href="#" id="toggle-link">${t('auth.link_register')}</a>`;
+        bindToggleLink(false);
+    } else {
+        el.innerHTML = `${t('auth.prompt_have_account')} <a href="#" id="toggle-link">${t('auth.link_sign_in')}</a>`;
+        bindToggleLink(true);
+    }
+}
+
 const signinForm    = () => document.getElementById('signin-form');
 const registerForm  = () => document.getElementById('register-form');
 const forgotForm    = () => document.getElementById('forgot-form');
@@ -55,9 +79,9 @@ function showSignInView() {
     hideAllForms();
     signinForm().style.display = 'block';
     authToggle().style.display = 'block';
-    authToggle().innerHTML = "Don't have an account? <a href=\"#\" id=\"toggle-link\">Register</a>";
-    subtitle().textContent = "Sign in to manage your kids' profiles.";
-    bindToggleLink(false);
+    setAuthToggleHtml(true);
+    subtitle().dataset.i18n = 'auth.subtitle_signin';
+    subtitle().textContent = t('auth.subtitle_signin');
     bindForgotLink();
 }
 
@@ -65,23 +89,25 @@ function showRegisterView() {
     hideAllForms();
     registerForm().style.display = 'block';
     authToggle().style.display = 'block';
-    authToggle().innerHTML = 'Already have an account? <a href="#" id="toggle-link">Sign In</a>';
-    subtitle().textContent = 'Create a free parent account.';
-    bindToggleLink(true);
+    setAuthToggleHtml(false);
+    subtitle().dataset.i18n = 'auth.subtitle_register';
+    subtitle().textContent = t('auth.subtitle_register');
 }
 
 function showForgotView() {
     hideAllForms();
     forgotForm().style.display = 'block';
     authToggle().style.display = 'none';
-    subtitle().textContent = 'Reset your password';
+    subtitle().dataset.i18n = 'auth.subtitle_forgot';
+    subtitle().textContent = t('auth.subtitle_forgot');
 }
 
 function showResetView() {
     hideAllForms();
     resetForm().style.display = 'block';
     authToggle().style.display = 'none';
-    subtitle().textContent = 'Choose a new password';
+    subtitle().dataset.i18n = 'auth.subtitle_reset';
+    subtitle().textContent = t('auth.subtitle_reset');
 }
 
 function bindToggleLink(fromRegister) {
@@ -112,6 +138,18 @@ function passwordsMatch(pass, confirm) {
 }
 
 async function handlePostSignIn() {
+    const session = await AUTH.getParentSession();
+    if (!session) {
+        showError('Session expired. Please sign in again.');
+        return;
+    }
+
+    const { error } = await AUTH.ensureFamilyRegisteredFromSession(session);
+    if (error) {
+        showError(error);
+        return;
+    }
+
     if (AUTH.isPinVerified()) {
         window.location.href = 'dashboard.html';
     } else {
@@ -128,6 +166,17 @@ function isRecoveryCallback() {
 
 // ── Bootstrap ────────────────────────────────────────────────────────────────
 document.addEventListener('DOMContentLoaded', async () => {
+    applyParentAuthI18n();
+    document.getElementById('lang-toggle')?.addEventListener('click', () => {
+        const next = AppI18n.getLang() === 'zh' ? 'en' : 'zh';
+        AppI18n.setLang(next);
+        applyParentAuthI18n();
+        if (signinForm().style.display !== 'none') showSignInView();
+        else if (registerForm().style.display !== 'none') showRegisterView();
+        else if (forgotForm().style.display !== 'none') showForgotView();
+        else if (resetForm().style.display !== 'none') showResetView();
+    });
+
     // Pick up tokens from email confirm / password-reset links in the URL hash
     try {
         await db.auth.getSession();
@@ -146,6 +195,11 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
 
     showSignInView();
+    const setupErr = sessionStorage.getItem('parent_setup_error');
+    if (setupErr) {
+        sessionStorage.removeItem('parent_setup_error');
+        showError(setupErr);
+    }
     bindSignInForm();
     bindRegisterForm();
     bindForgotForm();
@@ -197,9 +251,23 @@ function bindRegisterForm() {
             return;
         }
 
+        const consentEl = document.getElementById('reg-adult-consent');
+        if (!consentEl?.checked) {
+            showError(AppI18n.getLang() === 'zh'
+                ? '请确认您是父母或法定监护人。'
+                : 'Please confirm you are the parent or legal guardian.');
+            return;
+        }
+
+        AUTH.setFamilySetupPending({
+            displayName: name,
+            accountType: 'single_child',
+            adultAttestation: true,
+        });
+
         setLoading(btn, true);
         try {
-            const { error } = await db.auth.signUp({
+            const { data, error } = await db.auth.signUp({
                 email,
                 password: pass,
                 options: {
@@ -209,6 +277,17 @@ function bindRegisterForm() {
             });
             if (error) {
                 showError(error.message);
+            } else if (data?.session) {
+                const { error: familyError } = await AUTH.ensureFamilyRegistered({
+                    displayName: name,
+                    accountType: 'single_child',
+                    adultAttestation: true,
+                });
+                if (familyError) {
+                    showError(familyError);
+                } else {
+                    await handlePostSignIn();
+                }
             } else {
                 showInfo('Account created! If email confirmation is on, check your inbox — then sign in.');
                 registerForm().reset();

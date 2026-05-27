@@ -1,0 +1,159 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Forge — Family Learning Hub</title>
+    <link rel="apple-touch-icon" href="https://img.icons8.com/fluency/240/paper-plane.png">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@600;800;900&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="synthesis.css">
+</head>
+<body class="tier-Bronze">
+
+<!-- Ambient particle layer -->
+<canvas id="particle-canvas"></canvas>
+
+<!-- Loading screen -->
+<div id="loading-screen">
+    <div class="loading-orb"></div>
+    <p class="loading-text">Loading…</p>
+</div>
+
+<!-- Main synthesis page -->
+<div id="synth-main" style="display:none;">
+
+    <div class="synth-container">
+
+        <!-- Header -->
+        <div class="synth-header">
+            <button class="back-btn" id="back-btn" aria-label="Back">←</button>
+            <span class="synth-title" data-i18n="synth.title">Forge</span>
+        </div>
+
+        <!-- Level display: current → next -->
+        <div class="level-display">
+            <div class="level-orb-wrap">
+                <div class="level-orb current-orb" id="current-orb">
+                    <span class="orb-tier-emoji" id="current-tier-emoji">🥉</span>
+                    <span class="orb-level-num" id="current-level-num">L1</span>
+                </div>
+                <span class="orb-tier-label" id="current-tier-label">Bronze</span>
+            </div>
+
+            <div class="level-arrow-wrap">
+                <div class="level-arrow">→</div>
+            </div>
+
+            <div class="level-orb-wrap">
+                <div class="level-orb next-orb" id="next-orb">
+                    <span class="orb-tier-emoji" id="next-tier-emoji">🥉</span>
+                    <span class="orb-level-num" id="next-level-num">L2</span>
+                </div>
+                <span class="orb-tier-label" id="next-tier-label">Bronze</span>
+            </div>
+        </div>
+
+        <!-- Progress / cost panel -->
+        <div class="cost-panel">
+            <!-- Badge cost row -->
+            <div class="cost-row">
+                <span class="cost-icon">🏅</span>
+                <div class="cost-info">
+                    <div class="cost-label" data-i18n="synth.badges_needed">Badges</div>
+                    <div class="cost-progress-bar">
+                        <div class="cost-bar-fill" id="badge-bar-fill" style="width:0%"></div>
+                    </div>
+                </div>
+                <span class="cost-numbers" id="badge-numbers">0 / 10</span>
+            </div>
+
+            <!-- Crystal cost row (only visible for special levels) -->
+            <div class="cost-row" id="crystal-cost-row" style="display:none">
+                <span class="cost-icon">💎</span>
+                <div class="cost-info">
+                    <div class="cost-label" data-i18n="synth.crystals_needed">Crystals</div>
+                    <div class="cost-progress-bar">
+                        <div class="cost-bar-fill" id="crystal-bar-fill" style="width:0%"></div>
+                    </div>
+                    <div class="cost-detail" id="crystal-detail"></div>
+                </div>
+                <span class="cost-numbers" id="crystal-numbers">0 / 0</span>
+            </div>
+        </div>
+
+        <!-- Regular badges + single selector slider -->
+        <div class="section-heading">
+            <span data-i18n="synth.your_badges">Your Badges</span>
+        </div>
+        <div id="badge-list"></div>
+        <div class="single-slider-panel" id="single-slider-panel">
+            <div class="single-slider-header">
+                <div class="selected-badge-meta" id="selected-badge-meta" data-i18n="synth.choose_badge">Select a badge above</div>
+            </div>
+            <div class="single-slider-row">
+                <input class="badge-slider" type="range" id="single-badge-slider" min="0" max="0" value="0" step="1" disabled>
+                <div class="single-slider-num" id="single-slider-num">0</div>
+            </div>
+        </div>
+        <div id="confirmed-badges"></div>
+
+        <!-- Hidden badges section -->
+        <div id="hidden-section" style="display:none">
+            <div class="section-heading">
+                <span data-i18n="synth.hidden_badges">Hidden Badges ✨</span>
+            </div>
+            <div class="hidden-info-bar" id="hidden-info-bar"></div>
+            <div id="hidden-badge-list"></div>
+        </div>
+
+        <!-- Bottom spacer for fixed forge button -->
+        <div style="height:120px"></div>
+
+    </div><!-- /synth-container -->
+
+</div><!-- /synth-main -->
+
+<!-- Hidden badge modal -->
+<div class="hidden-modal" id="hidden-modal" style="display:none">
+    <div class="hidden-modal-card">
+        <button class="hidden-modal-close" id="hidden-modal-close" aria-label="Close">✕</button>
+        <div class="hidden-selected-meta" id="hidden-selected-meta">Select hidden badge</div>
+        <div class="hidden-mode-group">
+            <button class="hidden-mode-btn" id="hidden-mode-badges">Badges</button>
+            <button class="hidden-mode-btn" id="hidden-mode-crystals">Crystals</button>
+        </div>
+        <div class="single-slider-row">
+            <input class="badge-slider" type="range" id="hidden-qty-slider" min="0" max="0" value="0" step="1" disabled>
+            <div class="single-slider-num" id="hidden-qty-num">0</div>
+        </div>
+    </div>
+</div>
+
+<!-- Fixed forge button -->
+<div class="forge-btn-wrap" id="forge-btn-wrap" style="display:none">
+    <button class="forge-btn" id="forge-btn" disabled>
+        <span class="forge-btn-text" data-i18n="synth.forge_btn">✨ FORGE</span>
+    </button>
+</div>
+
+<!-- Level-up overlay -->
+<canvas id="levelup-canvas"></canvas>
+<div class="levelup-overlay" id="levelup-overlay">
+    <div class="levelup-ring" id="levelup-ring">
+        <span class="levelup-new-level" id="anim-new-level">L2</span>
+        <span class="levelup-tier-emoji" id="anim-tier-emoji">🥉</span>
+    </div>
+    <div class="levelup-label" id="anim-label" data-i18n="synth.level_up">LEVEL UP!</div>
+    <div class="levelup-tier-change" id="anim-tier-change" style="display:none"></div>
+    <p class="levelup-tap" data-i18n="synth.tap_continue">Tap to continue</p>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+<script src="../common/js/supabase-client.js"></script>
+<script src="../common/js/i18n.js"></script>
+<script src="../common/js/auth.js"></script>
+<script src="synthesis.js"></script>
+</body>
+</html>

@@ -17,6 +17,12 @@
             margin-bottom: 24px;
         }
 
+        .dashboard-header-actions {
+            display: flex;
+            gap: 8px;
+            flex-shrink: 0;
+        }
+
         .parent-greeting { text-align: left; }
         .parent-greeting h2 { margin: 0; font-size: 22px; font-weight: 900; color: #0f172a; }
         .parent-greeting p  { margin: 2px 0 0; font-size: 13px; color: #64748b; font-weight: 800; }
@@ -64,6 +70,15 @@
             border: 3px solid #e2e8f0;
             border-radius: 20px;
             padding: 14px 16px;
+            cursor: pointer;
+            transition: border-color 0.15s, background 0.15s;
+        }
+
+        .kid-card:hover,
+        .kid-card:focus-visible {
+            border-color: #c4b5fd;
+            background: #faf5ff;
+            outline: none;
         }
 
         .kid-avatar { font-size: 34px; }
@@ -72,23 +87,198 @@
         .kid-info .kid-name  { font-size: 17px; font-weight: 900; color: #0f172a; }
         .kid-info .kid-grade { font-size: 13px; font-weight: 800; color: #64748b; }
 
-        .btn-remove {
-            background: none;
-            border: none;
-            font-size: 18px;
-            cursor: pointer;
-            color: #cbd5e1;
-            padding: 4px;
-            line-height: 1;
-        }
-
-        .btn-remove:hover { color: #ef4444; }
-
         .no-kids-msg {
             color: #94a3b8;
             font-size: 15px;
             font-weight: 800;
             padding: 16px 0;
+        }
+
+        .kids-hint {
+            width: 100%;
+            text-align: left;
+            margin: -4px 0 10px;
+            font-size: 13px;
+            font-weight: 800;
+            color: #94a3b8;
+        }
+
+        .modal-remove-btn {
+            color: #b91c1c !important;
+            border-color: #fecaca !important;
+        }
+
+        /* ── Account card ── */
+        .account-card {
+            width: 100%;
+            background: #f8fafc;
+            border: 3px solid #e2e8f0;
+            border-radius: 20px;
+            padding: 16px 18px;
+            margin-bottom: 8px;
+            text-align: left;
+        }
+
+        .account-row {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 10px;
+            margin-bottom: 6px;
+        }
+
+        .account-label {
+            font-size: 15px;
+            font-weight: 900;
+            color: #0f172a;
+        }
+
+        .account-status-line {
+            font-size: 15px;
+            font-weight: 900;
+            color: #0f172a;
+            margin: 0 0 4px;
+        }
+
+        .account-status-sub {
+            font-size: 13px;
+            font-weight: 700;
+            color: #64748b;
+            margin: 0 0 14px;
+            line-height: 1.4;
+        }
+
+        .account-actions {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+
+        .account-sub-btn {
+            width: 100%;
+            font-size: 14px;
+            padding: 10px 14px;
+            display: none;
+            text-align: center;
+            text-decoration: none;
+        }
+
+        /* ── Upgrade modal ── */
+        .upgrade-option-group {
+            margin-bottom: 14px;
+            text-align: left;
+        }
+
+        .upgrade-option-row {
+            display: flex;
+            gap: 8px;
+            margin-top: 8px;
+        }
+
+        .upgrade-option-btn {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 4px;
+            padding: 12px 8px;
+            border: 3px solid #e2e8f0;
+            border-radius: 14px;
+            background: #fff;
+            cursor: pointer;
+            font-family: inherit;
+            transition: border-color 0.15s, background 0.15s, box-shadow 0.15s;
+            position: relative;
+        }
+
+        .upgrade-option-btn.active {
+            border-color: #7c3aed;
+            background: #faf5ff;
+            box-shadow: 0 3px 0 #4c1d95;
+        }
+
+        .upgrade-option-label {
+            font-size: 13px;
+            font-weight: 900;
+            color: #334155;
+        }
+
+        .upgrade-option-btn.active .upgrade-option-label {
+            color: #5b21b6;
+        }
+
+        .upgrade-option-price {
+            font-size: 18px;
+            font-weight: 900;
+            color: #5b21b6;
+            line-height: 1.1;
+        }
+
+        .upgrade-option-sub {
+            font-size: 11px;
+            font-weight: 700;
+            color: #94a3b8;
+            line-height: 1.2;
+            text-align: center;
+        }
+
+        .upgrade-option-save {
+            position: absolute;
+            top: -9px;
+            right: 6px;
+            background: #16a34a;
+            color: #fff;
+            font-size: 10px;
+            font-weight: 900;
+            padding: 2px 7px;
+            border-radius: 999px;
+            white-space: nowrap;
+        }
+
+        .sub-modal-note {
+            margin: 0 0 14px;
+            font-size: 12px;
+            font-weight: 700;
+            color: #94a3b8;
+            line-height: 1.45;
+            text-align: left;
+        }
+
+        .school-hint {
+            margin: 4px 2px 0;
+            font-size: 12px;
+            font-weight: 700;
+            color: #94a3b8;
+        }
+
+        /* ── Quick links ── */
+        .quick-links {
+            width: 100%;
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+            margin-bottom: 8px;
+        }
+
+        .quick-link-btn {
+            display: block;
+            width: 100%;
+            padding: 13px 16px;
+            background: #f8fafc;
+            border: 3px solid #e2e8f0;
+            border-radius: 16px;
+            font-size: 14px;
+            font-weight: 900;
+            color: #334155;
+            text-decoration: none;
+            text-align: left;
+            transition: border-color 0.15s, background 0.15s;
+        }
+
+        .quick-link-btn:hover {
+            border-color: #c4b5fd;
+            background: #faf5ff;
+            color: var(--primary-dark);
         }
 
         /* ── Add profile modal ── */
@@ -103,7 +293,8 @@
             z-index: 100;
         }
 
-        .modal-backdrop.open { display: flex; }
+        .modal-backdrop.open,
+        .modal-backdrop.visible { display: flex; }
 
         .modal-card {
             background: white;
@@ -218,23 +409,122 @@
     <div class="dashboard-header">
         <div class="parent-greeting">
             <h2 id="parent-name">👋 Hello!</h2>
-            <p>Parent Dashboard</p>
+            <p id="dashboard-subtitle" data-i18n="parent.dashboard_sub">Parent Dashboard</p>
         </div>
-        <button class="btn-icon" id="signout-btn">Sign Out</button>
+        <div class="dashboard-header-actions">
+            <button type="button" class="btn-icon" id="lang-toggle" aria-label="Switch language">中文</button>
+            <button type="button" class="btn-icon" id="signout-btn" data-i18n="parent.sign_out">Sign Out</button>
+        </div>
     </div>
 
     <div class="msg-error" id="msg-error"></div>
 
     <!-- Kids list -->
-    <div class="section-heading">👧 Kids Profiles</div>
+    <div class="section-heading" data-i18n="parent.dashboard_heading">👧 Kids Profiles</div>
+    <p class="kids-hint" id="kids-hint" data-i18n="parent.tap_to_edit">Tap a profile to view or edit</p>
     <div class="kid-list" id="kid-list">
-        <div class="no-kids-msg">No profiles yet. Add your first child below!</div>
+        <div class="no-kids-msg" data-i18n="parent.no_kids">No profiles yet. Add your first child below!</div>
     </div>
 
-    <button class="btn-primary" id="add-kid-btn">＋ Add Kid Profile</button>
+    <button class="btn-primary" id="add-kid-btn" data-i18n="parent.add_kid">＋ Add Kid Profile</button>
 
-    <button class="btn-secondary" id="back-hub-btn">← Back to Learning Hub</button>
+    <!-- Account info -->
+    <div class="section-heading" style="margin-top:28px;" data-i18n="parent.account_heading">Account</div>
+    <div class="account-card" id="account-card">
+        <p class="account-status-line" id="account-status-line">—</p>
+        <p class="account-status-sub" id="account-status-sub" style="display:none;"></p>
+        <div class="account-actions">
+            <button type="button" class="btn-primary account-sub-btn" id="account-upgrade-btn">Upgrade to Premium Plan</button>
+            <button type="button" class="btn-secondary account-sub-btn" id="account-cancel-btn">Cancel Auto-Renew</button>
+            <button type="button" class="btn-primary account-sub-btn" id="account-renew-btn" style="background:linear-gradient(135deg,#7c3aed,#5b21b6);color:#fff;border:none;">Renew</button>
+            <a class="btn-secondary account-sub-btn" id="account-contact-link" href="guide.html#feedback" target="_blank" rel="noopener">Contact Us to Change Account Type</a>
+        </div>
+    </div>
 
+    <!-- Quick links -->
+    <div class="section-heading" style="margin-top:24px;">⚙️ Settings</div>
+    <div class="quick-links">
+        <a class="quick-link-btn" href="pin.html?change=1" data-i18n="parent.change_parent_pin">🔑 Change Parent PIN</a>
+        <a class="quick-link-btn" href="guide.html" target="_blank" data-i18n="parent.guide_link">📘 Parent Guide &amp; Privacy</a>
+    </div>
+
+    <button class="btn-secondary" id="back-hub-btn" data-i18n="parent.back_hub" style="margin-top:16px;">← Back to Learning Hub</button>
+
+</div>
+
+<!-- Upgrade to Premium modal -->
+<div class="modal-backdrop" id="upgrade-modal">
+    <div class="modal-card">
+        <h3 class="modal-title" id="upgrade-modal-title">Upgrade to Premium</h3>
+        <div class="msg-error" id="upgrade-modal-error" style="display:none;"></div>
+
+        <!-- Account type — shown only for Individual Basic -->
+        <div class="upgrade-option-group" id="upgrade-acct-type-group" style="display:none;">
+            <span class="sub-option-label" data-i18n="parent.upgrade_choose_account">Account type</span>
+            <div class="upgrade-option-row" role="group">
+                <button type="button" class="upgrade-option-btn active" id="upgrade-acct-individual-btn">
+                    <span class="upgrade-option-label" data-i18n="parent.account_type_single">Individual</span>
+                    <span class="upgrade-option-price" id="upgrade-acct-ind-price">—</span>
+                    <span class="upgrade-option-sub" id="upgrade-acct-ind-sub"></span>
+                </button>
+                <button type="button" class="upgrade-option-btn" id="upgrade-acct-family-btn">
+                    <span class="upgrade-option-label" data-i18n="parent.account_type_multi">Family</span>
+                    <span class="upgrade-option-price" id="upgrade-acct-family-price">—</span>
+                    <span class="upgrade-option-sub" id="upgrade-acct-family-sub"></span>
+                </button>
+            </div>
+        </div>
+
+        <!-- Billing cycle -->
+        <div class="upgrade-option-group">
+            <span class="sub-option-label" data-i18n="parent.billing_cycle_label">Billing cycle</span>
+            <div class="upgrade-option-row" id="billing-toggle" role="group">
+                <button type="button" class="upgrade-option-btn active" id="billing-monthly-btn">
+                    <span class="upgrade-option-label" data-i18n="parent.billing_monthly">Monthly</span>
+                    <span class="upgrade-option-price" id="billing-monthly-price">—</span>
+                    <span class="upgrade-option-sub" id="billing-monthly-sub"></span>
+                </button>
+                <button type="button" class="upgrade-option-btn" id="billing-annual-btn">
+                    <span class="upgrade-option-save" id="billing-annual-save" style="display:none;"></span>
+                    <span class="upgrade-option-label" data-i18n="parent.billing_annual">Annual</span>
+                    <span class="upgrade-option-price" id="billing-annual-price">—</span>
+                    <span class="upgrade-option-sub" id="billing-annual-sub"></span>
+                </button>
+            </div>
+        </div>
+
+        <button type="button" class="btn-primary" id="upgrade-pay-btn">Pay</button>
+        <button type="button" class="btn-secondary" id="upgrade-cancel-btn" data-i18n="parent.cancel" style="margin-top:6px;">Cancel</button>
+    </div>
+</div>
+
+<!-- Kid profile limit (Individual / Family) -->
+<div class="modal-backdrop" id="kid-limit-modal">
+    <div class="modal-card">
+        <h3 class="modal-title" id="kid-limit-title"></h3>
+        <p id="kid-limit-body" style="text-align:left; color:#64748b; font-weight:800; font-size:14px; line-height:1.5; margin:0 0 16px;"></p>
+        <button type="button" class="btn-primary" id="kid-limit-upgrade-btn" data-i18n="parent.upgrade_to_family_btn" style="display:none;">Upgrade to Family Account</button>
+        <button type="button" class="btn-secondary" id="kid-limit-ok-btn" data-i18n="parent.limit_ok">OK</button>
+    </div>
+</div>
+
+<!-- Delete profile confirmation (step 2) -->
+<div class="modal-backdrop" id="delete-confirm-modal">
+    <div class="modal-card">
+        <h3 class="modal-title" id="delete-confirm-title" data-i18n="parent.remove_confirm_final_title">Delete profile?</h3>
+        <p id="delete-confirm-body" style="text-align:left; color:#64748b; font-weight:800; font-size:14px; line-height:1.5; margin:0 0 16px;"></p>
+        <button type="button" class="btn-primary modal-remove-btn" id="delete-confirm-yes-btn" data-i18n="parent.remove_confirm_final_yes">Yes, delete permanently</button>
+        <button type="button" class="btn-secondary" id="delete-confirm-no-btn" data-i18n="parent.cancel">Cancel</button>
+    </div>
+</div>
+
+<!-- Cancel retention -->
+<div class="modal-backdrop" id="cancel-retention-modal">
+    <div class="modal-card">
+        <h3 class="modal-title" id="cancel-retention-title" data-i18n="parent.cancel_modal_title">Cancellation registered</h3>
+        <p id="cancel-retention-body" style="text-align:left; color:#64748b; font-weight:800; font-size:14px; line-height:1.5; margin:0 0 16px;"></p>
+        <button type="button" class="btn-primary" id="cancel-retention-ok-btn" data-i18n="parent.cancel_modal_ok">Got it</button>
+    </div>
 </div>
 
 <!-- Import local profiles modal (Phase B1) -->
@@ -251,18 +541,18 @@
 <!-- Add Profile Modal -->
 <div class="modal-backdrop" id="add-modal">
     <div class="modal-card">
-        <h3 class="modal-title">Add Kid Profile</h3>
+        <h3 class="modal-title" id="modal-title">Add Kid Profile</h3>
 
         <div class="msg-error" id="modal-error" style="display:none;"></div>
 
         <div class="form-group">
-            <label class="form-label">Name</label>
+            <label class="form-label" id="modal-name-label" data-i18n="parent.name_label">Nickname</label>
             <input class="form-input" type="text" id="modal-name"
                    placeholder="Child's name" maxlength="20" autocomplete="off">
         </div>
 
         <div class="form-group">
-            <label class="form-label">Grade</label>
+            <label class="form-label" id="modal-grade-label" data-i18n="parent.grade_label">Grade</label>
             <div class="grade-picker-modal" id="modal-grade-picker">
                 <button class="grade-opt" data-grade="P1">P1</button>
                 <button class="grade-opt" data-grade="P2">P2</button>
@@ -276,7 +566,9 @@
         <div class="form-group">
             <label class="form-label" id="modal-school-label">School (optional)</label>
             <input class="form-input" type="text" id="modal-school"
+                   list="school-suggestions"
                    placeholder="e.g. Nan Hua Primary / UWC" maxlength="80" autocomplete="off">
+            <p class="school-hint" id="school-hint">Start typing to see matching schools.</p>
         </div>
 
         <div class="form-group">
@@ -294,10 +586,24 @@
             <div class="avatar-picker" id="modal-avatar-picker"></div>
         </div>
 
-        <button class="btn-primary" id="modal-save-btn">Save Profile</button>
-        <button class="btn-secondary" id="modal-cancel-btn">Cancel</button>
+        <div class="form-group" id="modal-kid-pin-group">
+            <label class="form-label" id="modal-kid-pin-label" data-i18n="parent.child_pin_label">Child PIN (optional)</label>
+            <input class="form-input" type="password" id="modal-child-pin" inputmode="numeric"
+                   pattern="[0-9]*" maxlength="3" autocomplete="off"
+                   placeholder="3 digits">
+            <p class="school-hint" id="modal-kid-pin-hint"></p>
+            <label class="sub-option" id="modal-kid-pin-clear-wrap" style="display:none; margin-top:8px;">
+                <input type="checkbox" id="modal-kid-pin-clear"> <span id="modal-kid-pin-clear-label" data-i18n="parent.child_pin_clear">Remove child PIN</span>
+            </label>
+        </div>
+
+        <button class="btn-primary" id="modal-save-btn" data-i18n="parent.save_profile">Save Profile</button>
+        <button class="btn-secondary" id="modal-cancel-btn" data-i18n="parent.cancel">Cancel</button>
+        <button class="btn-secondary modal-remove-btn" id="modal-remove-btn" type="button" style="display:none; margin-top:8px;" data-i18n="parent.remove_profile">Remove from this device</button>
     </div>
 </div>
+
+<datalist id="school-suggestions"></datalist>
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
 <script src="../common/js/supabase-client.js"></script>

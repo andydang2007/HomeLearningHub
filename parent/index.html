@@ -11,13 +11,16 @@
 </head>
 <body>
 
-<div class="container">
+<div class="container parent-auth-page">
 
-    <a class="back-link" href="../student/index.html">← Back to Hub</a>
+    <div class="parent-auth-top">
+        <a class="back-link" href="../student/index.html" data-i18n="auth.back_hub">← Back to Hub</a>
+        <button type="button" class="parent-lang-btn" id="lang-toggle" aria-label="Switch language">中文</button>
+    </div>
 
     <div class="page-logo">🔒</div>
-    <h1 class="page-title">Parent Access</h1>
-    <p class="page-subtitle" id="form-subtitle">Sign in to manage your kids' profiles.</p>
+    <h1 class="page-title" data-i18n="auth.page_title">Parent Access</h1>
+    <p class="page-subtitle" id="form-subtitle" data-i18n="auth.subtitle_signin">Sign in to manage your kids' profiles.</p>
 
     <div class="msg-error" id="msg-error"></div>
     <div class="msg-info"  id="msg-info"></div>
@@ -25,79 +28,88 @@
     <!-- Sign-in form -->
     <form id="signin-form" style="width:100%">
         <div class="form-group">
-            <label class="form-label" for="signin-email">Email</label>
+            <label class="form-label" for="signin-email" data-i18n="auth.email">Email</label>
             <input class="form-input" type="email" id="signin-email"
                    placeholder="parent@email.com" autocomplete="email" required>
         </div>
         <div class="form-group">
-            <label class="form-label" for="signin-password">Password</label>
+            <label class="form-label" for="signin-password" data-i18n="auth.password">Password</label>
             <input class="form-input" type="password" id="signin-password"
                    placeholder="••••••••" autocomplete="current-password" required>
         </div>
         <p class="auth-helper">
-            <a href="#" id="forgot-link">Forgot password?</a>
+            <a href="#" id="forgot-link" data-i18n="auth.forgot">Forgot password?</a>
         </p>
-        <button class="btn-primary" type="submit" id="signin-btn">Sign In</button>
+        <button class="btn-primary" type="submit" id="signin-btn" data-i18n="auth.sign_in">Sign In</button>
     </form>
 
     <!-- Register form (hidden by default) -->
     <form id="register-form" style="width:100%; display:none;">
         <div class="form-group">
-            <label class="form-label" for="reg-name">Your Name</label>
+            <label class="form-label" for="reg-name" data-i18n="auth.your_name">Your Name</label>
             <input class="form-input" type="text" id="reg-name"
                    placeholder="Mum / Dad" maxlength="40" required>
         </div>
         <div class="form-group">
-            <label class="form-label" for="reg-email">Email</label>
+            <label class="form-label" for="reg-email" data-i18n="auth.email">Email</label>
             <input class="form-input" type="email" id="reg-email"
                    placeholder="parent@email.com" autocomplete="email" required>
         </div>
         <div class="form-group">
-            <label class="form-label" for="reg-password">Password (min 8 chars)</label>
+            <label class="form-label" for="reg-password" data-i18n="auth.password_new">Password (min 8 chars)</label>
             <input class="form-input" type="password" id="reg-password"
                    placeholder="••••••••" autocomplete="new-password" minlength="8" required>
         </div>
         <div class="form-group">
-            <label class="form-label" for="reg-password-confirm">Confirm Password</label>
+            <label class="form-label" for="reg-password-confirm" data-i18n="auth.password_confirm">Confirm Password</label>
             <input class="form-input" type="password" id="reg-password-confirm"
                    placeholder="••••••••" autocomplete="new-password" minlength="8" required>
         </div>
-        <button class="btn-primary" type="submit" id="register-btn">Create Account</button>
+        <label class="consent-label" for="reg-adult-consent">
+            <input type="checkbox" id="reg-adult-consent" required>
+            <span>
+                <span data-i18n="auth.consent_before"></span><a href="guide.html#privacy" target="_blank" rel="noopener" data-i18n="auth.consent_link">Privacy Notice</a><span data-i18n="auth.consent_after"></span>
+            </span>
+        </label>
+        <button class="btn-primary" type="submit" id="register-btn" data-i18n="auth.create_account">Create Account</button>
     </form>
 
     <!-- Forgot password (hidden) -->
     <form id="forgot-form" style="width:100%; display:none;">
         <div class="form-group">
-            <label class="form-label" for="forgot-email">Email</label>
+            <label class="form-label" for="forgot-email" data-i18n="auth.email">Email</label>
             <input class="form-input" type="email" id="forgot-email"
                    placeholder="parent@email.com" autocomplete="email" required>
         </div>
-        <button class="btn-primary" type="submit" id="forgot-btn">Send Reset Link</button>
-        <button class="btn-secondary" type="button" id="forgot-cancel-btn">← Back to Sign In</button>
+        <button class="btn-primary" type="submit" id="forgot-btn" data-i18n="auth.send_reset">Send Reset Link</button>
+        <button class="btn-secondary" type="button" id="forgot-cancel-btn" data-i18n="auth.back_signin">← Back to Sign In</button>
     </form>
 
     <!-- New password after email reset link (hidden) -->
     <form id="reset-form" style="width:100%; display:none;">
         <div class="form-group">
-            <label class="form-label" for="reset-password">New Password</label>
+            <label class="form-label" for="reset-password" data-i18n="auth.password_reset_new">New Password</label>
             <input class="form-input" type="password" id="reset-password"
                    placeholder="••••••••" autocomplete="new-password" minlength="8" required>
         </div>
         <div class="form-group">
-            <label class="form-label" for="reset-password-confirm">Confirm New Password</label>
+            <label class="form-label" for="reset-password-confirm" data-i18n="auth.password_reset_confirm">Confirm New Password</label>
             <input class="form-input" type="password" id="reset-password-confirm"
                    placeholder="••••••••" autocomplete="new-password" minlength="8" required>
         </div>
-        <button class="btn-primary" type="submit" id="reset-btn">Update Password</button>
+        <button class="btn-primary" type="submit" id="reset-btn" data-i18n="auth.update_password">Update Password</button>
     </form>
 
-    <div class="auth-toggle" id="auth-toggle">
-        Don't have an account? <a href="#" id="toggle-link">Register</a>
-    </div>
+    <div class="auth-toggle" id="auth-toggle"></div>
+
+    <p class="auth-guide-link">
+        <a href="guide.html" data-i18n="auth.view_guide">Read the full Parent Guide</a>
+    </p>
 
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+<script src="../common/js/i18n.js"></script>
 <script src="../common/js/supabase-client.js"></script>
 <script src="../common/js/auth.js"></script>
 <script src="index.js"></script>

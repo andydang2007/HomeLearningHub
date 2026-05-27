@@ -22,21 +22,25 @@ The goal is not endless drilling. The goal is to build a light, steady learning 
 
 ---
 
-## 2. 账户类型 / Account Types
+## 2. 怎么选家庭方案 / Plans for Your Family
 
-注册账户有两个家庭类型：
+### 家里几个孩子用？ / How many children will use the app?
 
-- **一孩账户**：只能添加 1 个孩子。
-- **多孩账户**：最多添加 3 个孩子。
+- **只有一个孩子**：注册时选「一孩家庭」，可添加 **1** 个孩子档案。
+- **有两个或三个孩子**：注册时选「多孩家庭」，最多可添加 **3** 个孩子档案。
 
-There are two family account types:
+- **One child**: choose a **single-child family** plan when you register — **1** child profile.
+- **Two or three children**: choose a **multi-child family** plan — up to **3** child profiles.
 
-- **Single-child account**: add 1 child only.
-- **Multi-child account**: add up to 3 children.
+这项在注册时选定，决定家庭能建几个孩子档案。与后面选「基础版 / 高级版」是分开的两件事。
 
-每种家庭类型都有基础版和高级版。基础版和高级版的功能范围相同；主要差别是家庭类型能添加几个孩子，以及对应价格不同。
+This is chosen at registration. It is separate from choosing Basic or Premium later.
 
-Both account types can have Basic or Premium plans. The feature set is the same; the main differences are how many children can be added and the price.
+### 基础版还是高级版？ / Basic or Premium subscription?
+
+两个版本孩子能用的功能是一样的（练习、徽章、商店、学习报告等），**主要区别是订阅费用**。选基础版或高级版，**不会改变**您能添加的孩子人数。
+
+Both versions include the same learning features for your children. The **main difference is the subscription price**. Basic or Premium does **not** change how many child profiles you can add.
 
 ---
 
