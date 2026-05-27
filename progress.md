@@ -18,6 +18,7 @@
 | `TECHNICAL.md` | §5.1 `kid_profiles` 加全科范围模式概念；§5.4 / §5.5 同步学习报告、错题详情、手动调账边界；§6.4.1 改为 `profile_subject_settings`（范围模式、基础正确率、目标正确率、目标完成时间）；§12 / §13 加入 `default_spelling_lists` / `default_tingxie_lists` / `parent_feedback` |
 | `ParentGuide.md` | 改为中英文对照、纯家长用户口吻；补一孩/多孩 × 基础/高级账户模型；移除开发者文档引用、邀请机制、手动调账开放说法；修正金币/水晶用途、孩子 PIN 目的、错题展示、兑换退款、奖励游戏、等级段位与隐私说明 |
 | `TECHNICAL.md` §15.4 | 新增「本地时区与新加坡日历日」踩坑：早起鸟儿/夜猫子、每日限额、连击、跨时区旅行的判定一律走 SGT；要求服务端 RPC 判定、统一 `sgtDateStr()` 工具与 `_sgt` 后缀列；同步在 `Whitepaper.md` §3.3、§7.5 注明按 SGT |
+| `Whitepaper.md` / `TECHNICAL.md` / `ParentGuide.md` | 新增 PDPA / 儿童数据边界：全程昵称、不鼓励真实姓名；学校名和性别可选；MVP 不开放真人头像上传；名人堂只展示昵称和级别且不可搜索；暂不做同校/好友/私信；明确数据保留期限、删除场景、家长导出/更正/删除请求；技术侧加入成人注册确认、`consent_records`、`privacy_requests`、`data_deletion_jobs`、`data_retention_policies` |
 | `README.md` | 文档索引补 `ParentGuide.md` |
 
 ---
@@ -49,7 +50,7 @@
 
 | 口径 | 约完成度 | 说明 |
 |------|----------|------|
-| **A. 白皮书完整愿景**（含 OCR、盲盒、同校社交、全部专项游戏、订阅计费 polished） | **~28%** | 设计与文档约占一部分；大量功能仍在本机或 legacy |
+| **A. 白皮书完整愿景**（含 OCR、盲盒、全部专项游戏、订阅计费 polished；同校社交/好友功能暂不考虑） | **~28%** | 设计与文档约占一部分；大量功能仍在本机或 legacy |
 | **B. 可收费家庭 MVP**（注册→云端存档→四科练习→徽章/币/水晶→商店兑换家长批→基础报告） | **~42%** | Phase A 已落地；**缺**核心库重建、注册后全量上云、商店 RPC、每日限制上云 |
 
 **B 线各块粗分（占 MVP 权重）：**

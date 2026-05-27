@@ -78,18 +78,18 @@ Badges appear on the child’s badge wall. Upgrading levels or tiers may use som
 
 ### 家长先做这些 / For Parents
 
-1. 注册家庭账号。
+1. 由家长 / 监护人注册家庭账号。孩子不需要、也不能用邮箱注册账号。
 2. 设置家长 PIN。这个 PIN 用来保护家长后台。
 3. 按账户类型添加孩子档案：一孩账户 1 个，多孩账户最多 3 个。
-4. 为每个孩子设置年级、头像、华文或高级华文、界面语言。
+4. 为每个孩子设置昵称、年级、默认头像、华文或高级华文、界面语言。学校名和性别可以不填。
 5. 为每个科目设置基础正确率、目标正确率和目标完成时间。
 6. 为每个科目设置出题范围。
 7. 添加可兑换奖励。
 
-1. Create a family account.
+1. A parent or guardian creates the family account. Children do not need, and cannot use, email registration.
 2. Set a parent PIN to protect the parent area.
 3. Add child profiles based on your account type: 1 child for a single-child account, up to 3 children for a multi-child account.
-4. Set each child’s grade, avatar, Chinese level, and interface language.
+4. Set each child’s nickname, grade, default avatar, Chinese level, and interface language. School name and gender are optional.
 5. Set the base accuracy, target accuracy, and target completion time for each subject.
 6. Choose the question range for each subject.
 7. Add rewards that children can redeem.
@@ -108,7 +108,7 @@ Children open the student area, choose their avatar, enter the home page, and st
 
 注册前，孩子可以先在当前设备上玩，系统会把学习记录暂存在这台设备上。
 
-但请注意：如果更换设备、清空浏览器缓存，或修改孩子名字，注册前的数据可能会丢失。
+但请注意：如果更换设备、清空浏览器缓存，或修改孩子昵称，注册前的数据可能会丢失。
 
 Yes.
 
@@ -326,11 +326,11 @@ Upgrading may use some earned badges and/or personal crystals.
 
 名人堂是未来功能，而且家长可以选择是否让孩子参加。
 
-如果开启，榜单会使用脱敏显示，不展示孩子完整姓名、学校或精确分数。
+如果开启，榜单只展示孩子昵称和级别，不展示真实姓名、学校或精确分数，也不能被搜索。
 
 The Hall of Fame is a future feature, and parents will be able to choose whether their child joins.
 
-If enabled, the leaderboard will use privacy-safe display. It will not show a child’s full name, school, or exact score.
+If enabled, the leaderboard only shows the child’s nickname and level. It will not show a real name, school, or exact score, and it cannot be searched.
 
 ---
 
@@ -360,13 +360,33 @@ You can use it to send:
 
 ## 17. 隐私与安全 / Privacy and Safety
 
-除了家长主动填写的资料外，系统不会额外收集孩子的信息。
+孩子只使用昵称，不鼓励填写真实姓名。
+
+学校名和性别由家长选择是否填写；不填写也可以正常使用。
+
+当前版本不允许上传真人头像，只使用系统默认头像。
+
+除了家长主动填写的资料和孩子使用系统时产生的学习记录外，系统不会额外收集孩子的信息。
 
 你上传的听写表、错题和自定义内容只属于指定孩子，不会分享给其他家庭。
 
-The system does not collect a child’s information other than the ones parents key in.
+Children use nicknames. Real full names are not encouraged.
+
+School name and gender are optional. The system works without them.
+
+The current version does not allow real photo avatar uploads. Children use default system avatars.
+
+The system does not collect a child’s information other than what parents key in and the learning records created when the child uses the system.
 
 Uploaded dictation lists, mistake materials, and custom content belong only to the selected child and are not shared with other families.
+
+学习报告 PDF 只在系统内短期保留。家长可以自行保存需要长期保留的报告。
+
+Learning report PDFs are kept in the system only for a short time. Parents can save reports they want to keep longer.
+
+家长可以请求导出、更正或删除孩子资料。
+
+Parents can request to export, correct, or delete a child’s data.
 
 ---
 
@@ -395,6 +415,12 @@ No. It is only used for the child you selected.
 不能。奖励设置、审批和 PIN 管理都在家长后台。
 
 No. Reward settings, approval, and PIN management are handled in the parent area.
+
+### 孩子可以自己用邮箱注册吗？ / Can children register with email?
+
+不能。家庭账号只能由家长或监护人注册。孩子只使用家长创建的孩子档案。
+
+No. Family accounts can only be created by a parent or guardian. Children only use child profiles created by the parent.
 
 ### 系统能完全防止孩子乱答题吗？ / Can the system fully stop careless answering?
 

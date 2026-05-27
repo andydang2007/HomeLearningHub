@@ -51,6 +51,64 @@
 - 可选「刷新」按钮调用同一 pull；正常用户不应依赖它才能看到正确数字。
 - 后续可选用 Supabase Realtime 订阅家庭钱包/兑换状态；MVP 用 pull-on-focus 即可。
 
+## 3.2 PDPA / 儿童数据保护基线
+
+本项目面向小学儿童，儿童个人数据按敏感数据处理。实现时按以下基线执行：
+
+### 成人账号与未成年人邮箱注册防范
+
+- **只有家长 / 监护人可以注册 Supabase Auth 账号。** 孩子没有邮箱账号、密码账号或社交登录账号。
+- 学生端不展示注册入口；所有注册入口只在 `parent/` 路径下。
+- 注册页必须有成人确认：`I am the parent/guardian creating this account for my family.` 未勾选不得创建账号。
+- 如注册流程询问年龄或用户主动表明未满 18 岁，立即停止注册并显示“请家长 / 监护人完成注册”。
+- 不建议为了防未成年人注册而强制收集家长出生日期；优先使用成人确认、家长 PIN、邮件验证、隐私声明版本记录和后续付款/订阅信息作为成人账号控制。
+- 后端 `register_family` / 首次建档 RPC 必须校验 `adult_attestation = true` 和 `privacy_notice_version`，并写入 `consent_records`。仅前端 checkbox 不足以作为唯一控制。
+- `auth.users` 只代表家长账号；孩子只是 `profiles.role='kid'` 的档案记录，不能直接登录 Supabase。
+
+### 数据最小化
+
+- 孩子显示名使用昵称字段（如 `nickname` / `display_name`），产品文案不鼓励真实姓名。
+- 学校名、性别为可选；不作为必填、不用于名人堂、不进入公开展示。
+- MVP 暂不允许上传真人头像；仅使用系统默认头像 ID。未来如开放头像上传，必须另走图片压缩、删除、家长同意和 Storage 保留策略。
+- 不收集 NRIC / FIN / 护照号、住址、电话号码、实时地理位置、班级、小队、座号。
+
+### 保留与删除
+
+建议在 010 中加入：
+
+| 表 / 配置 | 用途 |
+|-----------|------|
+| `consent_records` | 家长同意记录：同意版本、范围、时间、成人确认、隐私声明版本 |
+| `privacy_requests` | 家长导出、更正、删除、撤回同意请求 |
+| `data_deletion_jobs` | 删除孩子档案 / 家庭账号后的异步清理任务 |
+| `data_retention_policies` | 各类数据保留期限配置，便于后续调整 |
+
+默认保留策略：
+
+| 数据类型 | 默认期限 | 技术处理 |
+|----------|----------|----------|
+| 游客本机数据 | 30 天 | `localStorage` 元数据过期提示；清缓存即丢 |
+| 学习明细 / 答题记录 / 错题状态 | 24 个月滚动 | 超期明细删除或匿名化，仅保留趋势汇总 |
+| 学习报告 PDF / 报告缓存 | 7 天 | Storage signed URL 短期有效，定时清理 |
+| OCR 原始图片 / PDF | 识别完成并确认后最多 30 天 | 原始文件删除，结构化条目按孩子内容保留 |
+| OCR 候选结果 | 30 天 | 确认 / 拒绝 / 过期后清理 |
+| 家长反馈 | 24 个月 | resolved 后可匿名化；敏感信息优先清理 |
+| 审计 / 安全日志 | 24 个月 | 仅安全、排错、防滥用用途 |
+| 支付 / 订阅摘要 | 按付款、税务、争议处理需要 | 不保留孩子学习细节 |
+
+删除流程：
+
+- 删除孩子档案：删除或匿名化该 `profile_id` 相关学习、错题、徽章、钱包、兑换、上传内容、报告缓存。
+- 删除家庭账号：所有 child profiles 和 family-scoped 数据进入删除队列。
+- 删除请求不应依赖前端循环删表；必须写 `data_deletion_jobs`，由服务端 RPC / Edge Function 执行。
+- 已删除对象应在 UI 隐藏；必要时用 `deleted_at` 软删短暂排队，任务完成后硬删或匿名化。
+
+### AI / OCR / 第三方
+
+- OCR / AI 上传默认只用于家长确认后的该孩子内容，不进入公共题库，不用于训练。
+- Edge Function 调用第三方 AI/OCR 时必须记录 provider、purpose、request_id、是否发送原图、保留策略。
+- 第三方服务清单应能从配置生成，后续隐私政策可引用。
+
 ## 4. 代码目录
 
 ```text
@@ -110,11 +168,11 @@ game/
 
 | 字段 | 含义 |
 |------|------|
-| `name` | 孩子显示名 |
+| `name` | 旧字段；目标语义改为孩子昵称，不鼓励真实姓名 |
 | `grade` | 年级，如 `P1` - `P6` |
-| `avatarId` | 头像库 ID |
-| `gender` | `M` / `F`，家长端完整建档时有 |
-| `schoolName` | 学校自由文本，Phase C 后再接学校表 |
+| `avatarId` | 系统默认头像库 ID；MVP 暂不允许上传真人头像 |
+| `gender` | `M` / `F`，可选，不公开展示 |
+| `schoolName` | 学校自由文本，可选；暂不做同校功能，不进入名人堂 |
 | `chineseLevel` | `CL` / `HCL`，未来可扩 `FCL` |
 | `cloudId` | 云端 `profiles.id`，B1 导入或云端建档后才有 |
 | `uiLang` | 孩子界面语言 `en` / `zh`（注册后存 `profiles.ui_lang`） |
@@ -215,7 +273,7 @@ Legacy 家长 Log 曾包含 `coin_update`、`badge`、`redemption`、`refund` �
 注册后同步要求（补充）：
 
 - 本机徽章、打卡、金币、水晶、错题本、练习统计在**首次导入**时迁移；之后增量同步云端。
-- 迁移前按**孩子名字 → `profile_id`** 映射；注册后禁止再依赖名字作为主键。
+- 迁移前按**孩子昵称 → `profile_id`** 映射；注册后禁止再依赖昵称作为主键。
 
 ## 6. 题库与错题本
 
@@ -405,6 +463,13 @@ Legacy 家长 Log 曾包含 `coin_update`、`badge`、`redemption`、`refund` �
 - 家长注册 / 登录 / 忘记密码 / 重置密码。
 - 家长 PIN 门。
 - 离开 dashboard 后撤销 `parent_pin_ok`。
+
+账号边界：
+
+- Supabase Auth 账号只给家长 / 监护人使用；孩子档案不是可登录用户。
+- `parent/index.html` 注册必须显示成人确认 checkbox；后端 RPC 写入 `consent_records` 后才创建 / 激活家庭。
+- 如果用户声明未满 18 岁或未勾选成人确认，不得继续创建家庭账号。
+- 学生端不得出现邮箱注册、登录、社交登录按钮；孩子只通过家长创建的 profile 进入。
 
 安全规则：
 
@@ -612,7 +677,7 @@ AI 输出模板必须版本化，例如 `template_version`，避免后续提示�
 | 表 | 用途 |
 |----|------|
 | `families` | 家庭账号，承载账户类别与订阅；`account_type=single_child/multi_child`，`plan_tier=basic/premium` |
-| `profiles` | 家长与孩子档案，`role=parent/kid`；孩子含 `ui_lang`、`kid_pin_enabled`、`kid_pin_hash` |
+| `profiles` | 家长与孩子档案，`role=parent/kid`；孩子使用昵称，含 `ui_lang`、`kid_pin_enabled`、`kid_pin_hash`、可选 `school_name` / `gender`、`deleted_at` |
 | `parent_settings` | 家长配置：`parent_ui_lang`、奖励游戏规则等家庭级设置 |
 | `profile_subject_settings` | 每孩每科配置：范围模式、基础正确率、目标正确率、目标完成时间 |
 | `learning_reports` | 周报汇总/报告缓存（练习数、徽章、资产净增、时长、典型错题与错误答案；生成文件保留 7 天，可重新生成） |
@@ -646,6 +711,10 @@ AI 输出模板必须版本化，例如 `template_version`，避免后续提示�
 | `profile_badge_levels` / `badge_level_config` | 等级、段位、升级消耗徽章/水晶 |
 | `leaderboard_entries`（或视图） | 匿名名人堂；脱敏 ID、无学校、按段位分组 |
 | `parent_feedback` | 家长反馈与建议：题目错误、功能问题、体验建议、奖励建议；绑定 `family_id`，可选 `profile_id` / `question_id` |
+| `consent_records` | 家长/监护人同意记录：成人确认、隐私声明版本、同意范围、时间 |
+| `privacy_requests` | 家长导出、更正、删除、撤回同意请求 |
+| `data_deletion_jobs` | 删除孩子档案 / 家庭账号后的后台清理任务 |
+| `data_retention_policies` | 各类数据保留期限配置 |
 
 建表原则：
 
@@ -655,6 +724,8 @@ AI 输出模板必须版本化，例如 `template_version`，避免后续提示�
 - 所有资产变动必须进入 ledger。
 - 前端不能直接更新钱包、ledger、兑换状态或关键角色字段。
 - RLS 必须保证家长只能看自己家庭的数据。
+- 孩子数据表必须支持删除 / 匿名化路径；涉及缓存文件的表应有 `expires_at` 或可由 retention job 清理。
+- Storage bucket 建议拆分：`ocr_uploads`、`report_exports`、`avatars`（MVP 仅默认头像，不开放用户上传头像）。所有文件必须通过短期 signed URL 访问。
 
 重建策略：
 
