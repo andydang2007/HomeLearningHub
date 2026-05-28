@@ -219,11 +219,14 @@ function renderAvatarPicker() {
                 </button>
             `;
         }).join('');
+        const premiumHint = (!avatarPickerIsPremium && g.id === 'default')
+            ? `<div class="avatar-premium-hint">🔐 Premium Features</div>`
+            : '';
         return `
             <section class="avatar-group-section ${g.id === 'default' ? 'avatar-group-section--default' : ''} ${groupLocked ? 'avatar-group-section--locked' : ''}">
                 <div class="avatar-group-title">${g.title}</div>
                 <div class="avatar-group-grid">${itemHtml}</div>
-                ${groupLocked ? `<div class="avatar-group-lock-hint">🔒 ${t('synth.unlock_premium')}</div>` : ''}
+                ${premiumHint}
             </section>
         `;
     }).join('');
@@ -651,6 +654,37 @@ function executeSwitchUser(name, grade) {
     showScreen('dashboard-screen');
 }
 
+async function resolveKidCloudId(name) {
+    if (currentCloudId) return currentCloudId;
+    const profile = AUTH.getKidProfiles().find((p) => p.name === name);
+    if (profile?.cloudId) {
+        currentCloudId = profile.cloudId;
+        return currentCloudId;
+    }
+    const activeId = localStorage.getItem('active_kid_profile_id') || '';
+    if (activeId) {
+        currentCloudId = activeId;
+        AUTH.setKidCloudId(name, activeId);
+        return currentCloudId;
+    }
+
+    // Last attempt: if parent session exists, fetch cloud profiles and match by name.
+    try {
+        const session = await AUTH.getParentSession();
+        if (!session) return '';
+        const { kids, error } = await AUTH.fetchCloudKidProfiles();
+        if (error || !Array.isArray(kids)) return '';
+        const match = kids.find((k) => (k.display_name || '').trim().toLowerCase() === String(name || '').trim().toLowerCase());
+        if (!match?.id) return '';
+        const foundId = String(match.id);
+        currentCloudId = foundId;
+        AUTH.setKidCloudId(name, foundId);
+        return foundId;
+    } catch {
+        return '';
+    }
+}
+
 async function loadAndShowLevel(cloudId, name) {
     const chip     = document.getElementById('level-chip');
     const chipEmoji = document.getElementById('level-chip-emoji');
@@ -666,8 +700,13 @@ async function loadAndShowLevel(cloudId, name) {
     chip.style.display    = 'flex';
     applyLevelChipTierColor(showTier);
 
-    chip.onclick = () => {
-        if (!cloudId) return;
+    chip.onclick = async () => {
+        if (!cloudId) {
+            alert((typeof AppI18n !== 'undefined')
+                ? AppI18n.t('index.forge_need_register')
+                : 'Register and sync profile to enter Forge.');
+            return;
+        }
         window.location.href =
             `synthesis.html?kid=${encodeURIComponent(cloudId)}&name=${encodeURIComponent(name)}`;
     };

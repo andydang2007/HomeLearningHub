@@ -932,8 +932,8 @@ document.addEventListener('DOMContentLoaded', async () => {
         if (!editingOriginalName) return;
         const profile = AUTH.getKidProfiles().find((p) => p.name === editingOriginalName);
         const cloudId = editingCloudId || profile?.cloudId || '';
-        const confirmKey = cloudId ? 'parent.remove_confirm_cloud' : 'parent.remove_confirm_local';
-        if (!confirm(t(confirmKey, { name: editingOriginalName }))) return;
+        // Close edit modal first so confirmation modal is not visually blocked.
+        closeModal();
         openDeleteConfirmStep2(editingOriginalName, cloudId);
     });
     document.getElementById('delete-confirm-yes-btn')?.addEventListener('click', executeProfileDelete);

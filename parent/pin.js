@@ -350,6 +350,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     document.querySelector('.container')?.addEventListener('click', (e) => {
         if (!e.target.closest('.pin-key')
             && !e.target.closest('#cancel-pin-btn')
+            && !e.target.closest('#back-to-hub-btn')
             && !e.target.closest('#forgot-pin-btn')
             && !e.target.closest('#password-gate')
             && !e.target.closest('#forgot-back-btn')) {
@@ -370,5 +371,8 @@ document.addEventListener('DOMContentLoaded', async () => {
     });
     document.getElementById('cancel-pin-btn')?.addEventListener('click', () => {
         window.location.href = 'dashboard.html';
+    });
+    document.getElementById('back-to-hub-btn')?.addEventListener('click', () => {
+        window.location.href = '../student/index.html';
     });
 });
