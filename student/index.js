@@ -7,6 +7,7 @@ let cloudStreakData  = null; // { current_streak, max_streak, last_checkin_date,
 let currentLevelProfileId = '';
 let currentLevelTier = 'Bronze';
 let currentLevelNo = 1;
+let avatarPickerIsPremium = false;
 
 const LEVEL_TIER_EMOJI = { Bronze: '🥉', Silver: '🥈', Gold: '🥇', Diamond: '💎', Legend: '⭐' };
 const CUSTOM_AVATAR_FILES = [
@@ -114,9 +115,48 @@ function renderDashboardAvatar() {
     el.textContent = getAvatarForName(currentUser);
 }
 
-function openAvatarModal() {
+async function refreshAvatarPremiumStatus() {
+    avatarPickerIsPremium = false;
+    try {
+        if (typeof AUTH === 'undefined' || typeof AUTH.getParentSession !== 'function') return;
+        const session = await AUTH.getParentSession();
+        if (!session || typeof AUTH.fetchFamilyInfo !== 'function') return;
+        const { info, error } = await AUTH.fetchFamilyInfo();
+        if (error || !info) return;
+        avatarPickerIsPremium = String(info.plan_tier || '').toLowerCase() === 'premium';
+    } catch {
+        avatarPickerIsPremium = false;
+    }
+}
+
+async function enforceAvatarSelectionForCurrentPlan() {
+    if (avatarPickerIsPremium) return;
+    const key = currentAvatarProfileKey();
+    if (!key) return;
+
+    const selection = getCurrentAvatarSelection();
+    // Basic users: only default avatars are allowed.
+    if (selection?.type === 'custom') {
+        const fallbackAvatarId = DEFAULT_AVATAR_IDS[0];
+        const map = getCustomAvatarMap();
+        map[key] = `default:${fallbackAvatarId}`;
+        setCustomAvatarMap(map);
+        AUTH.updateKidProfile(currentUser, { avatarId: fallbackAvatarId });
+        if (currentCloudId) {
+            const profile = AUTH.getKidProfiles().find((p) => p.name === currentUser);
+            if (profile?.cloudId) {
+                await AUTH.updateKidProfileOnCloud(profile.cloudId, profile);
+            }
+        }
+    }
+}
+
+async function openAvatarModal() {
     const modal = document.getElementById('avatar-modal');
     if (!modal || !currentUser) return;
+    await refreshAvatarPremiumStatus();
+    await enforceAvatarSelectionForCurrentPlan();
+    renderDashboardAvatar();
     renderAvatarPicker();
     modal.classList.remove('is-hidden');
 }
@@ -160,6 +200,7 @@ function renderAvatarPicker() {
 
     grid.innerHTML = groups.map((g) => {
         if (!g.items.length) return '';
+        const groupLocked = g.id !== 'default' && !avatarPickerIsPremium;
         const itemHtml = g.items.map((item) => {
             if (item.kind === 'default') {
                 const isSelected = selected?.type === 'default' && selected.avatarId === item.avatarId;
@@ -173,15 +214,16 @@ function renderAvatarPicker() {
             const isSelected = selected?.type === 'custom' && selected.file === item.file;
             const pos = CUSTOM_AVATAR_POSITIONS[item.file] || '50% 50%';
             return `
-                <button type="button" class="avatar-pick ${isSelected ? 'selected' : ''}" data-kind="custom" data-file="${item.file}">
+                <button type="button" class="avatar-pick ${isSelected ? 'selected' : ''}" data-kind="custom" data-file="${item.file}" ${groupLocked ? 'disabled' : ''}>
                     <img src="${CUSTOM_AVATAR_BASE}${item.file}" alt="${item.file}" style="object-position:${pos};">
                 </button>
             `;
         }).join('');
         return `
-            <section class="avatar-group-section ${g.id === 'default' ? 'avatar-group-section--default' : ''}">
+            <section class="avatar-group-section ${g.id === 'default' ? 'avatar-group-section--default' : ''} ${groupLocked ? 'avatar-group-section--locked' : ''}">
                 <div class="avatar-group-title">${g.title}</div>
                 <div class="avatar-group-grid">${itemHtml}</div>
+                ${groupLocked ? `<div class="avatar-group-lock-hint">🔒 ${t('synth.unlock_premium')}</div>` : ''}
             </section>
         `;
     }).join('');
@@ -206,6 +248,7 @@ function renderAvatarPicker() {
                     }
                 }
             } else {
+                if (!avatarPickerIsPremium) return;
                 const file = btn.dataset.file;
                 if (!CUSTOM_AVATAR_FILES.includes(file)) return;
                 map[key] = file;
@@ -602,6 +645,7 @@ function executeSwitchUser(name, grade) {
         loadCloudStreak(currentCloudId).then(() => updateStreakUI()),
         renderBadges(),
         loadAndShowLevel(currentCloudId, name),
+        refreshAvatarPremiumStatus().then(() => enforceAvatarSelectionForCurrentPlan()).then(() => renderDashboardAvatar()),
     ]);
 
     showScreen('dashboard-screen');
