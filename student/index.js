@@ -219,16 +219,16 @@ function renderAvatarPicker() {
                 </button>
             `;
         }).join('');
-        const premiumHint = (!avatarPickerIsPremium && g.id === 'default')
-            ? `<div class="avatar-premium-hint">🔐 Premium Features</div>`
-            : '';
-        return `
+        const sectionHtml = `
             <section class="avatar-group-section ${g.id === 'default' ? 'avatar-group-section--default' : ''} ${groupLocked ? 'avatar-group-section--locked' : ''}">
                 <div class="avatar-group-title">${g.title}</div>
                 <div class="avatar-group-grid">${itemHtml}</div>
-                ${premiumHint}
             </section>
         `;
+        if (!avatarPickerIsPremium && g.id === 'default') {
+            return `${sectionHtml}<div class="avatar-premium-hint">🔐 Premium Features</div>`;
+        }
+        return sectionHtml;
     }).join('');
 
     grid.querySelectorAll('.avatar-pick').forEach((btn) => {

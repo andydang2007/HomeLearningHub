@@ -799,10 +799,11 @@ button.name-btn:active {
 
 .grade-picker .grade-btn {
     width: 100%;
-    min-height: clamp(52px, 14vw, 64px);
-    padding: clamp(12px, 3vw, 18px) 6px;
-    font-size: clamp(17px, 4.8vw, 22px);
-    border-radius: clamp(14px, 3vw, 18px);
+    min-height: clamp(40px, 10vw, 46px);
+    padding: clamp(8px, 2vw, 10px) 14px;
+    font-size: clamp(16px, 4.2vw, 19px);
+    border-radius: 999px;
+    line-height: 1.1;
 }
 
 .avatar-picker-grid {
@@ -981,8 +982,8 @@ button.name-btn:active {
     .name-gate { max-width: 420px; }
 
     .grade-picker .grade-btn {
-        min-height: 58px;
-        font-size: 20px;
+        min-height: 44px;
+        font-size: 18px;
     }
 
     .gender-btn {
@@ -1004,8 +1005,8 @@ button.name-btn:active {
     .name-gate { max-width: 440px; }
 
     .grade-picker .grade-btn {
-        min-height: 64px;
-        font-size: 22px;
+        min-height: 46px;
+        font-size: 19px;
     }
 }
 
@@ -1016,9 +1017,9 @@ button.name-btn:active {
     .grade-picker { gap: 8px; }
 
     .grade-picker .grade-btn {
-        min-height: 50px;
+        min-height: 38px;
         font-size: 16px;
-        padding: 10px 4px;
+        padding: 8px 10px;
     }
 }
 
