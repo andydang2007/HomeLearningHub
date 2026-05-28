@@ -378,6 +378,21 @@ function updateStreakUI() {
     }
 }
 
+function badgeIconInner(b) {
+    if (b.badgeCode && typeof BadgeIcons !== 'undefined') {
+        return BadgeIcons.renderBadgeIconContent(b.badgeCode, b.icon);
+    }
+    return b.icon || '🏅';
+}
+
+function badgeNameInner(b) {
+    const lang = AppI18n.getLang();
+    if (typeof BadgeIcons !== 'undefined') {
+        return BadgeIcons.formatBadgeNameHtml(b.name, lang, b.badgeCode);
+    }
+    return b.name;
+}
+
 function renderBadgeItemHTML(b, totalRef) {
     if (!b.isCrown) totalRef.count += b.count > 0 ? b.count : 0;
 
@@ -403,10 +418,10 @@ function renderBadgeItemHTML(b, totalRef) {
     return `
         <div class="${classes.join(' ')}">
             <div class="badge-icon-wrapper">
-                <div class="badge-icon">${b.icon}</div>
+                <div class="badge-icon">${badgeIconInner(b)}</div>
                 ${countHtml}
             </div>
-            <div class="badge-name">${b.name}</div>
+            <div class="badge-name">${badgeNameInner(b)}</div>
             ${progressHtml}
         </div>`;
 }
@@ -458,7 +473,9 @@ async function renderBadges() {
 
             // Subject badges (all shown; locked if count = 0)
             if (bycat.subject.length) {
-                const items = bycat.subject.map(b => ({ icon: b.icon || '🏅', name: bdName(b), count: b.count }));
+                const items = bycat.subject.map(b => ({
+                    badgeCode: b.badge_code, icon: b.icon || '🏅', name: bdName(b), count: b.count,
+                }));
                 container.innerHTML += `
                     <div class="badge-category">
                         <div class="badge-category-title">🎓 ${AppI18n.t('index.badge_subject')}</div>
@@ -468,7 +485,9 @@ async function renderBadges() {
 
             // Skill badges
             if (bycat.skill.length) {
-                const items = bycat.skill.map(b => ({ icon: b.icon || '🌟', name: bdName(b), count: b.count }));
+                const items = bycat.skill.map(b => ({
+                    badgeCode: b.badge_code, icon: b.icon || '🌟', name: bdName(b), count: b.count,
+                }));
                 container.innerHTML += `
                     <div class="badge-category">
                         <div class="badge-category-title">🌟 ${AppI18n.t('index.badge_core')}</div>
@@ -495,7 +514,7 @@ async function renderBadges() {
                     const target  = STREAK_DAYS[b.badge_code] || 0;
                     const achieved = b.count > 0 || currentStreak >= target;
                     streakItems.push({
-                        icon: b.icon || '🔥', name: bdName(b),
+                        badgeCode: b.badge_code, icon: b.icon || '🔥', name: bdName(b),
                         count: achieved ? Math.max(b.count, 1) : 0,
                         tier: target >= 15 ? 'gold' : (target >= 10 ? 'silver' : 'bronze'),
                         targetStreak: target, currentStreak,
@@ -511,7 +530,9 @@ async function renderBadges() {
             // Hidden badges — only show ones already earned (count > 0)
             const earnedHidden = bycat.hidden.filter(b => b.count > 0);
             if (earnedHidden.length) {
-                const items = earnedHidden.map(b => ({ icon: b.icon || '✨', name: bdName(b), count: b.count, tier: 'gold' }));
+                const items = earnedHidden.map(b => ({
+                    badgeCode: b.badge_code, icon: b.icon || '✨', name: bdName(b), count: b.count, tier: 'gold',
+                }));
                 container.innerHTML += `
                     <div class="badge-category">
                         <div class="badge-category-title easter">🎁 ${AppI18n.t('index.badge_easter')}</div>
@@ -545,9 +566,9 @@ async function renderBadges() {
     const ls = (k) => parseInt(localStorage.getItem(`${k}_${u}`) || '0', 10);
 
     const coreBadges = [
-        { icon: '🎯', name: AppI18n.t('index.badge_sharpshooter'), count: Math.max(localPerfects, ls('perfects_count')) },
-        { icon: '⚡️', name: AppI18n.t('index.badge_speed'),        count: ls('speed_breaks') },
-        { icon: '🎈', name: AppI18n.t('index.badge_balloon'),      count: Math.max(localGames, ls('games_count')) },
+        { badgeCode: 'sharpshooter', icon: '🎯', name: AppI18n.t('index.badge_sharpshooter'), count: Math.max(localPerfects, ls('perfects_count')) },
+        { badgeCode: 'speed_record', icon: '⚡️', name: AppI18n.t('index.badge_speed'), count: ls('speed_breaks') },
+        { badgeCode: 'unlock_game', icon: '🎈', name: AppI18n.t('index.badge_balloon'), count: Math.max(localGames, ls('games_count')) },
     ];
     container.innerHTML += `
         <div class="badge-category">
@@ -556,13 +577,13 @@ async function renderBadges() {
         </div>`;
 
     const subBadges = [
-        { icon: '🔤', name: AppI18n.t('index.badge_english'), count: Math.max(subPerfects.English, ls('eng_badge_count')) },
-        { icon: '🔢', name: AppI18n.t('index.badge_math'),    count: Math.max(subPerfects.Math, ls('math_badge_count')) },
-        { icon: '🐼', name: AppI18n.t('index.badge_chinese'), count: Math.max(subPerfects['华文'], ls('cn_badge_count')) },
-        { icon: '🌱', name: AppI18n.t('index.badge_science'), count: Math.max(subPerfects.Science, ls('sci_badge_count')) },
-        { icon: '🎮', name: AppI18n.t('index.badge_pinyin'),  count: ls('pinyin_badge_count') },
-        { icon: '👑', name: AppI18n.t('index.badge_tingxie'), count: ls('tingxie_badge_count') },
-        { icon: '🧚', name: AppI18n.t('index.badge_hanzi'),   count: ls('hanzi_badge_count') },
+        { badgeCode: 'english_star', icon: '🔤', name: AppI18n.t('index.badge_english'), count: Math.max(subPerfects.English, ls('eng_badge_count')) },
+        { badgeCode: 'math_genius', icon: '🔢', name: AppI18n.t('index.badge_math'), count: Math.max(subPerfects.Math, ls('math_badge_count')) },
+        { badgeCode: 'chinese_ace', icon: '🐼', name: AppI18n.t('index.badge_chinese'), count: Math.max(subPerfects['华文'], ls('cn_badge_count')) },
+        { badgeCode: 'science_pro', icon: '🌱', name: AppI18n.t('index.badge_science'), count: Math.max(subPerfects.Science, ls('sci_badge_count')) },
+        { badgeCode: 'pinyin_pro', icon: '🎮', name: AppI18n.t('index.badge_pinyin'), count: ls('pinyin_badge_count') },
+        { badgeCode: 'dictation_king', icon: '👑', name: AppI18n.t('index.badge_tingxie'), count: ls('tingxie_badge_count') },
+        { badgeCode: 'character_spirit', icon: '🧚', name: AppI18n.t('index.badge_hanzi'), count: ls('hanzi_badge_count') },
     ];
     container.innerHTML += `
         <div class="badge-category">
@@ -582,8 +603,10 @@ async function renderBadges() {
         count: 1, tier: 'gold',
         targetStreak: maxStreak, currentStreak: maxStreak, isCrown: true,
     }];
+    const streakCodeForDay = { 3: 'streak_3', 5: 'streak_5', 10: 'streak_10', 15: 'streak_15', 30: 'streak_30' };
     streakMilestones.forEach(day => {
         streakBadges.push({
+            badgeCode: streakCodeForDay[day] || `streak_${day}`,
             icon: '🔥', name: AppI18n.t('index.streak_milestone', { n: day }),
             count: currentStreak >= day ? 1 : 0,
             tier: day >= 15 ? 'gold' : (day >= 10 ? 'silver' : 'bronze'),
@@ -597,11 +620,11 @@ async function renderBadges() {
         </div>`;
 
     const easterData = [
-        { icon: '🌅', name: AppI18n.t('index.badge_earlybird'), count: ls('easter_earlybird'), tier: 'gold' },
-        { icon: '🦉', name: AppI18n.t('index.badge_nightowl'),  count: ls('easter_nightowl'),  tier: 'gold' },
-        { icon: '🔥', name: AppI18n.t('index.badge_hattrick'),  count: ls('easter_hattrick'),  tier: 'gold' },
-        { icon: '🎉', name: AppI18n.t('index.badge_weekend'),   count: ls('easter_weekend'),   tier: 'gold' },
-        { icon: '🔋', name: AppI18n.t('index.badge_holiday'),   count: ls('easter_holiday'),   tier: 'gold' },
+        { badgeCode: 'early_bird', icon: '🌅', name: AppI18n.t('index.badge_earlybird'), count: ls('easter_earlybird'), tier: 'gold' },
+        { badgeCode: 'night_owl', icon: '🦉', name: AppI18n.t('index.badge_nightowl'), count: ls('easter_nightowl'), tier: 'gold' },
+        { badgeCode: 'hat_trick', icon: '🔥', name: AppI18n.t('index.badge_hattrick'), count: ls('easter_hattrick'), tier: 'gold' },
+        { badgeCode: 'weekend_maniac', icon: '🎉', name: AppI18n.t('index.badge_weekend'), count: ls('easter_weekend'), tier: 'gold' },
+        { badgeCode: 'holiday_charge', icon: '🔋', name: AppI18n.t('index.badge_holiday'), count: ls('easter_holiday'), tier: 'gold' },
     ].filter(b => b.count > 0);
     if (easterData.length) {
         container.innerHTML += `

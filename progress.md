@@ -1,11 +1,11 @@
-📦 项目进度总结报告 (V10.3)
+📦 项目进度总结报告 (V10.4)
 📅 更新日期：2026-05-28
 
 🎯 整体状态
 
 - **Phase A** 已在仓库中（家长 Auth、PIN、本机孩子 Profile、学生端 hub）。
 - **2026-05-27** 增量：家长 PIN Forgot/密码门、徽章合成 Forge 全流程（前端 + RPC 草案）、打卡连击上云、`student` 徽章/等级云端优先、`parent/admin` 运维测试页、Premium 路线图写入本文档。**需在 Supabase 依次执行迁移 017～019（及已存在的 018）后联调验收。**
-- **2026-05-28** 增量：`student/index` 头像系统升级（本地自定义头像弹窗、分组、Premium 锁定与降级回退）、等级铭牌文案/样式与跳转修复、顶部导航布局重排；`shop` 金币图标统一与资源迁移到 `assets/images/shop-rewards`；`parent/pin` 增加返回学习主页按钮；`parent/dashboard` 删除流程改为立即弹确认且不被编辑弹窗遮挡。
+- **2026-05-28** 增量：`student/index` 头像系统升级（透明 PNG、分组、Premium 锁定与降级回退）、等级铭牌与顶部导航布局；`shop` 金币图标与 `shop-rewards` 资源整理；家长 PIN/档案删除流程优化；**徽章 PNG 资源**（`assets/images/badges`，16 张透明图，`streak_*` 共用 `streakcrystal.png`）；`common/js/badge-icons.js` 统一图标路径与英文两行断行（含 Sharpshooter 中间断开）；首页 / Forge / 练习弹窗接入；`docs/badge-copy.md` 文案对照表；练习页「解锁游戏」i18n 与 Balloon Hunter 更名对齐。
 - **2026-05-25** 增量：白皮书 + 技术文档补产品规则；`ParentGuide.md` 改为中英文对照、纯家长用户口吻。
 - **2026-05-22** 主要工作：**文档收拢 + 产品与数据架构定稿 + B1 前端代码预备**；**未**在 Supabase 执行 `009`，**未**重建数据库。
 - 产品/设计事实来源：`Whitepaper.md`；工程事实来源：`TECHNICAL.md`；家长可读说明：`ParentGuide.md`；入口：`README.md`。
@@ -49,6 +49,9 @@
 | 订阅降级回退 | Premium→Basic 时：若当前为自定义头像，自动回退到默认组第一个；若已选默认头像则保持；有 `cloudId` 时同步更新云端 `avatar_id` |
 | 商城资源整理 | 兑换商品图片迁移为 `assets/images/shop-rewards`；`student/shop.js` 路径更新；金币图标统一为 `💰`（顶部、tab、价格行） |
 | 家长页防误入/删除流 | `parent/pin` 增加“返回学习主页”按钮；`parent/dashboard` 编辑弹窗中点删除立即弹确认，且先关编辑弹窗避免遮挡 |
+| 徽章图标资源 | `assets/images/badges/` 16 张 PNG（文件名对齐 `badge_code`）；连击档 `streak_3`～`streak_30` 共用 `streakcrystal.png` |
+| 徽章展示层 | `common/js/badge-icons.js` + `assets/css/badge-icons.css`：按 `badge_code` 加载图片、emoji 回退；英文名称固定两行（Forge 格子同步） |
+| 文案与文档 | `docs/badge-copy.md` 徽章中英名/描述与图标对照；`i18n.js` 练习弹窗「Unlock Game / 解锁游戏」替代 Balloon Hunter |
 
 ---
 
@@ -60,7 +63,7 @@
 | Day 2 | `student/index` 头像选择稳定性 | 设备兼容回归（移动端点击、弹窗遮罩、语言切换、profile切换）+ bugfix |
 | Day 3 | Forge 回归与交互收口 | hidden/滑块联动、非注册提示、Premium 锁定一致性回归清单 |
 | Day 4 | 家长端 profile 操作完善 | 删除/编辑/PIN 误入防护回归；补充关键交互文案 i18n |
-| Day 5 | 资源与路径治理 | `assets` 目录规范化、命名统一、失效引用清理脚本（只读扫描+修复） |
+| Day 5 | 资源与路径治理 | `assets` 目录规范化（**徽章 PNG 已完成**）；头像/商店路径扫描与失效引用清理 |
 | Day 6 | E2E 手测日 | 游客→注册、Basic→Premium→Basic、跨页面头像与等级入口全链路手测 |
 | Day 7 | 发布准备与文档同步 | 更新 `PROGRESS.md`、发布检查清单、下周任务拆解（数据库迁移与RPC优先级） |
 

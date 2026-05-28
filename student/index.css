@@ -668,6 +668,8 @@ button.name-btn:active {
     text-align: center;
     line-height: 1.2;
     width: 100%;
+    min-height: 2.4em;
+    display: block;
 }
 
 .badge-item.unlocked .badge-name {

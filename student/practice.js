@@ -472,28 +472,30 @@ function finishQuiz() {
     if (sessionErrors <= 3) {
         if (curSub === '华文') {
             earnedCoins += 2;
-            badgeQueue.push({ icon: '🐼', title: t('badge.subject_cn'), desc: t('badge.subject_cn_desc') });
+            badgeQueue.push({ badgeCode: 'chinese_ace', icon: '🐼', title: t('badge.subject_cn'), desc: t('badge.subject_cn_desc') });
         } else {
             earnedCoins++;
-            const icons = { Science: '🌱', Math: '🔢' };
-            const names = { Science: 'Science Pro', Math: 'Math Genius', English: 'English Star' };
-            const bIcon = icons[curSub] || '🔤';
-            const bName = names[curSub] || curSub;
-            badgeQueue.push({ icon: bIcon, title: bName, desc: t('badge.subject_other_desc') });
+            const subBadge = {
+                Science: { code: 'science_pro', icon: '🌱', name: 'Science Pro' },
+                Math: { code: 'math_genius', icon: '🔢', name: 'Math Genius' },
+                English: { code: 'english_star', icon: '🔤', name: 'English Star' },
+            };
+            const sub = subBadge[curSub] || { code: 'english_star', icon: '🔤', name: curSub };
+            badgeQueue.push({ badgeCode: sub.code, icon: sub.icon, title: sub.name, desc: t('badge.subject_other_desc') });
         }
     }
 
     if (isPerfect) {
         // 2. Sharpshooter
         earnedCoins++;
-        badgeQueue.push({ icon: '🎯', title: t('badge.sharpshooter'), desc: t('badge.sharpshooter_desc') });
+        badgeQueue.push({ badgeCode: 'sharpshooter', icon: '🎯', title: t('badge.sharpshooter'), desc: t('badge.sharpshooter_desc') });
 
         // 3. Speed Record
         if (timeTaken <= speedLimit) {
             earnedCoins++;
             const breaks = parseInt(localStorage.getItem(`speed_breaks_${curUser}`) || '0') + 1;
             localStorage.setItem(`speed_breaks_${curUser}`, breaks);
-            badgeQueue.push({ icon: '⚡️', title: t('badge.speed'),
+            badgeQueue.push({ badgeCode: 'speed_record', icon: '⚡️', title: t('badge.speed'),
                 desc: t('badge.speed_desc', { sec: timeTaken }) });
         }
 
@@ -511,7 +513,7 @@ function finishQuiz() {
         if (streak === 3) {
             const htCount = parseInt(localStorage.getItem(`easter_hattrick_${curUser}`) || '0') + 1;
             localStorage.setItem(`easter_hattrick_${curUser}`, htCount);
-            badgeQueue.push({ icon: '🔥', title: t('badge.hattrick'), desc: t('badge.hattrick_desc') });
+            badgeQueue.push({ badgeCode: 'hat_trick', icon: '🔥', title: t('badge.hattrick'), desc: t('badge.hattrick_desc') });
             localStorage.setItem(`perfect_streak_${curUser}`, 0);
         }
     } else {
@@ -548,7 +550,7 @@ function finishQuiz() {
         if (currentStreak >= 3) {
             crys++;
             localStorage.setItem(`crystals_${curUser}`, crys);
-            badgeQueue.push({ icon: '💎', title: t('badge.crystal'),
+            badgeQueue.push({ badgeCode: 'streak_3', icon: '💎', title: t('badge.crystal'),
                 desc: t('badge.crystal_desc', { n: currentStreak }) });
         }
     }
@@ -558,11 +560,11 @@ function finishQuiz() {
     if (hour < 7) {
         localStorage.setItem(`easter_earlybird_${curUser}`,
             parseInt(localStorage.getItem(`easter_earlybird_${curUser}`) || '0') + 1);
-        badgeQueue.push({ icon: '🌅', title: t('badge.earlybird'), desc: t('badge.earlybird_desc') });
+        badgeQueue.push({ badgeCode: 'early_bird', icon: '🌅', title: t('badge.earlybird'), desc: t('badge.earlybird_desc') });
     } else if (hour >= 22) {
         localStorage.setItem(`easter_nightowl_${curUser}`,
             parseInt(localStorage.getItem(`easter_nightowl_${curUser}`) || '0') + 1);
-        badgeQueue.push({ icon: '🦉', title: t('badge.nightowl'), desc: t('badge.nightowl_desc') });
+        badgeQueue.push({ badgeCode: 'night_owl', icon: '🦉', title: t('badge.nightowl'), desc: t('badge.nightowl_desc') });
     }
 
     const d = new Date();
@@ -576,7 +578,7 @@ function finishQuiz() {
     if (isHoliday && lastDate !== today) {
         localStorage.setItem(`easter_holiday_${curUser}`,
             parseInt(localStorage.getItem(`easter_holiday_${curUser}`) || '0') + 1);
-        badgeQueue.push({ icon: '🔋', title: t('badge.holiday'), desc: t('badge.holiday_desc') });
+        badgeQueue.push({ badgeCode: 'holiday_charge', icon: '🔋', title: t('badge.holiday'), desc: t('badge.holiday_desc') });
     }
 
     // 9. Weekend Maniac
@@ -590,7 +592,7 @@ function finishQuiz() {
         localStorage.setItem(wkKey, wkCount);
         if (wkCount >= 10 && !localStorage.getItem(awardKey)) {
             localStorage.setItem(awardKey, '1');
-            badgeQueue.push({ icon: '🎉', title: t('badge.weekend'), desc: t('badge.weekend_desc') });
+            badgeQueue.push({ badgeCode: 'weekend_maniac', icon: '🎉', title: t('badge.weekend'), desc: t('badge.weekend_desc') });
         }
     }
 
@@ -615,7 +617,12 @@ function showNextBadge() {
     void modal.offsetWidth;
     modal.style.animation = 'epicPop 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275)';
 
-    document.getElementById('badge-icon').textContent  = b.icon;
+    const iconEl = document.getElementById('badge-icon');
+    if (b.badgeCode && typeof BadgeIcons !== 'undefined') {
+        iconEl.innerHTML = BadgeIcons.renderBadgeIconContent(b.badgeCode, b.icon);
+    } else {
+        iconEl.textContent = b.icon;
+    }
     document.getElementById('badge-title').textContent = b.title;
     document.getElementById('badge-desc').innerHTML    = b.desc;
 

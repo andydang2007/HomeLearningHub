@@ -1,0 +1,36 @@
+/* Shared badge PNG rendering (see common/js/badge-icons.js) */
+.badge-icon .badge-icon-img,
+.badge-tile-icon .badge-icon-img,
+.hidden-tile-icon .badge-icon-img {
+    width: 100%;
+    height: 100%;
+    max-width: 42px;
+    max-height: 42px;
+    object-fit: contain;
+    display: block;
+    margin: 0 auto;
+}
+
+.badge-icon .badge-icon-fallback,
+.badge-tile-icon .badge-icon-fallback,
+.hidden-tile-icon .badge-icon-fallback {
+    align-items: center;
+    justify-content: center;
+    width: 100%;
+    height: 100%;
+}
+
+.epic-icon .badge-icon-img {
+    width: 88px;
+    height: 88px;
+    object-fit: contain;
+}
+
+.epic-icon .badge-icon-fallback {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 100%;
+    height: 100%;
+    font-size: 80px;
+}

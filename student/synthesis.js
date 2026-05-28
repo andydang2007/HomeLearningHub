@@ -241,6 +241,14 @@ function getBadgeName(b, lang) {
     return (lang === 'zh' && b.display_name_zh) ? b.display_name_zh : b.display_name_en;
 }
 
+function badgeNameHtml(b, lang) {
+    const name = getBadgeName(b, lang);
+    if (typeof BadgeIcons !== 'undefined') {
+        return BadgeIcons.formatBadgeNameHtml(name, lang, b.badge_code);
+    }
+    return name;
+}
+
 function getRemainingBadgeNeedFor(badgeId) {
     const { totalBadges } = calcTotals();
     const current = S.spend[badgeId] || 0;
@@ -257,13 +265,14 @@ function renderBadgeSelectorUI() {
     }
 
     container.innerHTML = S.regularBadges.map(b => {
-        const name = getBadgeName(b, lang);
         const spent = S.spend[b.badge_id] || 0;
         const isSelected = S.selectedBadgeId === b.badge_id;
         return `
         <div class="badge-tile ${isSelected ? 'active' : ''}" id="bcard-${b.badge_id}">
-            <div class="badge-tile-icon">${b.icon || '🏅'}</div>
-            <div class="badge-tile-name">${name}</div>
+            <div class="badge-tile-icon">${typeof BadgeIcons !== 'undefined'
+                ? BadgeIcons.renderBadgeIconContent(b.badge_code, b.icon || '🏅')
+                : (b.icon || '🏅')}</div>
+            <div class="badge-tile-name">${badgeNameHtml(b, lang)}</div>
             <div class="badge-tile-avail">x${b.available}</div>
             <div class="badge-tile-spend" id="bcount-${b.badge_id}">${spent > 0 ? `-${spent}` : ''}</div>
         </div>`;
@@ -364,15 +373,16 @@ function renderHiddenBadges() {
     const lang = (typeof AppI18n !== 'undefined') ? AppI18n.getLang() : 'en';
 
     container.innerHTML = S.hiddenBadges.map(b => {
-        const name   = (lang === 'zh' && b.display_name_zh) ? b.display_name_zh : b.display_name_en;
         const locked = !S.isPremium;
         const avail  = b.available || 0;
 
         if (locked) {
             return `
             <div class="hidden-tile locked">
-                <div class="hidden-tile-icon">${b.icon || '✨'}</div>
-                <div class="hidden-tile-name">${name}</div>
+                <div class="hidden-tile-icon">${typeof BadgeIcons !== 'undefined'
+                    ? BadgeIcons.renderBadgeIconContent(b.badge_code, b.icon || '✨')
+                    : (b.icon || '✨')}</div>
+                <div class="hidden-tile-name">${badgeNameHtml(b, lang)}</div>
                 <div class="hidden-tile-avail">x${avail}</div>
                 <div class="hidden-tile-lock">🔒</div>
             </div>`;
@@ -383,8 +393,10 @@ function renderHiddenBadges() {
 
         return `
         <div class="hidden-tile premium ${S.selectedHiddenId === b.badge_id ? 'active' : ''}" id="hcard-${b.badge_id}">
-            <div class="hidden-tile-icon">${b.icon || '✨'}</div>
-            <div class="hidden-tile-name">${name}</div>
+            <div class="hidden-tile-icon">${typeof BadgeIcons !== 'undefined'
+                ? BadgeIcons.renderBadgeIconContent(b.badge_code, b.icon || '✨')
+                : (b.icon || '✨')}</div>
+            <div class="hidden-tile-name">${badgeNameHtml(b, lang)}</div>
             <div class="hidden-tile-avail">x${avail}</div>
             <div class="hidden-tile-spend">${spendLabel}</div>
         </div>`;

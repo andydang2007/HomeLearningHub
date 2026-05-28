@@ -826,9 +826,9 @@ body::before {
     font-weight: 900;
     line-height: 1.2;
     color: #fff;
-    display: -webkit-box;
-    -webkit-line-clamp: 2;
-    -webkit-box-orient: vertical;
+    text-align: center;
+    min-height: 2.4em;
+    display: block;
     overflow: hidden;
 }
 
@@ -922,6 +922,8 @@ body::before {
     font-weight: 900;
     color: #fff;
     line-height: 1.2;
+    text-align: center;
+    min-height: 2.4em;
     overflow: hidden;
 }
 
