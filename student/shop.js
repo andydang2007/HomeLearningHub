@@ -13,7 +13,7 @@ const CATALOG = [
     {
         id:            'soft_serve',
         name:          '甜筒',
-        image:         '../assets/images/reward_soft-serve.png',
+        image:         '../assets/images/shop-rewards/reward_soft-serve.png',
         fallback_icon: 'https://img.icons8.com/fluency/240/ice-cream-cone.png',
         cost:          7,
         currency_type: 'crystal',
@@ -21,7 +21,7 @@ const CATALOG = [
     {
         id:            'mcflurry',
         name:          '麦旋风',
-        image:         '../assets/images/reward_mcflurry.png',
+        image:         '../assets/images/shop-rewards/reward_mcflurry.png',
         fallback_icon: 'https://img.icons8.com/fluency/240/ice-cream-sundae.png',
         cost:          14,
         currency_type: 'crystal',
@@ -29,7 +29,7 @@ const CATALOG = [
     {
         id:            'hamburger',
         name:          '汉堡',
-        image:         '../assets/images/reward_hamburger.png',
+        image:         '../assets/images/shop-rewards/reward_hamburger.png',
         fallback_icon: 'https://img.icons8.com/fluency/240/hamburger.png',
         cost:          67,
         currency_type: 'gold',
@@ -37,7 +37,7 @@ const CATALOG = [
     {
         id:            'burger_combo',
         name:          '汉堡套餐',
-        image:         '../assets/images/reward_burger-combo.png',
+        image:         '../assets/images/shop-rewards/reward_burger-combo.png',
         fallback_icon: 'https://img.icons8.com/fluency/240/paper-bag-with-food.png',
         cost:          134,
         currency_type: 'gold',
@@ -45,7 +45,7 @@ const CATALOG = [
     {
         id:            'pizza',
         name:          '披萨大餐',
-        image:         '../assets/images/reward_pizza.png',
+        image:         '../assets/images/shop-rewards/reward_pizza.png',
         fallback_icon: 'https://img.icons8.com/fluency/240/pizza.png',
         cost:          268,
         currency_type: 'gold',
@@ -178,7 +178,7 @@ function renderGrid(currencyType) {
             ? `<span class="item-badge is-visible">${t('shop.redeemed_badge', { count })}</span>`
             : `<span class="item-badge"></span>`;
         const priceClass  = currencyType === 'crystal' ? 'item-price--crystal' : 'item-price--gold';
-        const priceSymbol = currencyType === 'crystal' ? '💎' : '🪙';
+        const priceSymbol = currencyType === 'crystal' ? '💎' : '💰';
         const itemClass   = `shop-item shop-item--${currencyType}`;
 
         return `

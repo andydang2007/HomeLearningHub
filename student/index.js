@@ -9,6 +9,25 @@ let currentLevelTier = 'Bronze';
 let currentLevelNo = 1;
 
 const LEVEL_TIER_EMOJI = { Bronze: '🥉', Silver: '🥈', Gold: '🥇', Diamond: '💎', Legend: '⭐' };
+const CUSTOM_AVATAR_FILES = [
+    'a1.png', 'a2.png', 'a3.png', 'a4.png', 'a5.png',
+    'b1.png', 'b2.png', 'b3.png',
+    'c1.png', 'c2.png', 'c3.png', 'c4.png', 'c5.png', 'c6.png',
+    'd1.png', 'd2.png', 'd3.png', 'd4.png',
+];
+const CUSTOM_AVATAR_BASE = '../assets/images/avatars/';
+const CUSTOM_AVATAR_MAP_KEY = 'kid_custom_avatar_map';
+const DEFAULT_AVATAR_IDS = ['star', 'girl_blonde', 'girl', 'boy', 'child', 'panda'];
+const DEFAULT_AVATAR_TRANSLATE = {
+    star: 'translate(0, 3%)',
+    girl_blonde: 'translate(2%, 0)',
+    boy: 'translate(-2%, 3%)',
+    child: 'translate(-1%, 1%)',
+};
+// Per-avatar visual center tuning (for images that look off-center on homepage).
+const CUSTOM_AVATAR_POSITIONS = {
+    // Example: 'a1.png': '50% 46%',
+};
 
 function formatLevelChipText(tierName, levelNo) {
     const tier = tierName || 'Bronze';
@@ -36,6 +55,167 @@ function applyLevelChipTierColor(tierName) {
 function getProfileAvatar(profile, index) {
     if (profile.avatarId) return ProfileCatalog.emojiForId(profile.avatarId);
     return ProfileCatalog.AVATARS[index % ProfileCatalog.AVATARS.length].emoji;
+}
+
+function getCustomAvatarMap() {
+    try {
+        return JSON.parse(localStorage.getItem(CUSTOM_AVATAR_MAP_KEY) || '{}');
+    } catch {
+        return {};
+    }
+}
+
+function setCustomAvatarMap(map) {
+    localStorage.setItem(CUSTOM_AVATAR_MAP_KEY, JSON.stringify(map));
+}
+
+function currentAvatarProfileKey() {
+    if (!currentUser) return '';
+    return currentCloudId ? `cloud:${currentCloudId}` : `local:${currentUser}|${currentGrade}`;
+}
+
+function getCurrentCustomAvatarFile() {
+    const map = getCustomAvatarMap();
+    const key = currentAvatarProfileKey();
+    const file = key ? map[key] : '';
+    return (file && CUSTOM_AVATAR_FILES.includes(file)) ? file : '';
+}
+
+function getCurrentAvatarSelection() {
+    const map = getCustomAvatarMap();
+    const key = currentAvatarProfileKey();
+    const raw = key ? map[key] : '';
+    if (!raw) return null;
+    if (typeof raw === 'string' && raw.startsWith('default:')) {
+        const avatarId = raw.slice('default:'.length);
+        return DEFAULT_AVATAR_IDS.includes(avatarId) ? { type: 'default', avatarId } : null;
+    }
+    if (typeof raw === 'string' && CUSTOM_AVATAR_FILES.includes(raw)) {
+        return { type: 'custom', file: raw };
+    }
+    return null;
+}
+
+function renderDashboardAvatar() {
+    const el = document.getElementById('dash-avatar');
+    if (!el) return;
+    const selection = getCurrentAvatarSelection();
+    if (selection?.type === 'custom') {
+        const pos = CUSTOM_AVATAR_POSITIONS[selection.file] || '50% 50%';
+        el.innerHTML = `<img src="${CUSTOM_AVATAR_BASE}${selection.file}" alt="avatar" style="object-position:${pos};">`;
+        return;
+    }
+    if (selection?.type === 'default') {
+        const emoji = ProfileCatalog.emojiForId(selection.avatarId);
+        const transform = DEFAULT_AVATAR_TRANSLATE[selection.avatarId] || 'none';
+        el.innerHTML = `<span class="dash-avatar-emoji" style="transform:${transform};">${emoji}</span>`;
+        return;
+    }
+    el.textContent = getAvatarForName(currentUser);
+}
+
+function openAvatarModal() {
+    const modal = document.getElementById('avatar-modal');
+    if (!modal || !currentUser) return;
+    renderAvatarPicker();
+    modal.classList.remove('is-hidden');
+}
+
+function closeAvatarModal() {
+    document.getElementById('avatar-modal')?.classList.add('is-hidden');
+}
+
+function renderAvatarPicker() {
+    const grid = document.getElementById('avatar-grid');
+    if (!grid) return;
+    const selected = getCurrentAvatarSelection();
+    const t = (key) => (typeof AppI18n !== 'undefined' ? AppI18n.t(key) : key);
+    const groups = [
+        {
+            id: 'default',
+            title: t('index.avatar_group_default'),
+            items: DEFAULT_AVATAR_IDS.map((avatarId) => ({ kind: 'default', avatarId })),
+        },
+        {
+            id: 'a',
+            title: t('index.avatar_group_a'),
+            items: CUSTOM_AVATAR_FILES.filter((f) => f.startsWith('a')).map((file) => ({ kind: 'custom', file })),
+        },
+        {
+            id: 'b',
+            title: t('index.avatar_group_b'),
+            items: CUSTOM_AVATAR_FILES.filter((f) => f.startsWith('b')).map((file) => ({ kind: 'custom', file })),
+        },
+        {
+            id: 'c',
+            title: t('index.avatar_group_c'),
+            items: CUSTOM_AVATAR_FILES.filter((f) => f.startsWith('c')).map((file) => ({ kind: 'custom', file })),
+        },
+        {
+            id: 'd',
+            title: t('index.avatar_group_d'),
+            items: CUSTOM_AVATAR_FILES.filter((f) => f.startsWith('d')).map((file) => ({ kind: 'custom', file })),
+        },
+    ];
+
+    grid.innerHTML = groups.map((g) => {
+        if (!g.items.length) return '';
+        const itemHtml = g.items.map((item) => {
+            if (item.kind === 'default') {
+                const isSelected = selected?.type === 'default' && selected.avatarId === item.avatarId;
+                const transform = DEFAULT_AVATAR_TRANSLATE[item.avatarId] || 'none';
+                return `
+                    <button type="button" class="avatar-pick ${isSelected ? 'selected' : ''}" data-kind="default" data-avatar-id="${item.avatarId}">
+                        <span class="avatar-pick-emoji" style="transform:${transform};">${ProfileCatalog.emojiForId(item.avatarId)}</span>
+                    </button>
+                `;
+            }
+            const isSelected = selected?.type === 'custom' && selected.file === item.file;
+            const pos = CUSTOM_AVATAR_POSITIONS[item.file] || '50% 50%';
+            return `
+                <button type="button" class="avatar-pick ${isSelected ? 'selected' : ''}" data-kind="custom" data-file="${item.file}">
+                    <img src="${CUSTOM_AVATAR_BASE}${item.file}" alt="${item.file}" style="object-position:${pos};">
+                </button>
+            `;
+        }).join('');
+        return `
+            <section class="avatar-group-section ${g.id === 'default' ? 'avatar-group-section--default' : ''}">
+                <div class="avatar-group-title">${g.title}</div>
+                <div class="avatar-group-grid">${itemHtml}</div>
+            </section>
+        `;
+    }).join('');
+
+    grid.querySelectorAll('.avatar-pick').forEach((btn) => {
+        btn.addEventListener('click', async () => {
+            const key = currentAvatarProfileKey();
+            if (!key) return;
+            const map = getCustomAvatarMap();
+            const kind = btn.dataset.kind;
+
+            if (kind === 'default') {
+                const avatarId = btn.dataset.avatarId;
+                if (!DEFAULT_AVATAR_IDS.includes(avatarId)) return;
+                map[key] = `default:${avatarId}`;
+                setCustomAvatarMap(map);
+                AUTH.updateKidProfile(currentUser, { avatarId });
+                if (currentCloudId) {
+                    const profile = AUTH.getKidProfiles().find((p) => p.name === currentUser);
+                    if (profile?.cloudId) {
+                        await AUTH.updateKidProfileOnCloud(profile.cloudId, profile);
+                    }
+                }
+            } else {
+                const file = btn.dataset.file;
+                if (!CUSTOM_AVATAR_FILES.includes(file)) return;
+                map[key] = file;
+                setCustomAvatarMap(map);
+            }
+
+            renderDashboardAvatar();
+            closeAvatarModal();
+        });
+    });
 }
 
 function getSGTDate() {
@@ -407,7 +587,7 @@ function executeSwitchUser(name, grade) {
         currentLevelNo = 1;
     }
 
-    document.getElementById('dash-avatar').textContent = getAvatarForName(name);
+    renderDashboardAvatar();
     document.getElementById('dash-name').textContent   = name;
     document.getElementById('cn-label').textContent    =
         grade === 'P3' || grade === 'P4' || grade === 'P5' || grade === 'P6'
@@ -796,6 +976,9 @@ document.addEventListener('DOMContentLoaded', async () => {
         langBtn.textContent = AppI18n.t('lang.toggle');
         refreshHub();
         refreshUserScreenI18n();
+        if (!document.getElementById('avatar-modal')?.classList.contains('is-hidden')) {
+            renderAvatarPicker();
+        }
         if (currentUser) {
             document.getElementById('dash-name').textContent = currentUser;
             loadAndShowLevel(currentCloudId, currentUser);
@@ -805,6 +988,11 @@ document.addEventListener('DOMContentLoaded', async () => {
     // Shop button
     document.getElementById('shop-btn').addEventListener('click', () => {
         window.location.href = 'shop.html';
+    });
+    document.getElementById('dash-avatar-btn')?.addEventListener('click', openAvatarModal);
+    document.getElementById('avatar-modal-close')?.addEventListener('click', closeAvatarModal);
+    document.getElementById('avatar-modal')?.addEventListener('click', (e) => {
+        if (e.target.id === 'avatar-modal') closeAvatarModal();
     });
 
     // Switch user from dashboard

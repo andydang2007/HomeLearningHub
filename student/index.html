@@ -64,7 +64,9 @@
 
         <div class="dashboard-header">
             <div class="avatar-row">
-                <div class="avatar" id="dash-avatar">👱‍♀️</div>
+                <button class="avatar avatar-btn" id="dash-avatar-btn" type="button" aria-label="Change avatar">
+                    <div class="avatar" id="dash-avatar">👱‍♀️</div>
+                </button>
                 <div class="name-level-stack">
                     <h2 id="dash-name">Hello!</h2>
                 </div>
@@ -115,6 +117,15 @@
         </div>
 
         <button class="btn-action switch-user-btn" id="switch-user-btn" type="button" data-i18n="index.switch_user">👤 Switch User</button>
+    </div>
+
+    <!-- Avatar picker modal (student index only) -->
+    <div class="avatar-modal-overlay is-hidden" id="avatar-modal">
+        <div class="avatar-modal-card">
+            <div class="avatar-modal-title" data-i18n="index.avatar_picker_title">Choose Avatar</div>
+            <div class="avatar-grid" id="avatar-grid"></div>
+            <button type="button" class="btn-action" id="avatar-modal-close" data-i18n="index.close">Close</button>
+        </div>
     </div>
 
     <!-- English submenu -->
