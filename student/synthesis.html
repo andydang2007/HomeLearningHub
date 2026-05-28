@@ -29,7 +29,7 @@
         <!-- Header -->
         <div class="synth-header">
             <button class="back-btn" id="back-btn" aria-label="Back">←</button>
-            <span class="synth-title" data-i18n="synth.title">Forge</span>
+            <span class="synth-title" id="synth-title"></span>
         </div>
 
         <!-- Level display: current → next -->
@@ -64,6 +64,7 @@
                     <div class="cost-label" data-i18n="synth.badges_needed">Badges</div>
                     <div class="cost-progress-bar">
                         <div class="cost-bar-fill" id="badge-bar-fill" style="width:0%"></div>
+                        <input class="progress-dragger" type="range" id="badge-total-slider" min="0" max="0" value="0" step="1" disabled>
                     </div>
                 </div>
                 <span class="cost-numbers" id="badge-numbers">0 / 10</span>
@@ -76,6 +77,7 @@
                     <div class="cost-label" data-i18n="synth.crystals_needed">Crystals</div>
                     <div class="cost-progress-bar">
                         <div class="cost-bar-fill" id="crystal-bar-fill" style="width:0%"></div>
+                        <input class="progress-dragger" type="range" id="crystal-direct-slider" min="0" max="0" value="0" step="1" disabled>
                     </div>
                     <div class="cost-detail" id="crystal-detail"></div>
                 </div>
@@ -118,15 +120,16 @@
 <!-- Hidden badge modal -->
 <div class="hidden-modal" id="hidden-modal" style="display:none">
     <div class="hidden-modal-card">
-        <button class="hidden-modal-close" id="hidden-modal-close" aria-label="Close">✕</button>
         <div class="hidden-selected-meta" id="hidden-selected-meta">Select hidden badge</div>
-        <div class="hidden-mode-group">
-            <button class="hidden-mode-btn" id="hidden-mode-badges">Badges</button>
-            <button class="hidden-mode-btn" id="hidden-mode-crystals">Crystals</button>
-        </div>
-        <div class="single-slider-row">
-            <input class="badge-slider" type="range" id="hidden-qty-slider" min="0" max="0" value="0" step="1" disabled>
-            <div class="single-slider-num" id="hidden-qty-num">0</div>
+        <div class="hidden-dual-controls">
+            <div class="hidden-control-col">
+                <button class="hidden-mode-btn" id="hidden-mode-badges" type="button">Badges</button>
+                <select class="hidden-qty-wheel" id="hidden-qty-badges" disabled></select>
+            </div>
+            <div class="hidden-control-col">
+                <button class="hidden-mode-btn" id="hidden-mode-crystals" type="button">Crystals</button>
+                <select class="hidden-qty-wheel" id="hidden-qty-crystals" disabled></select>
+            </div>
         </div>
     </div>
 </div>

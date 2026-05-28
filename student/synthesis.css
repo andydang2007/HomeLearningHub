@@ -244,10 +244,21 @@ body::before {
 }
 
 .cost-progress-bar {
-    height: 8px;
-    background: rgba(255,255,255,0.07);
+    height: 14px;
+    background: transparent;
     border-radius: 4px;
-    overflow: hidden;
+    overflow: visible;
+    position: relative;
+}
+
+.cost-progress-bar .cost-bar-fill {
+    position: absolute;
+    left: 0;
+    top: 3px;
+    height: 8px;
+    z-index: 1;
+    background: var(--t-color, #cd7f32);
+    border-radius: 4px;
 }
 
 .cost-bar-fill {
@@ -258,6 +269,40 @@ body::before {
 }
 
 .cost-bar-fill.ok { background: #4ade80; }
+
+.progress-dragger {
+    -webkit-appearance: none;
+    appearance: none;
+    width: 100%;
+    height: 8px;
+    border-radius: 4px;
+    outline: none;
+    margin: 0;
+    background: transparent;
+    position: absolute;
+    left: 0;
+    right: 0;
+    top: -3px;
+    height: 14px;
+    z-index: 2;
+    cursor: pointer;
+}
+
+.progress-dragger::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    appearance: none;
+    width: 18px;
+    height: 18px;
+    border-radius: 50%;
+    background: #fff;
+    border: 2px solid var(--t-color, #cd7f32);
+    cursor: pointer;
+}
+
+.progress-dragger:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
 
 .cost-numbers {
     font-size: 17px; font-weight: 900;
@@ -944,34 +989,20 @@ body::before {
     pointer-events: none;
 }
 
-.hidden-modal.open { display: block !important; pointer-events: auto; }
+.hidden-modal.open { display: block !important; pointer-events: none; }
+.hidden-modal-card { pointer-events: auto; }
 
 .hidden-modal-card {
     position: fixed;
     left: 50%;
-    top: 62%;
+    top: 50%;
     transform: translate(-50%, -50%);
-    width: min(420px, 92vw);
+    width: min(430px, 90vw);
     background: rgba(20, 12, 40, 0.95);
     border: 1px solid rgba(255,255,255,0.2);
     border-radius: 16px;
-    padding: 12px 12px 10px;
+    padding: 14px 14px 12px;
     box-shadow: 0 12px 36px rgba(0,0,0,0.5);
-}
-
-.hidden-modal-close {
-    position: absolute;
-    top: 8px;
-    right: 8px;
-    border: none;
-    background: rgba(255,255,255,0.1);
-    color: #fff;
-    width: 26px;
-    height: 26px;
-    border-radius: 50%;
-    cursor: pointer;
-    font-size: 12px;
-    font-weight: 900;
 }
 
 .hidden-selected-meta {
@@ -981,21 +1012,59 @@ body::before {
     margin-bottom: 8px;
 }
 
+.crystal-wallet-row {
+    margin-top: 8px;
+}
+
 .hidden-mode-group {
     display: flex;
-    gap: 6px;
+    gap: 10px;
+    margin-bottom: 10px;
+}
+
+.hidden-dual-controls {
+    display: flex;
+    justify-content: center;
+    align-items: flex-start;
+    gap: 18px;
+    margin-top: 6px;
+}
+
+.hidden-control-col {
+    display: flex;
+    align-items: center;
+    gap: 8px;
 }
 
 .hidden-mode-btn {
     border: 1px solid rgba(255,255,255,0.22);
     background: rgba(0,0,0,0.22);
     color: rgba(248,245,255,0.92);
-    border-radius: 10px;
-    padding: 4px 8px;
-    font-size: 11px;
+    border-radius: 12px;
+    padding: 10px 16px;
+    font-size: 15px;
     font-weight: 900;
     font-family: inherit;
     cursor: pointer;
+}
+
+.hidden-qty-wheel {
+    width: 82px;
+    background: rgba(0,0,0,0.25);
+    border: 1px solid rgba(255,255,255,0.22);
+    color: #fff;
+    border-radius: 10px;
+    text-align: center;
+    font-size: 20px;
+    font-weight: 900;
+    padding: 5px 6px;
+    font-family: inherit;
+}
+
+select.hidden-qty-wheel {
+    -webkit-appearance: menulist;
+    appearance: auto;
+    height: 42px;
 }
 
 .hidden-mode-btn.active {
@@ -1016,5 +1085,7 @@ body::before {
     .hidden-tile-name { font-size: 10px; }
     .hidden-tile-avail { font-size: 10px; }
     .hidden-mini-btn { font-size: 8px; padding: 2px 3px; }
-    .hidden-modal-card { top: 64%; }
+    .hidden-modal-card {
+        width: 90vw;
+    }
 }

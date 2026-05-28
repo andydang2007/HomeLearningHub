@@ -46,11 +46,12 @@ const S = {
     nextLevel:       2,
     nextTier:        'Bronze',
     spend:           {},   // badge_id → qty
-    hiddenSpend:     {},   // badge_id → { mode: 'badges'|'crystals', qty: number }
+    hiddenSpend:     {},   // badge_id → { badgesQty: number, crystalsQty: number }
     selectedBadgeId: null,
     selectedHiddenId: null,
-    hiddenDraftMode: 'badges',
-    hiddenDraftQty:  0,
+    crystalSpend:    0, // manual spend from wallet slider
+    badgeSpendTarget: 0,
+    badgeControlMode: 'total', // 'total' | 'manual'
 };
 
 /* ═══════════════════════════════════════════════════════
@@ -187,8 +188,11 @@ async function loadData() {
 
         S.spend    = {};
         S.hiddenSpend = {};
+        S.crystalSpend = 0;
+        S.badgeSpendTarget = 0;
+        S.badgeControlMode = 'total';
         S.regularBadges.forEach(b => { S.spend[b.badge_id]    = 0; });
-        S.hiddenBadges.forEach(b  => { S.hiddenSpend[b.badge_id] = { mode: 'badges', qty: 0 }; });
+        S.hiddenBadges.forEach(b  => { S.hiddenSpend[b.badge_id] = { badgesQty: 0, crystalsQty: 0 }; });
 
         renderPage();
     } catch (err) {
@@ -214,7 +218,8 @@ function applyTierTheme() {
 }
 
 function renderHeader() {
-    // Title-only header
+    const title = document.getElementById('synth-title');
+    if (title) title.textContent = S.profileName || 'Profile';
 }
 
 function renderLevelDisplay() {
@@ -248,10 +253,8 @@ function renderBadgeSelectorUI() {
 
     if (S.regularBadges.length === 0) {
         container.innerHTML = `<div class="empty-badges-msg">${t('synth.no_badges')}</div>`;
-        document.getElementById('single-slider-panel').style.display = 'none';
         return;
     }
-    document.getElementById('single-slider-panel').style.display = 'block';
 
     container.innerHTML = S.regularBadges.map(b => {
         const name = getBadgeName(b, lang);
@@ -268,45 +271,75 @@ function renderBadgeSelectorUI() {
 
     container.querySelectorAll('.badge-tile').forEach(card => {
         card.addEventListener('click', () => {
-            const bid = card.id.replace('bcard-', '');
-            S.selectedBadgeId = bid;
-            updateSingleSliderPanel();
+            S.selectedBadgeId = card.id.replace('bcard-', '');
             renderBadgeSelectorUI();
+            updateSingleSliderPanel();
         });
     });
-
     updateSingleSliderPanel();
 }
 
-function updateSingleSliderPanel() {
-    const slider = document.getElementById('single-badge-slider');
-    const num = document.getElementById('single-slider-num');
-    const meta = document.getElementById('selected-badge-meta');
-    const lang = (typeof AppI18n !== 'undefined') ? AppI18n.getLang() : 'en';
-    const selected = S.regularBadges.find(b => b.badge_id === S.selectedBadgeId);
-    if (!selected) {
-        slider.disabled = true;
-        slider.max = 0;
-        slider.value = 0;
-        num.textContent = '0';
-        meta.textContent = t('synth.choose_badge');
-        return;
+function redistributeBadgesEvenly(total) {
+    // Precise round-robin allocation:
+    // guarantees sum(spend) === min(total, sum(available)) with 1-step granularity.
+    const left = {};
+    S.regularBadges.forEach(b => {
+        left[b.badge_id] = b.available || 0;
+        S.spend[b.badge_id] = 0;
+    });
+
+    let rem = Math.max(0, total);
+    while (rem > 0) {
+        let movedThisRound = 0;
+        for (const b of S.regularBadges) {
+            if (rem <= 0) break;
+            const bid = b.badge_id;
+            if ((left[bid] || 0) <= 0) continue;
+            S.spend[bid] += 1;
+            left[bid] -= 1;
+            rem -= 1;
+            movedThisRound += 1;
+        }
+        if (movedThisRound === 0) break;
     }
+}
 
-    const remainingNeed = getRemainingBadgeNeedFor(selected.badge_id);
-    const maxSelectable = Math.min(selected.available, remainingNeed || selected.available);
-    const current = S.spend[selected.badge_id] || 0;
-    const val = Math.min(current, maxSelectable);
+function setDraggerFill(el, pct, ok) {
+    const color = ok ? '#4ade80' : 'var(--t-color, #cd7f32)';
+    const p = Math.max(0, Math.min(100, pct));
+    el.style.background = `linear-gradient(90deg, ${color} 0%, ${color} ${p}%, rgba(255,255,255,0.12) ${p}%, rgba(255,255,255,0.12) 100%)`;
+}
 
-    slider.disabled = maxSelectable <= 0;
-    slider.min = 0;
-    slider.max = maxSelectable;
-    slider.value = val;
-    num.textContent = String(val);
-    meta.textContent = `${selected.icon || '🏅'} ${getBadgeName(selected, lang)} × ${selected.available}`;
-    // Also reflect current spend on tile
-    const countEl = document.getElementById(`bcount-${selected.badge_id}`);
-    if (countEl) countEl.textContent = val > 0 ? `-${val}` : '';
+/** Update only the spend label on a hidden tile without re-rendering the whole list */
+function updateHiddenTileSpend(badgeId) {
+    const tileEl = document.getElementById(`hcard-${badgeId}`);
+    if (!tileEl) return;
+    const hs = S.hiddenSpend[badgeId] || { badgesQty: 0, crystalsQty: 0 };
+    const totalUsed = (hs.badgesQty || 0) + (hs.crystalsQty || 0);
+    const spendEl = tileEl.querySelector('.hidden-tile-spend');
+    if (spendEl) spendEl.textContent = totalUsed > 0 ? `-${totalUsed}` : '';
+}
+
+/** Push badge slider to its maximum right point (filling remaining need) */
+function syncBadgeSliderToMax() {
+    const hiddenBadgeContrib = S.hiddenBadges.reduce((sum, b) => {
+        const hs = S.hiddenSpend[b.badge_id] || { badgesQty: 0, crystalsQty: 0 };
+        return sum + ((hs.badgesQty || 0) * 50);
+    }, 0);
+    const totalBadgeAssets = S.regularBadges.reduce((s, b) => s + (b.available || 0), 0);
+    const maxRegularNeed = Math.max(0, S.requiredBadges - hiddenBadgeContrib);
+    S.badgeControlMode = 'total';
+    S.badgeSpendTarget = Math.min(totalBadgeAssets, maxRegularNeed);
+}
+
+/** Push crystal slider to its maximum right point (filling remaining need from wallet) */
+function syncCrystalSliderToMax() {
+    const hiddenCrystalContrib = S.hiddenBadges.reduce((sum, b) => {
+        const hs = S.hiddenSpend[b.badge_id] || { badgesQty: 0, crystalsQty: 0 };
+        return sum + ((hs.crystalsQty || 0) * 10);
+    }, 0);
+    const remainingNeed = Math.max(0, S.requiredCrystals - hiddenCrystalContrib);
+    S.crystalSpend = Math.min(S.crystalBalance, remainingNeed);
 }
 
 function renderHiddenBadges() {
@@ -344,14 +377,16 @@ function renderHiddenBadges() {
                 <div class="hidden-tile-lock">🔒</div>
             </div>`;
         }
-        const hs = S.hiddenSpend[b.badge_id] || { mode: 'badges', qty: 0 };
+        const hs = S.hiddenSpend[b.badge_id] || { badgesQty: 0, crystalsQty: 0 };
+        const totalUsed = (hs.badgesQty || 0) + (hs.crystalsQty || 0);
+        const spendLabel = totalUsed > 0 ? `-${totalUsed}` : '';
 
         return `
         <div class="hidden-tile premium ${S.selectedHiddenId === b.badge_id ? 'active' : ''}" id="hcard-${b.badge_id}">
             <div class="hidden-tile-icon">${b.icon || '✨'}</div>
             <div class="hidden-tile-name">${name}</div>
             <div class="hidden-tile-avail">x${avail}</div>
-            <div class="hidden-tile-spend">${hs.qty > 0 ? `-${hs.qty}` : ''}</div>
+            <div class="hidden-tile-spend">${spendLabel}</div>
         </div>`;
     }).join('');
 
@@ -364,14 +399,34 @@ function renderHiddenBadges() {
     container.querySelectorAll('.hidden-tile.premium').forEach(tile => {
         tile.addEventListener('click', () => {
             const hid = tile.id.replace('hcard-', '');
+            // Switch active tile without re-rendering (avoids closing modal)
+            container.querySelectorAll('.hidden-tile.premium').forEach(t => t.classList.remove('active'));
+            tile.classList.add('active');
             S.selectedHiddenId = hid;
-            renderHiddenBadges();
             updateHiddenPanel();
             modal.style.display = 'block';
             modal.classList.add('open');
+            positionHiddenModal();
         });
     });
     updateHiddenPanel();
+}
+
+function positionHiddenModal() {
+    const section = document.getElementById('hidden-section');
+    const list = document.getElementById('hidden-badge-list');
+    const card = document.querySelector('#hidden-modal .hidden-modal-card');
+    if (!section || !card) return;
+    const r = section.getBoundingClientRect();
+    const cardRect = card.getBoundingClientRect();
+    const width = Math.min(cardRect.width, window.innerWidth - 24);
+    const left = Math.max(12, Math.min(window.innerWidth - width - 12, r.left + (r.width - width) / 2));
+    // Position bottom edge of card just above the tile grid (with a small gap)
+    const tileAreaTop = list ? list.getBoundingClientRect().top : r.top + 90;
+    const desiredBottom = tileAreaTop - 10;
+    const topEdge = Math.max(72, desiredBottom - cardRect.height);
+    card.style.left = `${left + width / 2}px`;
+    card.style.top = `${topEdge + cardRect.height / 2}px`;
 }
 
 function updateHiddenPanel() {
@@ -379,50 +434,75 @@ function updateHiddenPanel() {
     const meta = document.getElementById('hidden-selected-meta');
     const bbtn = document.getElementById('hidden-mode-badges');
     const cbtn = document.getElementById('hidden-mode-crystals');
-    const slider = document.getElementById('hidden-qty-slider');
-    const num = document.getElementById('hidden-qty-num');
+    const inputBadges = document.getElementById('hidden-qty-badges');
+    const inputCrystals = document.getElementById('hidden-qty-crystals');
 
     if (!selected) {
         meta.textContent = 'Select hidden badge';
-        slider.disabled = true;
-        slider.max = 0;
-        slider.value = 0;
-        num.textContent = '0';
+        inputBadges.disabled = true;
+        inputBadges.max = 0;
+        inputBadges.value = 0;
+        inputCrystals.disabled = true;
+        inputCrystals.max = 0;
+        inputCrystals.value = 0;
         bbtn.classList.remove('active');
         cbtn.classList.remove('active');
         return;
     }
 
-    const hs = S.hiddenSpend[selected.badge_id] || { mode: 'badges', qty: 0 };
-    S.hiddenDraftMode = hs.mode;
-    S.hiddenDraftQty = hs.qty;
+    const hs = S.hiddenSpend[selected.badge_id] || { badgesQty: 0, crystalsQty: 0 };
     meta.textContent = `${selected.icon || '✨'} ${getBadgeName(selected, (typeof AppI18n !== 'undefined') ? AppI18n.getLang() : 'en')} x${selected.available}`;
-    bbtn.classList.toggle('active', S.hiddenDraftMode === 'badges');
-    cbtn.classList.toggle('active', S.hiddenDraftMode === 'crystals');
-    cbtn.style.display = S.requiredCrystals > 0 ? 'inline-flex' : 'none';
+    bbtn.classList.add('active');
+    cbtn.classList.add('active');
 
     // Limit hidden usage by remaining needed progress (and own stock).
+    const regUsed = Object.values(S.spend).reduce((a, v) => a + (v || 0), 0);
     const othersHiddenBadge = S.hiddenBadges.reduce((sum, hb) => {
         if (hb.badge_id === selected.badge_id) return sum;
-        const x = S.hiddenSpend[hb.badge_id] || { mode: 'badges', qty: 0 };
-        return sum + (x.mode === 'badges' ? (x.qty * 50) : 0);
+        const x = S.hiddenSpend[hb.badge_id] || { badgesQty: 0, crystalsQty: 0 };
+        return sum + ((x.badgesQty || 0) * 50);
     }, 0);
     const othersHiddenCrystal = S.hiddenBadges.reduce((sum, hb) => {
         if (hb.badge_id === selected.badge_id) return sum;
-        const x = S.hiddenSpend[hb.badge_id] || { mode: 'badges', qty: 0 };
-        return sum + (x.mode === 'crystals' ? (x.qty * 10) : 0);
+        const x = S.hiddenSpend[hb.badge_id] || { badgesQty: 0, crystalsQty: 0 };
+        return sum + ((x.crystalsQty || 0) * 10);
     }, 0);
-    const maxByNeed = S.hiddenDraftMode === 'badges'
-        ? Math.ceil(Math.max(0, S.requiredBadges - ((Object.values(S.spend).reduce((a, v) => a + v, 0)) + othersHiddenBadge)) / 50)
-        : Math.ceil(Math.max(0, S.requiredCrystals - othersHiddenCrystal) / 10);
-    const allowedMax = Math.max(0, Math.min(selected.available, maxByNeed || selected.available));
-    S.hiddenDraftQty = Math.min(S.hiddenDraftQty, allowedMax);
+    const allowedMaxBadgesByNeed = Math.max(0, Math.floor(Math.max(0, S.requiredBadges - (regUsed + othersHiddenBadge)) / 50));
+    const allowedMaxCrystalsByNeed = Math.max(0, Math.floor(Math.max(0, S.requiredCrystals - (S.crystalSpend + othersHiddenCrystal)) / 10));
+    let badgesQty = Math.max(0, Math.min(hs.badgesQty || 0, selected.available));
+    let crystalsQty = Math.max(0, Math.min(hs.crystalsQty || 0, selected.available));
+    badgesQty = Math.min(badgesQty, allowedMaxBadgesByNeed);
+    crystalsQty = Math.min(crystalsQty, allowedMaxCrystalsByNeed);
+    if (badgesQty + crystalsQty > selected.available) {
+        const overflow = badgesQty + crystalsQty - selected.available;
+        if (crystalsQty >= overflow) crystalsQty -= overflow;
+        else {
+            badgesQty = Math.max(0, badgesQty - (overflow - crystalsQty));
+            crystalsQty = 0;
+        }
+    }
+    S.hiddenSpend[selected.badge_id] = { badgesQty, crystalsQty };
 
-    slider.disabled = false;
-    slider.min = 0;
-    slider.max = allowedMax;
-    slider.value = S.hiddenDraftQty;
-    num.textContent = String(S.hiddenDraftQty);
+    const allowedMaxBadges = Math.max(0, Math.min(
+        selected.available,
+        allowedMaxBadgesByNeed,
+        selected.available - crystalsQty
+    ));
+
+    const allowedMaxCrystals = Math.max(0, Math.min(
+        selected.available,
+        allowedMaxCrystalsByNeed,
+        selected.available - badgesQty
+    ));
+
+    inputBadges.disabled = false;
+    // Show values as multiples of 50 (e.g. 0, 50, 100, 150…)
+    inputBadges.innerHTML = Array.from({ length: allowedMaxBadges + 1 }, (_, i) => `<option value="${i}">${i * 50}</option>`).join('');
+    inputBadges.value = String(Math.min(badgesQty, allowedMaxBadges));
+    inputCrystals.disabled = false;
+    // Show values as multiples of 10 (e.g. 0, 10, 20, 30…)
+    inputCrystals.innerHTML = Array.from({ length: allowedMaxCrystals + 1 }, (_, i) => `<option value="${i}">${i * 10}</option>`).join('');
+    inputCrystals.value = String(Math.min(crystalsQty, allowedMaxCrystals));
 }
 
 /* ═══════════════════════════════════════════════════════
@@ -436,61 +516,147 @@ function calcTotals() {
     Object.entries(S.spend).forEach(([, v])  => { regBadges   += v; });
 
     S.hiddenBadges.forEach(b => {
-        const hs = S.hiddenSpend[b.badge_id] || { mode: 'badges', qty: 0 };
-        const qty = Math.max(0, Math.min(b.available, hs.qty || 0));
-        if (hs.mode === 'badges'   && qty > 0) hiddenBadges += (50 * qty);
-        if (hs.mode === 'crystals' && qty > 0) hiddenCrysts += (10 * qty);
+        const hs = S.hiddenSpend[b.badge_id] || { badgesQty: 0, crystalsQty: 0 };
+        const bq = Math.max(0, Math.min(b.available, hs.badgesQty || 0));
+        const cq = Math.max(0, Math.min(b.available - bq, hs.crystalsQty || 0));
+        if (bq > 0) hiddenBadges += (50 * bq);
+        if (cq > 0) hiddenCrysts += (10 * cq);
     });
 
     return {
         totalBadges:   regBadges + hiddenBadges,
         hiddenCrysts,
+        walletCrysts: S.crystalSpend,
         regBadges,
         hiddenBadges,
     };
 }
 
 function updateCostPanel() {
-    const { totalBadges, hiddenCrysts } = calcTotals();
     const reqB = S.requiredBadges;
     const reqC = S.requiredCrystals;
     const totalBadgeAssets = S.regularBadges.reduce((s, b) => s + (b.available || 0), 0);
+    const hiddenBadgeContribution = S.hiddenBadges.reduce((sum, b) => {
+        const hs = S.hiddenSpend[b.badge_id] || { badgesQty: 0, crystalsQty: 0 };
+        return sum + ((hs.badgesQty || 0) * 50);
+    }, 0);
+
+    // Keep slider and allocation in sync BEFORE computing totals,
+    // otherwise the displayed progress can lag by one step.
+    const maxRegularNeed = Math.max(0, reqB - hiddenBadgeContribution);
+    const maxRegularUse = Math.min(totalBadgeAssets, maxRegularNeed);
+    if (S.badgeControlMode === 'total') {
+        S.badgeSpendTarget = Math.max(0, Math.min(S.badgeSpendTarget, maxRegularUse));
+        redistributeBadgesEvenly(S.badgeSpendTarget);
+    } else {
+        // manual mode: clamp current per-badge values only
+        let manualTotal = 0;
+        S.regularBadges.forEach(b => {
+            const v = Math.max(0, Math.min(b.available || 0, S.spend[b.badge_id] || 0));
+            S.spend[b.badge_id] = v;
+            manualTotal += v;
+        });
+        S.badgeSpendTarget = Math.min(manualTotal, maxRegularUse);
+    }
+
+    const { totalBadges, hiddenCrysts } = calcTotals();
 
     // Badge progress
     const pct  = reqB > 0 ? Math.min(100, (totalBadges / reqB) * 100) : 100;
-    const fill = document.getElementById('badge-bar-fill');
-    fill.style.width = pct + '%';
-    fill.classList.toggle('ok', totalBadges >= reqB);
 
-    document.querySelector('#badge-bar-fill').closest('.cost-info').querySelector('.cost-label').textContent = `BADGES · Total ${totalBadgeAssets}`;
+    const remainingBadgeAssets = totalBadgeAssets - S.badgeSpendTarget;
+    document.querySelector('#badge-bar-fill').closest('.cost-info').querySelector('.cost-label').textContent = `BADGES · ${remainingBadgeAssets}`;
+    const badgeSlider = document.getElementById('badge-total-slider');
+    // Slider range is always [0, reqB] so thumb% == fill% (same coordinate system)
+    badgeSlider.disabled = reqB <= 0 || (maxRegularUse === 0 && hiddenBadgeContribution === 0);
+    badgeSlider.min = 0;
+    badgeSlider.max = reqB;
+    badgeSlider.value = Math.min(totalBadges, reqB);
+    setDraggerFill(badgeSlider, pct, totalBadges >= reqB);
+    const badgeFill = document.getElementById('badge-bar-fill');
+    badgeFill.style.width = `${pct}%`;
+    badgeFill.classList.toggle('ok', totalBadges >= reqB);
     const bNum = document.getElementById('badge-numbers');
     bNum.textContent = `${totalBadges} / ${reqB}`;
     bNum.className   = 'cost-numbers ' + (totalBadges >= reqB ? 'ok' : 'short');
 
     // Crystal row
     const crystalRow = document.getElementById('crystal-cost-row');
+    const crystalSlider = document.getElementById('crystal-direct-slider');
     const crystalFill = document.getElementById('crystal-bar-fill');
     crystalRow.style.display = 'flex';
-    const canCover     = reqC === 0 ? true : hiddenCrysts >= reqC;
-    document.querySelector('#crystal-numbers').closest('.cost-row').querySelector('.cost-label').textContent = `CRYSTALS · Total ${S.crystalBalance}`;
-    document.getElementById('crystal-detail').textContent =
-        hiddenCrysts > 0 ? `Hidden conversion: +${hiddenCrysts}` : '';
+    const remainingNeedAfterHidden = Math.max(0, reqC - hiddenCrysts);
+    const maxWalletUse = Math.min(S.crystalBalance, remainingNeedAfterHidden);
+    S.crystalSpend = Math.min(S.crystalSpend, maxWalletUse);
+    crystalSlider.disabled = reqC <= 0 || (maxWalletUse === 0 && hiddenCrysts === 0);
+    crystalSlider.min = 0;
+    crystalSlider.max = reqC > 0 ? reqC : 0;
+    // Slider value = total crystal contribution (hidden + wallet) so thumb == fill right edge
+    crystalSlider.value = Math.min(hiddenCrysts + S.crystalSpend, reqC);
+
+    const walletCrysts = S.crystalSpend;
+    const totalCrystalContribution = hiddenCrysts + walletCrysts;
+    const canCover = reqC === 0 ? true : totalCrystalContribution >= reqC;
+    const remainingCrystalBalance = S.crystalBalance - walletCrysts;
+    document.querySelector('#crystal-numbers').closest('.cost-row').querySelector('.cost-label').textContent = `CRYSTALS · ${remainingCrystalBalance}`;
+    document.getElementById('crystal-detail').textContent = '';
     const cNum = document.getElementById('crystal-numbers');
-    cNum.textContent = `${Math.min(hiddenCrysts, reqC)} / ${reqC}`;
+    cNum.textContent = `${Math.min(totalCrystalContribution, reqC)} / ${reqC}`;
     cNum.className   = 'cost-numbers ' + (reqC === 0 ? 'ok' : (canCover ? 'ok' : 'short'));
-    const cpct = reqC === 0 ? 100 : Math.min(100, (hiddenCrysts / reqC) * 100);
+    const cpct = reqC === 0 ? 100 : Math.min(100, (totalCrystalContribution / reqC) * 100);
     crystalFill.style.width = `${cpct}%`;
     crystalFill.classList.toggle('ok', canCover);
+    setDraggerFill(crystalSlider, cpct, canCover);
+
+    S.regularBadges.forEach(b => {
+        const el = document.getElementById(`bcount-${b.badge_id}`);
+        if (el) el.textContent = (S.spend[b.badge_id] || 0) > 0 ? `-${S.spend[b.badge_id]}` : '';
+    });
 }
 
 function updateForgeBtn() {
-    const { totalBadges, hiddenCrysts } = calcTotals();
+    const { totalBadges, hiddenCrysts, walletCrysts } = calcTotals();
     const reqB = S.requiredBadges;
     const reqC = S.requiredCrystals;
 
     const badgesOk  = totalBadges >= reqB;
-    const crystsOk  = reqC === 0 || (hiddenCrysts >= reqC);
+    const crystsOk  = reqC === 0 || (hiddenCrysts + walletCrysts >= reqC);
     document.getElementById('forge-btn').disabled = !(badgesOk && crystsOk);
+}
+
+function updateSingleSliderPanel() {
+    const slider = document.getElementById('single-badge-slider');
+    const num = document.getElementById('single-slider-num');
+    const meta = document.getElementById('selected-badge-meta');
+    const lang = (typeof AppI18n !== 'undefined') ? AppI18n.getLang() : 'en';
+    const selected = S.regularBadges.find(b => b.badge_id === S.selectedBadgeId);
+    if (!selected) {
+        slider.disabled = true;
+        slider.min = 0;
+        slider.max = 0;
+        slider.value = 0;
+        num.textContent = '0';
+        meta.textContent = t('synth.choose_badge');
+        return;
+    }
+    const hiddenBadgeContribution = S.hiddenBadges.reduce((sum, b) => {
+        const hs = S.hiddenSpend[b.badge_id] || { badgesQty: 0, crystalsQty: 0 };
+        return sum + ((hs.badgesQty || 0) * 50);
+    }, 0);
+    const otherSpend = S.regularBadges.reduce((sum, b) => {
+        if (b.badge_id === selected.badge_id) return sum;
+        return sum + (S.spend[b.badge_id] || 0);
+    }, 0);
+    const maxNeedByProgress = Math.max(0, S.requiredBadges - hiddenBadgeContribution - otherSpend);
+    const maxSelectable = Math.min(selected.available || 0, maxNeedByProgress);
+    const current = Math.min(S.spend[selected.badge_id] || 0, maxSelectable);
+    S.spend[selected.badge_id] = current;
+    slider.disabled = maxSelectable <= 0;
+    slider.min = 0;
+    slider.max = maxSelectable;
+    slider.value = current;
+    num.textContent = String(current);
+    meta.textContent = `${selected.icon || '🏅'} ${getBadgeName(selected, lang)} × ${selected.available}`;
 }
 
 /* ═══════════════════════════════════════════════════════
@@ -501,7 +667,7 @@ async function doForge() {
     btn.disabled = true;
     btn.querySelector('.forge-btn-text').textContent = t('synth.forging');
 
-    const crystalDirect = 0;
+    const crystalDirect = S.crystalSpend;
 
     const badgeSpend = S.regularBadges
         .filter(b => (S.spend[b.badge_id] || 0) > 0)
@@ -510,12 +676,11 @@ async function doForge() {
     const hiddenAsBadges = [];
     const hiddenAsCrystals = [];
     S.hiddenBadges.forEach(b => {
-        const hs = S.hiddenSpend[b.badge_id] || { mode: 'badges', qty: 0 };
-        const qty = Math.max(0, Math.min(b.available, hs.qty || 0));
-        for (let i = 0; i < qty; i++) {
-            if (hs.mode === 'badges') hiddenAsBadges.push(b.badge_id);
-            if (hs.mode === 'crystals') hiddenAsCrystals.push(b.badge_id);
-        }
+        const hs = S.hiddenSpend[b.badge_id] || { badgesQty: 0, crystalsQty: 0 };
+        const bq = Math.max(0, Math.min(b.available, hs.badgesQty || 0));
+        const cq = Math.max(0, Math.min(b.available - bq, hs.crystalsQty || 0));
+        for (let i = 0; i < bq; i++) hiddenAsBadges.push(b.badge_id);
+        for (let i = 0; i < cq; i++) hiddenAsCrystals.push(b.badge_id);
     });
 
     try {
@@ -624,53 +789,91 @@ document.addEventListener('DOMContentLoaded', async () => {
     // Forge button
     document.getElementById('forge-btn').addEventListener('click', doForge);
     document.getElementById('single-badge-slider').addEventListener('input', () => {
+        if (!S.selectedBadgeId) return;
+        S.badgeControlMode = 'manual';
         const v = parseInt(document.getElementById('single-badge-slider').value, 10) || 0;
+        S.spend[S.selectedBadgeId] = v;
         document.getElementById('single-slider-num').textContent = String(v);
-        const selected = S.selectedBadgeId;
-        if (!selected) return;
-        S.spend[selected] = v;
-        const countEl = document.getElementById(`bcount-${selected}`);
-        if (countEl) countEl.textContent = v > 0 ? `-${v}` : '';
+        // reflect on total badge slider without overriding manual selection
+        S.badgeSpendTarget = Object.values(S.spend).reduce((a, n) => a + (n || 0), 0);
         updateCostPanel();
         updateForgeBtn();
+        updateHiddenPanel();
+        renderBadgeSelectorUI();
+    });
+    document.getElementById('badge-total-slider').addEventListener('input', () => {
+        S.badgeControlMode = 'total';
+        const sliderVal = parseInt(document.getElementById('badge-total-slider').value, 10) || 0;
+        // Slider represents total committed; subtract hidden contribution to get regular target
+        const hiddenBadgeContrib = S.hiddenBadges.reduce((sum, b) => {
+            const hs = S.hiddenSpend[b.badge_id] || { badgesQty: 0, crystalsQty: 0 };
+            return sum + ((hs.badgesQty || 0) * 50);
+        }, 0);
+        const totalBadgeAssets = S.regularBadges.reduce((s, b) => s + (b.available || 0), 0);
+        S.badgeSpendTarget = Math.min(totalBadgeAssets, Math.max(0, sliderVal - hiddenBadgeContrib));
+        updateCostPanel();
+        updateForgeBtn();
+        updateHiddenPanel();
+        renderBadgeSelectorUI();
+        updateSingleSliderPanel();
+    });
+    document.getElementById('crystal-direct-slider').addEventListener('input', () => {
+        const sliderVal = parseInt(document.getElementById('crystal-direct-slider').value, 10) || 0;
+        // Slider represents total crystal contribution; subtract hidden to get wallet portion
+        const hiddenCrystalContrib = S.hiddenBadges.reduce((sum, b) => {
+            const hs = S.hiddenSpend[b.badge_id] || { badgesQty: 0, crystalsQty: 0 };
+            return sum + ((hs.crystalsQty || 0) * 10);
+        }, 0);
+        S.crystalSpend = Math.min(S.crystalBalance, Math.max(0, sliderVal - hiddenCrystalContrib));
+        updateCostPanel();
+        updateForgeBtn();
+        updateHiddenPanel();
     });
     document.getElementById('hidden-mode-badges').addEventListener('click', () => {
-        if (!S.selectedHiddenId) return;
-        S.hiddenDraftMode = 'badges';
-        document.getElementById('hidden-mode-badges').classList.add('active');
-        document.getElementById('hidden-mode-crystals').classList.remove('active');
-        updateHiddenPanel();
-        S.hiddenSpend[S.selectedHiddenId] = { mode: S.hiddenDraftMode, qty: S.hiddenDraftQty };
-        renderHiddenBadges();
-        updateCostPanel();
-        updateForgeBtn();
+        document.getElementById('hidden-qty-badges')?.focus();
     });
     document.getElementById('hidden-mode-crystals').addEventListener('click', () => {
-        if (!S.selectedHiddenId || S.requiredCrystals <= 0) return;
-        S.hiddenDraftMode = 'crystals';
-        document.getElementById('hidden-mode-crystals').classList.add('active');
-        document.getElementById('hidden-mode-badges').classList.remove('active');
-        updateHiddenPanel();
-        S.hiddenSpend[S.selectedHiddenId] = { mode: S.hiddenDraftMode, qty: S.hiddenDraftQty };
-        renderHiddenBadges();
-        updateCostPanel();
-        updateForgeBtn();
+        document.getElementById('hidden-qty-crystals')?.focus();
     });
-    document.getElementById('hidden-qty-slider').addEventListener('input', () => {
-        S.hiddenDraftQty = parseInt(document.getElementById('hidden-qty-slider').value, 10) || 0;
-        document.getElementById('hidden-qty-num').textContent = String(S.hiddenDraftQty);
-        S.hiddenSpend[S.selectedHiddenId] = {
-            mode: S.hiddenDraftMode,
-            qty: S.hiddenDraftQty,
-        };
-        renderHiddenBadges();
+    document.getElementById('hidden-qty-badges').addEventListener('change', () => {
+        if (!S.selectedHiddenId) return;
+        const qty = parseInt(document.getElementById('hidden-qty-badges').value || '0', 10) || 0;
+        const prev = S.hiddenSpend[S.selectedHiddenId] || { badgesQty: 0, crystalsQty: 0 };
+        S.hiddenSpend[S.selectedHiddenId] = { badgesQty: qty, crystalsQty: prev.crystalsQty || 0 };
+        updateHiddenTileSpend(S.selectedHiddenId);
         updateCostPanel();
         updateForgeBtn();
         updateSingleSliderPanel();
+        updateHiddenPanel();
+        renderBadgeSelectorUI();
     });
-    document.getElementById('hidden-modal-close').addEventListener('click', () => {
-        document.getElementById('hidden-modal').classList.remove('open');
-        document.getElementById('hidden-modal').style.display = 'none';
+    document.getElementById('hidden-qty-crystals').addEventListener('change', () => {
+        if (!S.selectedHiddenId) return;
+        const qty = parseInt(document.getElementById('hidden-qty-crystals').value || '0', 10) || 0;
+        const prev = S.hiddenSpend[S.selectedHiddenId] || { badgesQty: 0, crystalsQty: 0 };
+        S.hiddenSpend[S.selectedHiddenId] = { badgesQty: prev.badgesQty || 0, crystalsQty: qty };
+        updateHiddenTileSpend(S.selectedHiddenId);
+        updateCostPanel();
+        updateForgeBtn();
+        updateSingleSliderPanel();
+        updateHiddenPanel();
+        renderBadgeSelectorUI();
+    });
+    // Close hidden modal on click outside the card AND outside the hidden section
+    document.addEventListener('click', (e) => {
+        const modal = document.getElementById('hidden-modal');
+        if (!modal.classList.contains('open')) return;
+        const card = modal.querySelector('.hidden-modal-card');
+        const hiddenSection = document.getElementById('hidden-section');
+        if (card && card.contains(e.target)) return;
+        if (hiddenSection && hiddenSection.contains(e.target)) return;
+        modal.classList.remove('open');
+        modal.style.display = 'none';
+        S.selectedHiddenId = null;
+    });
+    window.addEventListener('resize', () => {
+        const modal = document.getElementById('hidden-modal');
+        if (modal.classList.contains('open')) positionHiddenModal();
     });
 
     // Auth check — parent session must be active

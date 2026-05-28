@@ -4,8 +4,34 @@ let currentUser      = '';
 let currentGrade     = '';
 let currentCloudId   = '';  // Supabase profile UUID for the active kid
 let cloudStreakData  = null; // { current_streak, max_streak, last_checkin_date, total_checkin_days } | null
+let currentLevelProfileId = '';
+let currentLevelTier = 'Bronze';
+let currentLevelNo = 1;
 
 const LEVEL_TIER_EMOJI = { Bronze: '🥉', Silver: '🥈', Gold: '🥇', Diamond: '💎', Legend: '⭐' };
+
+function formatLevelChipText(tierName, levelNo) {
+    const tier = tierName || 'Bronze';
+    const tierKeyMap = {
+        Bronze: 'index.tier_bronze',
+        Silver: 'index.tier_silver',
+        Gold: 'index.tier_gold',
+        Diamond: 'index.tier_diamond',
+        Legend: 'index.tier_legend',
+    };
+    const tierLabel = (typeof AppI18n !== 'undefined')
+        ? AppI18n.t(tierKeyMap[tier] || 'index.tier_bronze')
+        : 'Bronze';
+    return `${tierLabel} Level ${levelNo}`;
+}
+
+function applyLevelChipTierColor(tierName) {
+    const chip = document.getElementById('level-chip');
+    if (!chip) return;
+    chip.classList.remove('tier-bronze', 'tier-silver', 'tier-gold', 'tier-diamond', 'tier-legend');
+    const t = String(tierName || 'Bronze').toLowerCase();
+    chip.classList.add(`tier-${t}`);
+}
 
 function getProfileAvatar(profile, index) {
     if (profile.avatarId) return ProfileCatalog.emojiForId(profile.avatarId);
@@ -374,9 +400,15 @@ function executeSwitchUser(name, grade) {
     const profiles = AUTH.getKidProfiles();
     const profile  = profiles.find(p => p.name === name);
     currentCloudId = profile?.cloudId || '';
+    // Reset level cache when switching to a different profile.
+    if (currentLevelProfileId !== currentCloudId) {
+        currentLevelProfileId = currentCloudId;
+        currentLevelTier = 'Bronze';
+        currentLevelNo = 1;
+    }
 
     document.getElementById('dash-avatar').textContent = getAvatarForName(name);
-    document.getElementById('dash-name').textContent   = AppI18n.t('index.greeting', { name });
+    document.getElementById('dash-name').textContent   = name;
     document.getElementById('cn-label').textContent    =
         grade === 'P3' || grade === 'P4' || grade === 'P5' || grade === 'P6'
             ? AppI18n.t('index.subject_cn')
@@ -402,10 +434,13 @@ async function loadAndShowLevel(cloudId, name) {
 
     if (!chip) return;
 
-    // Default display while loading
-    chipEmoji.textContent = '🥉';
-    chipText.textContent  = 'L1';
+    // Render immediately from cache to avoid visual flash on language switch.
+    const showTier = (currentLevelProfileId === cloudId) ? currentLevelTier : 'Bronze';
+    const showLevel = (currentLevelProfileId === cloudId) ? currentLevelNo : 1;
+    chipEmoji.textContent = LEVEL_TIER_EMOJI[showTier] || '🥉';
+    chipText.textContent  = formatLevelChipText(showTier, showLevel);
     chip.style.display    = 'flex';
+    applyLevelChipTierColor(showTier);
 
     chip.onclick = () => {
         if (!cloudId) return;
@@ -422,8 +457,13 @@ async function loadAndShowLevel(cloudId, name) {
             .eq('profile_id', cloudId)
             .single();
         if (data) {
-            chipEmoji.textContent = LEVEL_TIER_EMOJI[data.tier_name] || '🥉';
-            chipText.textContent  = `L${data.level_no}`;
+            const tierName = data.tier_name || 'Bronze';
+            currentLevelProfileId = cloudId;
+            currentLevelTier = tierName;
+            currentLevelNo = data.level_no || 1;
+            chipEmoji.textContent = LEVEL_TIER_EMOJI[tierName] || '🥉';
+            chipText.textContent  = formatLevelChipText(tierName, data.level_no);
+            applyLevelChipTierColor(tierName);
         }
     } catch (_) { /* silent — chip keeps default */ }
 }
@@ -757,7 +797,8 @@ document.addEventListener('DOMContentLoaded', async () => {
         refreshHub();
         refreshUserScreenI18n();
         if (currentUser) {
-            document.getElementById('dash-name').textContent = AppI18n.t('index.greeting', { name: currentUser });
+            document.getElementById('dash-name').textContent = currentUser;
+            loadAndShowLevel(currentCloudId, currentUser);
         }
     });
 
