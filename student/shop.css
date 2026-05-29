@@ -91,10 +91,34 @@ body {
     display: flex;
     flex-direction: column;
     gap: 4px;
+    cursor: pointer;
+    font-family: inherit;
+    outline: none;
+    transition: opacity 0.2s, box-shadow 0.2s, border-color 0.2s, transform 0.15s;
+    opacity: 0.72;
+}
+
+.balance-card:active {
+    transform: translateY(2px);
+}
+
+.balance-card.is-active {
+    opacity: 1;
+    box-shadow: 0 4px 14px rgba(15, 23, 42, 0.12);
 }
 
 .balance-card--gold    { background: var(--gold-bg);    border: 3px solid var(--gold-border); }
 .balance-card--crystal { background: var(--crystal-bg); border: 3px solid var(--crystal-border); }
+
+.balance-card--crystal.is-active {
+    border-color: var(--crystal);
+    box-shadow: 0 4px 14px rgba(14, 165, 233, 0.22);
+}
+
+.balance-card--gold.is-active {
+    border-color: var(--gold);
+    box-shadow: 0 4px 14px rgba(245, 158, 11, 0.22);
+}
 
 .balance-label {
     font-size: 13px;
@@ -111,47 +135,6 @@ body {
 
 .balance-card--gold    .balance-amount { color: var(--gold-deeper); }
 .balance-card--crystal .balance-amount { color: var(--crystal); }
-
-/* ── Tab Switcher ── */
-.tab-switcher {
-    display: flex;
-    gap: 0;
-    width: 100%;
-    background: #f1f5f9;
-    border-radius: 18px;
-    padding: 5px;
-    margin-bottom: 20px;
-    border: 2px solid var(--border);
-}
-
-.tab-btn {
-    flex: 1;
-    padding: 12px 10px;
-    border-radius: 14px;
-    border: none;
-    font-size: 15px;
-    font-weight: 900;
-    cursor: pointer;
-    transition: background 0.2s, color 0.2s, box-shadow 0.2s;
-    color: var(--text-muted);
-    background: transparent;
-    outline: none;
-    font-family: inherit;
-}
-
-.tab-btn--crystal.is-active {
-    background: var(--crystal-bg);
-    color: var(--crystal-dark);
-    border: 2px solid var(--crystal-border);
-    box-shadow: 0 2px 8px rgba(14, 165, 233, 0.15);
-}
-
-.tab-btn--gold.is-active {
-    background: var(--gold-bg);
-    color: var(--gold-deeper);
-    border: 2px solid var(--gold-border);
-    box-shadow: 0 2px 8px rgba(245, 158, 11, 0.15);
-}
 
 /* ── Tab Panels ── */
 .tab-panel {

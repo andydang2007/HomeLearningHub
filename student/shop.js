@@ -55,10 +55,16 @@ const CATALOG = [
 // ── i18n shorthand ────────────────────────────────────────────────────────────
 const t = (key, vars) => AppI18n.t(key, vars);
 
+function getItemName(item) {
+    const key = `shop.item_${item.id}`;
+    const localized = t(key);
+    return localized !== key ? localized : item.name;
+}
+
 // ── Session State ─────────────────────────────────────────────────────────────
 const currentUser = localStorage.getItem('currentPlayer') || 'Student';
 let selectedItem  = null;
-let activeTab     = 'crystal';
+let activeTab     = 'gold';
 
 // ── RPC Stub ──────────────────────────────────────────────────────────────────
 /**
@@ -184,8 +190,8 @@ function renderGrid(currencyType) {
         return `
         <div class="${itemClass}" data-id="${item.id}" data-cost="${item.cost}" data-currency="${currencyType}">
             ${badgeHtml}
-            <img class="item-img" src="${item.image}" alt="${item.name}" onerror="this.src='${item.fallback_icon}'">
-            <span class="item-name">${item.name}</span>
+            <img class="item-img" src="${item.image}" alt="${getItemName(item)}" onerror="this.src='${item.fallback_icon}'">
+            <span class="item-name">${getItemName(item)}</span>
             <span class="item-price ${priceClass}">${priceSymbol} ${item.cost}</span>
         </div>`;
     }).join('');
@@ -224,11 +230,15 @@ function switchTab(tab) {
     activeTab    = tab;
     selectedItem = null;
 
-    document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('is-active'));
+    document.querySelectorAll('.balance-card').forEach((card) => {
+        const isActive = card.dataset.tab === tab;
+        card.classList.toggle('is-active', isActive);
+        card.setAttribute('aria-selected', isActive ? 'true' : 'false');
+    });
     document.querySelectorAll('.tab-panel').forEach(panel => panel.classList.remove('is-active'));
-    document.getElementById(`tab-${tab}`).classList.add('is-active');
     document.getElementById(`panel-${tab}`).classList.add('is-active');
 
+    document.querySelectorAll('.shop-item').forEach(i => i.classList.remove('is-selected'));
     document.getElementById('confirm-btn').disabled = true;
     document.getElementById('confirm-btn').classList.remove('is-ready');
 }
@@ -245,7 +255,7 @@ async function handleConfirmRedeem() {
         return;
     }
 
-    if (!confirm(t('shop.confirm_dialog', { cost: selectedItem.cost, currency, name: selectedItem.name }))) {
+    if (!confirm(t('shop.confirm_dialog', { cost: selectedItem.cost, currency, name: getItemName(selectedItem) }))) {
         return;
     }
 
@@ -286,7 +296,7 @@ function openBackpack() {
             return `
             <div class="backpack-item" data-item-id="${item.id}">
                 <div class="backpack-item-header">
-                    <span class="backpack-item-name">${item.name} <span class="backpack-item-qty">(×${count})</span></span>
+                    <span class="backpack-item-name">${getItemName(item)} <span class="backpack-item-qty">(×${count})</span></span>
                     <span class="backpack-item-value">${t('shop.item_value', { cost: item.cost, currency })}</span>
                 </div>
                 <div class="backpack-item-code">${lastCode}</div>
@@ -307,7 +317,7 @@ function handleRefund(itemId) {
     if (!item) return;
 
     const currency = item.currency_type === 'gold' ? t('shop.gold_currency') : t('shop.crystal_currency');
-    if (!confirm(t('shop.refund_confirm', { name: item.name, cost: item.cost, currency }))) return;
+    if (!confirm(t('shop.refund_confirm', { name: getItemName(item), cost: item.cost, currency }))) return;
 
     // Remove last pending record (local only — balance refund must come from backend)
     const key = `pending_redemption_${itemId}_${currentUser}`;
@@ -348,8 +358,8 @@ document.addEventListener('DOMContentLoaded', () => {
     renderGrid('crystal');
     renderGrid('gold');
 
-    document.getElementById('tab-crystal').addEventListener('click', () => switchTab('crystal'));
-    document.getElementById('tab-gold').addEventListener('click',    () => switchTab('gold'));
+    document.getElementById('wallet-crystal').addEventListener('click', () => switchTab('crystal'));
+    document.getElementById('wallet-gold').addEventListener('click', () => switchTab('gold'));
 
     document.getElementById('confirm-btn').addEventListener('click', handleConfirmRedeem);
     document.getElementById('backpack-btn').addEventListener('click', openBackpack);

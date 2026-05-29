@@ -1,11 +1,12 @@
-📦 项目进度总结报告 (V10.4)
+📦 项目进度总结报告 (V10.5)
 📅 更新日期：2026-05-28
 
 🎯 整体状态
 
 - **Phase A** 已在仓库中（家长 Auth、PIN、本机孩子 Profile、学生端 hub）。
 - **2026-05-27** 增量：家长 PIN Forgot/密码门、徽章合成 Forge 全流程（前端 + RPC 草案）、打卡连击上云、`student` 徽章/等级云端优先、`parent/admin` 运维测试页、Premium 路线图写入本文档。**需在 Supabase 依次执行迁移 017～019（及已存在的 018）后联调验收。**
-- **2026-05-28** 增量：`student/index` 头像系统升级（透明 PNG、分组、Premium 锁定与降级回退）、等级铭牌与顶部导航布局；`shop` 金币图标与 `shop-rewards` 资源整理；家长 PIN/档案删除流程优化；**徽章 PNG 资源**（`assets/images/badges`，16 张透明图，`streak_*` 共用 `streakcrystal.png`）；`common/js/badge-icons.js` 统一图标路径与英文两行断行（含 Sharpshooter 中间断开）；首页 / Forge / 练习弹窗接入；`docs/badge-copy.md` 文案对照表；练习页「解锁游戏」i18n 与 Balloon Hunter 更名对齐。
+- **2026-05-28** 增量：`student/index` 头像系统升级（透明 PNG、分组、Premium 锁定与降级回退）、等级铭牌与顶部导航布局；`shop` 金币图标与 `shop-rewards` 资源整理；家长 PIN/档案删除流程优化；**徽章 PNG 资源**（`assets/images/badges`，16 张透明图，`streak_*` 共用 `streakcrystal.png`）；`common/js/badge-icons.js` 统一图标路径与英文两行断行；首页 / Forge / 练习弹窗接入；`docs/badge-copy.md` 文案对照表。
+- **2026-05-28 晚间** 增量：学生首页 **Hero 三栏布局**（日历 / 头像昵称 / 等级芯片）；打卡提示并入 `#section-subject-title`；日历点击切换语言；连击区 **最高记录框内数字**（随位数缩字、无下方「n天」）；连击徽章统一水晶框、类别排序（连击置末）；华文科目标签按 `chineseLevel` 修复；**Admin 运维控制台**重构（`parent/admin.html/js/css` + 迁移 **020～022**：科目设置 RPC、账户搜索/订阅/回收站/孩子等级编辑）。
 - **2026-05-25** 增量：白皮书 + 技术文档补产品规则；`ParentGuide.md` 改为中英文对照、纯家长用户口吻。
 - **2026-05-22** 主要工作：**文档收拢 + 产品与数据架构定稿 + B1 前端代码预备**；**未**在 Supabase 执行 `009`，**未**重建数据库。
 - 产品/设计事实来源：`Whitepaper.md`；工程事实来源：`TECHNICAL.md`；家长可读说明：`ParentGuide.md`；入口：`README.md`。
@@ -52,6 +53,21 @@
 | 徽章图标资源 | `assets/images/badges/` 16 张 PNG（文件名对齐 `badge_code`）；连击档 `streak_3`～`streak_30` 共用 `streakcrystal.png` |
 | 徽章展示层 | `common/js/badge-icons.js` + `assets/css/badge-icons.css`：按 `badge_code` 加载图片、emoji 回退；英文名称固定两行（Forge 格子同步） |
 | 文案与文档 | `docs/badge-copy.md` 徽章中英名/描述与图标对照；`i18n.js` 练习弹窗「Unlock Game / 解锁游戏」替代 Balloon Hunter |
+
+### 2026-05-28 晚间完成（工程交付）
+
+| 范围 | 内容 |
+|------|------|
+| 学生首页 Hero | `student/index.html` / `.css` / `.js`：三栏（Term/Week 日历 · 头像+昵称 · 等级芯片）；移除独立打卡条与右上角语言钮；页脚 Switch User + Parent 比例调整 |
+| 打卡与语言 | `#section-subject-title` 动态显示待打卡/已完成文案；日历点击 `toggleAppLanguage()` + toast；`updateCnSubjectLabel()` 按 profile `chineseLevel` 显示高级华文/华文 |
+| 连击徽章 UI | 连击类统一 soft blue 水晶框；荣誉墙连击类别置末；**最高记录**框内直接显示历史天数（1～4 位自适应字号），不再用皇冠 emoji 或框下「n 天」 |
+| 徽章图标 | `badge-icons.js` 新增 `max_streak` code（英文两行 Best/Streak）；`badge-streak-num` 样式 |
+| Admin 运维台 | `parent/admin.html` / `admin.js` / `admin.css`：Overview、账户搜索（默认邮箱）、订阅编辑、回收站恢复、孩子 profile 等级编辑；白名单 `admin_users` + Supabase Auth |
+| 数据库迁移 | `020_profile_subject_settings_rpc.sql`（`get/update_kid_subject_settings`）；`021_admin_ops_console.sql`（搜索/改 plan/回收站等）；`022_admin_set_profile_level.sql`（`admin_set_profile_level`） |
+| Auth / 家长端 | `auth.js` 科目设置 RPC 封装；`parent/dashboard` 科目范围设置 UI 与云端同步 |
+| 商店微调 | `student/shop` 布局与 i18n 小修 |
+
+**需在 Supabase 依次执行迁移 020～022 后联调 Admin 与孩子科目设置。**
 
 ---
 
@@ -239,6 +255,8 @@ supabase/migrations/
   003–008         现有 Auth/PIN/Profile 补丁链
   009             B1 kid sync（未执行）
   010             计划：核心表重建（明天草案）
+  020–022         科目设置 RPC + Admin 运维台 + 孩子等级编辑（待执行）
+parent/admin.*    运维控制台（白名单管理员）
 ```
 
 ---

@@ -9,7 +9,7 @@
 
     function getBadgeIconSrc(badgeCode) {
         if (!badgeCode || typeof badgeCode !== 'string') return null;
-        if (badgeCode.startsWith('streak_')) {
+        if (badgeCode === 'max_streak' || badgeCode.startsWith('streak_')) {
             return BASE + STREAK_FILE;
         }
         return BASE + badgeCode + '.png';
@@ -53,6 +53,7 @@
         streak_10: ['10-Day', 'Streak'],
         streak_15: ['15-Day', 'Streak'],
         streak_30: ['30-Day', 'Streak'],
+        max_streak: ['Best', 'Streak'],
     };
 
     function escapeHtml(text) {

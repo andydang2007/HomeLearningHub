@@ -51,7 +51,39 @@ window.AUTH = {
             chineseLevel: p.chineseLevel || p.chinese_level || 'CL',
             cloudId:      p.cloudId || p.cloud_id || p.id || '',
             kidPinEnabled: !!(p.kidPinEnabled ?? p.kid_pin_enabled),
+            subjectSettings: Array.isArray(p.subjectSettings) ? p.subjectSettings : null,
         };
+    },
+
+    async getKidSubjectSettingsOnCloud(cloudId) {
+        if (typeof window.SupabaseClient === 'undefined' || !cloudId) {
+            return { settings: null, error: 'no_client' };
+        }
+        try {
+            const { data, error } = await window.SupabaseClient.rpc('get_kid_subject_settings', {
+                p_profile_id: cloudId,
+            });
+            if (error) return { settings: null, error: error.message };
+            return { settings: Array.isArray(data) ? data : [], error: null };
+        } catch (e) {
+            return { settings: null, error: e.message || 'rpc_failed' };
+        }
+    },
+
+    async updateKidSubjectSettingsOnCloud(cloudId, settings) {
+        if (typeof window.SupabaseClient === 'undefined' || !cloudId) {
+            return { error: 'no_client' };
+        }
+        try {
+            const { error } = await window.SupabaseClient.rpc('update_kid_subject_settings', {
+                p_profile_id: cloudId,
+                p_settings: settings,
+            });
+            if (error) return { error: error.message };
+            return { error: null };
+        } catch (e) {
+            return { error: e.message || 'rpc_failed' };
+        }
     },
 
     _saveKidProfiles(profiles) {

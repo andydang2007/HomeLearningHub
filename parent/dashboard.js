@@ -10,6 +10,29 @@ let modalMode         = 'add'; // 'add' | 'edit'
 let editingOriginalName = '';
 let editingCloudId    = '';
 let editingKidPinEnabled = false;
+let modalSubjectSettings = null;
+const CORE_SUBJECTS = ['english', 'math', 'science', 'chinese'];
+const PRACTICE_QUESTIONS = 15;
+const DEFAULT_BASE_MIN_CORRECT = 11;
+const DEFAULT_TARGET_MIN_CORRECT = 13;
+/** Speed Record: finish within this many seconds (15 Q ≈ 20s each at 300). Adjust by 30s steps in UI. */
+const DEFAULT_TARGET_TIME_SECONDS = 300;
+const TARGET_TIME_STEP_SECONDS = 30;
+
+function minCorrectToPct(minCorrect) {
+    return Math.floor((minCorrect * 100) / PRACTICE_QUESTIONS);
+}
+
+function pctToMinCorrect(pct) {
+    return Math.ceil((pct * PRACTICE_QUESTIONS) / 100);
+}
+
+function normalizeTargetTimeSeconds(seconds) {
+    const n = Number(seconds);
+    if (!Number.isFinite(n) || n <= 0) return DEFAULT_TARGET_TIME_SECONDS;
+    return Math.round(n);
+}
+
 let pendingDeleteName = '';
 let pendingDeleteCloudId = '';
 let availableSchools  = [];
@@ -57,6 +80,138 @@ function applyParentModalI18n() {
     if (schoolInput) schoolInput.placeholder = t('profile.school_placeholder');
     const schoolHint = document.getElementById('school-hint');
     if (schoolHint) schoolHint.textContent = t('parent.school_hint');
+    if (document.getElementById('add-modal')?.classList.contains('open')) {
+        renderSubjectSettingsPanel();
+    }
+}
+
+function defaultSubjectSettingsMap() {
+    const map = {};
+    CORE_SUBJECTS.forEach((subject) => {
+        map[subject] = {
+            base_accuracy_pct: minCorrectToPct(DEFAULT_BASE_MIN_CORRECT),
+            target_accuracy_pct: minCorrectToPct(DEFAULT_TARGET_MIN_CORRECT),
+            target_time_seconds: DEFAULT_TARGET_TIME_SECONDS,
+        };
+    });
+    return map;
+}
+
+function applySubjectRowToMap(row) {
+    if (!row || !CORE_SUBJECTS.includes(row.subject)) return;
+    modalSubjectSettings[row.subject] = {
+        base_accuracy_pct: Number(row.base_accuracy_pct),
+        target_accuracy_pct: Number(row.target_accuracy_pct),
+        target_time_seconds: normalizeTargetTimeSeconds(row.target_time_seconds),
+    };
+}
+
+async function loadModalSubjectSettings(profile) {
+    modalSubjectSettings = defaultSubjectSettingsMap();
+    if (!profile) return;
+
+    if (profile.cloudId) {
+        const { settings, error } = await AUTH.getKidSubjectSettingsOnCloud(profile.cloudId);
+        if (!error && Array.isArray(settings)) {
+            settings.forEach(applySubjectRowToMap);
+        }
+        return;
+    }
+
+    if (Array.isArray(profile.subjectSettings)) {
+        profile.subjectSettings.forEach(applySubjectRowToMap);
+    }
+}
+
+function renderSubjectSettingsPanel() {
+    const container = document.getElementById('modal-subject-settings');
+    if (!container || !modalSubjectSettings) return;
+
+    container.innerHTML = `
+        <div class="subject-settings-table">
+            <div class="subject-settings-head">
+                <span>${t('parent.subject_col')}</span>
+                <span>${t('parent.base_accuracy_col')}</span>
+                <span>${t('parent.target_accuracy_col')}</span>
+                <span>${t('parent.target_time_col')}</span>
+            </div>
+            ${CORE_SUBJECTS.map((subject) => {
+                const row = modalSubjectSettings[subject] || defaultSubjectSettingsMap()[subject];
+                const baseMin = pctToMinCorrect(row.base_accuracy_pct);
+                const targetMin = pctToMinCorrect(row.target_accuracy_pct);
+                return `
+                <div class="subject-settings-row" data-subject="${subject}">
+                    <span class="subject-settings-name">${t(`parent.subject_${subject}`)}</span>
+                    <input type="number" class="subject-settings-input" data-field="base" min="0" max="${PRACTICE_QUESTIONS}" step="1"
+                        value="${baseMin}" aria-label="${t(`parent.subject_${subject}`)} ${t('parent.base_accuracy_col')}">
+                    <input type="number" class="subject-settings-input" data-field="target" min="0" max="${PRACTICE_QUESTIONS}" step="1"
+                        value="${targetMin}" aria-label="${t(`parent.subject_${subject}`)} ${t('parent.target_accuracy_col')}">
+                    <input type="number" class="subject-settings-input" data-field="time"
+                        min="${TARGET_TIME_STEP_SECONDS}" step="${TARGET_TIME_STEP_SECONDS}"
+                        value="${normalizeTargetTimeSeconds(row.target_time_seconds)}"
+                        aria-label="${t(`parent.subject_${subject}`)} ${t('parent.target_time_col')}">
+                </div>`;
+            }).join('')}
+        </div>`;
+}
+
+function readSubjectSettingsFromForm() {
+    const payload = [];
+    CORE_SUBJECTS.forEach((subject) => {
+        const rowEl = document.querySelector(`.subject-settings-row[data-subject="${subject}"]`);
+        if (!rowEl) {
+            const fallback = modalSubjectSettings?.[subject] || defaultSubjectSettingsMap()[subject];
+            payload.push({
+                subject,
+                base_accuracy_pct: fallback.base_accuracy_pct,
+                target_accuracy_pct: fallback.target_accuracy_pct,
+                target_time_seconds: fallback.target_time_seconds,
+            });
+            return;
+        }
+        const baseMin = parseInt(rowEl.querySelector('[data-field="base"]')?.value, 10);
+        const targetMin = parseInt(rowEl.querySelector('[data-field="target"]')?.value, 10);
+        const timeSec = parseInt(rowEl.querySelector('[data-field="time"]')?.value, 10);
+        payload.push({
+            subject,
+            base_accuracy_pct: minCorrectToPct(baseMin),
+            target_accuracy_pct: minCorrectToPct(targetMin),
+            target_time_seconds: timeSec,
+        });
+    });
+    return payload;
+}
+
+function validateSubjectSettingsPayload(payload) {
+    for (const row of payload) {
+        const baseMin = pctToMinCorrect(row.base_accuracy_pct);
+        const targetMin = pctToMinCorrect(row.target_accuracy_pct);
+        if (!Number.isInteger(baseMin) || baseMin < 0 || baseMin > PRACTICE_QUESTIONS
+            || !Number.isInteger(targetMin) || targetMin < 0 || targetMin > PRACTICE_QUESTIONS) {
+            return t('parent.accuracy_invalid', { n: PRACTICE_QUESTIONS });
+        }
+        if (baseMin > targetMin) {
+            return t('parent.accuracy_order_invalid');
+        }
+        if (!Number.isInteger(row.target_time_seconds) || row.target_time_seconds <= 0) {
+            return t('parent.target_time_invalid');
+        }
+    }
+    return null;
+}
+
+async function persistSubjectSettings(cloudId, profileName) {
+    const payload = readSubjectSettingsFromForm();
+    const invalid = validateSubjectSettingsPayload(payload);
+    if (invalid) return { error: invalid };
+
+    if (cloudId) {
+        const { error } = await AUTH.updateKidSubjectSettingsOnCloud(cloudId, payload);
+        if (error) return { error };
+    }
+
+    AUTH.updateKidProfile(profileName, { subjectSettings: payload });
+    return { error: null };
 }
 
 /**
@@ -340,7 +495,7 @@ function resetKidPinFields(profile) {
     }
 }
 
-function openModalBase(mode, profile) {
+async function openModalBase(mode, profile) {
     modalMode = mode;
     editingOriginalName = profile?.name || '';
     editingCloudId = profile?.cloudId || '';
@@ -354,9 +509,11 @@ function openModalBase(mode, profile) {
     document.getElementById('modal-remove-btn').style.display = mode === 'edit' ? 'block' : 'none';
     resetKidPinFields(profile);
 
+    await loadModalSubjectSettings(profile);
     buildModalPickers();
     applyParentModalI18n();
     resetModalPickers(profile);
+    renderSubjectSettingsPanel();
     wireModalPickers();
     document.getElementById('add-modal').classList.add('open');
     setTimeout(() => document.getElementById('modal-name').focus(), 100);
@@ -369,13 +526,13 @@ async function openModal() {
         showKidLimitModal(info);
         return;
     }
-    openModalBase('add', null);
+    await openModalBase('add', null);
 }
 
-function openModalForEdit(name) {
+async function openModalForEdit(name) {
     const profile = AUTH.getKidProfiles().find((p) => p.name === name);
     if (!profile) return;
-    openModalBase('edit', profile);
+    await openModalBase('edit', profile);
 }
 
 function closeModal() {
@@ -409,6 +566,9 @@ async function saveProfile() {
     if (!modalGrade)     { showModalError(t('parent.pick_grade')); return; }
     if (!modalChineseLevel) { showModalError(t('parent.pick_chinese')); return; }
     if (!modalAvatarId)  { showModalError(t('parent.pick_avatar')); return; }
+
+    const settingsInvalid = validateSubjectSettingsPayload(readSubjectSettingsFromForm());
+    if (settingsInvalid) { showModalError(settingsInvalid); return; }
 
     const profilePayload = {
         name,
@@ -469,12 +629,21 @@ async function saveProfile() {
         const kidPinEnabled = (document.getElementById('modal-child-pin')?.value || '').replace(/\D/g, '').length === 3
             || (editingKidPinEnabled && !document.getElementById('modal-kid-pin-clear')?.checked);
 
+        const localName = name;
         if (editingOriginalName && editingOriginalName !== name) {
             AUTH.removeKidProfile(editingOriginalName);
             AUTH.addKidProfile({ ...profilePayload, cloudId, kidPinEnabled });
         } else {
             AUTH.updateKidProfile(editingOriginalName || name, { ...profilePayload, cloudId, kidPinEnabled });
         }
+
+        const settingsResult = await persistSubjectSettings(cloudId, localName);
+        if (settingsResult.error) {
+            btn.disabled = false;
+            showModalError(t('parent.subject_settings_error', { error: settingsResult.error }));
+            return;
+        }
+
         btn.disabled = false;
         closeModal();
         renderKidList();
@@ -503,14 +672,22 @@ async function saveProfile() {
     const kidPinEnabled = (document.getElementById('modal-child-pin')?.value || '').replace(/\D/g, '').length === 3;
 
     const existing = profiles.find((p) => p.name.toLowerCase() === name.toLowerCase());
+    const finalCloudId = cloudId || existing?.cloudId || '';
     if (existing) {
-        AUTH.updateKidProfile(name, { ...profilePayload, cloudId: cloudId || existing.cloudId, kidPinEnabled });
+        AUTH.updateKidProfile(name, { ...profilePayload, cloudId: finalCloudId, kidPinEnabled });
     } else {
-        const ok = AUTH.addKidProfile({ ...profilePayload, cloudId, kidPinEnabled });
+        const ok = AUTH.addKidProfile({ ...profilePayload, cloudId: finalCloudId, kidPinEnabled });
         if (!ok) {
             showModalError(t('parent.name_taken'));
             return;
         }
+    }
+
+    const settingsResult = await persistSubjectSettings(finalCloudId, name);
+    if (settingsResult.error) {
+        btn.disabled = false;
+        showModalError(t('parent.subject_settings_error', { error: settingsResult.error }));
+        return;
     }
 
     closeModal();

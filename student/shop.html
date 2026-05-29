@@ -20,38 +20,27 @@
 
     <h2 class="shop-title" data-i18n="shop.title">🎁 Reward Center</h2>
 
-    <!-- Balance Row -->
-    <div class="balance-row">
-        <div class="balance-card balance-card--gold">
+    <!-- Wallet tabs: balance display + shop category selector (crystal left, gold right) -->
+    <div class="balance-row" role="tablist" aria-label="Shop currency">
+        <button type="button" class="balance-card balance-card--gold is-active" id="wallet-gold" role="tab" aria-selected="true" data-tab="gold">
             <span class="balance-label" data-i18n="shop.gold_label">Team Gold</span>
             <span class="balance-amount">💰 <span id="balance-gold">0</span></span>
-        </div>
-        <div class="balance-card balance-card--crystal">
+        </button>
+        <button type="button" class="balance-card balance-card--crystal" id="wallet-crystal" role="tab" aria-selected="false" data-tab="crystal">
             <span class="balance-label" data-i18n="shop.crystal_label">Personal Crystals</span>
             <span class="balance-amount">💎 <span id="balance-crystal">0</span></span>
-        </div>
-    </div>
-
-    <!-- Tab Switcher -->
-    <div class="tab-switcher" role="tablist">
-        <button class="tab-btn tab-btn--crystal is-active" id="tab-crystal" role="tab" aria-selected="true" data-tab="crystal" data-i18n="shop.tab_crystal">
-            💎 Crystal Exchange
-        </button>
-        <button class="tab-btn tab-btn--gold" id="tab-gold" role="tab" aria-selected="false" data-tab="gold" data-i18n="shop.tab_gold">
-            💰 Gold Exchange
         </button>
     </div>
 
     <!-- Crystal Panel -->
-    <section class="tab-panel is-active" id="panel-crystal" aria-labelledby="tab-crystal">
-        <p class="panel-desc" data-i18n="shop.panel_crystal_desc">Redeem sweet treats with your daily check-in crystals!</p>
-        <div class="item-grid" id="grid-crystal"></div>
-    </section>
-
-    <!-- Gold Panel -->
-    <section class="tab-panel" id="panel-gold" aria-labelledby="tab-gold">
+    <section class="tab-panel is-active" id="panel-gold" aria-labelledby="wallet-gold">
         <p class="panel-desc" data-i18n="shop.panel_gold_desc">Unlock big meal rewards with your hard-earned gold!</p>
         <div class="item-grid" id="grid-gold"></div>
+    </section>
+
+    <section class="tab-panel" id="panel-crystal" aria-labelledby="wallet-crystal">
+        <p class="panel-desc" data-i18n="shop.panel_crystal_desc">Redeem sweet treats with your daily check-in crystals!</p>
+        <div class="item-grid" id="grid-crystal"></div>
     </section>
 
     <!-- Action Buttons -->

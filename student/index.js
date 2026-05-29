@@ -31,6 +31,10 @@ const CUSTOM_AVATAR_POSITIONS = {
 };
 
 function formatLevelChipText(tierName, levelNo) {
+    applyLevelChipContent(tierName, levelNo);
+}
+
+function applyLevelChipContent(tierName, levelNo) {
     const tier = tierName || 'Bronze';
     const tierKeyMap = {
         Bronze: 'index.tier_bronze',
@@ -42,7 +46,15 @@ function formatLevelChipText(tierName, levelNo) {
     const tierLabel = (typeof AppI18n !== 'undefined')
         ? AppI18n.t(tierKeyMap[tier] || 'index.tier_bronze')
         : 'Bronze';
-    return `${tierLabel} Level ${levelNo}`;
+    const levelLabel = (typeof AppI18n !== 'undefined')
+        ? AppI18n.t('index.level_short', { n: levelNo || 1 })
+        : `Level ${levelNo || 1}`;
+
+    const emojiEl = document.getElementById('level-chip-emoji');
+    const tierEl  = document.getElementById('level-chip-tier');
+    const levelEl = document.getElementById('level-chip-level');
+    if (tierEl)  tierEl.textContent  = tierLabel;
+    if (levelEl) levelEl.textContent = levelLabel;
 }
 
 function applyLevelChipTierColor(tierName) {
@@ -282,6 +294,52 @@ function showScreen(id) {
     const el = document.getElementById(id);
     el.classList.remove('is-hidden');
     el.classList.add('is-visible');
+    updateLangToggleVisibility();
+}
+
+function updateLangToggleVisibility() {
+    const tools = document.querySelector('.global-tools');
+    const dash  = document.getElementById('dashboard-screen');
+    if (!tools || !dash) return;
+    tools.classList.toggle('is-hidden', dash.classList.contains('is-visible'));
+}
+
+function showHubToast(msg) {
+    let el = document.getElementById('hub-toast');
+    if (!el) {
+        el = document.createElement('div');
+        el.id = 'hub-toast';
+        el.className = 'hub-toast';
+        document.querySelector('.container')?.appendChild(el);
+    }
+    el.textContent = msg;
+    el.classList.add('show');
+    clearTimeout(showHubToast._timer);
+    showHubToast._timer = setTimeout(() => el.classList.remove('show'), 2200);
+}
+
+function toggleAppLanguage() {
+    const next = AppI18n.getLang() === 'en' ? 'zh' : 'en';
+    AppI18n.setLang(next);
+    const langBtn = document.getElementById('lang-toggle');
+    if (langBtn) langBtn.textContent = AppI18n.t('lang.toggle');
+    refreshHub();
+    refreshUserScreenI18n();
+    if (!document.getElementById('avatar-modal')?.classList.contains('is-hidden')) {
+        renderAvatarPicker();
+    }
+    if (currentUser) {
+        document.getElementById('dash-name').textContent = currentUser;
+        loadAndShowLevel(currentCloudId, currentUser);
+    }
+    showHubToast(next === 'zh' ? '语言：中文' : 'Language: English');
+}
+
+function wireCalendarLangToggle() {
+    const cal = document.getElementById('school-term-display');
+    if (!cal) return;
+    cal.classList.add('hero-calendar--clickable');
+    cal.addEventListener('click', toggleAppLanguage);
 }
 
 function initDate() {
@@ -304,9 +362,19 @@ function initDate() {
     }
 
     const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
-    document.getElementById('school-term-display').innerHTML = `
+    const termMatch = termStr.match(/^(Term \d+)\s+Week\s+(\d+)$/);
+    let termLabelHtml;
+    if (termMatch) {
+        termLabelHtml = `<div class="term-label"><span class="term-name">${termMatch[1]}</span><span class="term-week">Week ${termMatch[2]}</span></div>`;
+    } else {
+        termLabelHtml = `<div class="term-label term-label--solo">${termStr}</div>`;
+    }
+
+    const el = document.getElementById('school-term-display');
+    if (!el) return;
+    el.innerHTML = `
         <div class="term-date">📅 ${now.getDate()} ${months[now.getMonth()]}</div>
-        <div class="term-label">${termStr}</div>`;
+        ${termLabelHtml}`;
 }
 
 // Fetch streak from cloud; if first visit, sync local localStorage values up.
@@ -364,21 +432,31 @@ function updateStreakUI() {
     }
 
     const todayStr = getSGTDateString();
-    const streakEl = document.getElementById('dash-streak');
+    const titleEl = document.getElementById('section-subject-title');
+    if (!titleEl) return;
 
-    if (totalDays === 0) {
-        streakEl.className = 'streak-badge pending';
-        streakEl.textContent = AppI18n.t('index.streak_start');
-    } else if (lastCheckin === todayStr) {
-        streakEl.className = 'streak-badge completed';
-        streakEl.textContent = AppI18n.t('index.checkin', { n: totalDays });
+    if (lastCheckin === todayStr) {
+        titleEl.textContent = AppI18n.t('index.select_subject_hint_done', { n: totalDays });
+        titleEl.className = 'section-title section-title--done';
     } else {
-        streakEl.className = 'streak-badge pending';
-        streakEl.textContent = AppI18n.t('index.streak_pending', { n: totalDays });
+        titleEl.textContent = AppI18n.t('index.select_subject_hint_pending', { n: totalDays + 1 });
+        titleEl.className = 'section-title section-title--pending';
     }
 }
 
+function maxStreakNumClass(n) {
+    const len = String(Math.max(0, n ?? 0)).length;
+    if (len >= 4) return 'streak-num-d4';
+    if (len === 3) return 'streak-num-d3';
+    if (len === 2) return 'streak-num-d2';
+    return 'streak-num-d1';
+}
+
 function badgeIconInner(b) {
+    if (b.isCrown) {
+        const n = Math.max(0, b.currentStreak ?? b.targetStreak ?? 0);
+        return `<span class="badge-streak-num ${maxStreakNumClass(n)}">${n}</span>`;
+    }
     if (b.badgeCode && typeof BadgeIcons !== 'undefined') {
         return BadgeIcons.renderBadgeIconContent(b.badgeCode, b.icon);
     }
@@ -396,12 +474,17 @@ function badgeNameInner(b) {
 function renderBadgeItemHTML(b, totalRef) {
     if (!b.isCrown) totalRef.count += b.count > 0 ? b.count : 0;
 
+    const isStreakFrame = b.isStreak || b.tier === 'streak'
+        || (b.badgeCode && b.badgeCode.startsWith('streak_'));
+
     const classes = ['badge-item'];
     if (b.count > 0 || b.isCrown) {
         classes.push('unlocked');
-        if (b.tier) classes.push(b.tier);
+        if (isStreakFrame) classes.push('streak');
+        else if (b.tier) classes.push(b.tier);
     } else {
         classes.push('locked');
+        if (isStreakFrame) classes.push('streak');
     }
 
     const countHtml = b.count > 1
@@ -409,9 +492,7 @@ function renderBadgeItemHTML(b, totalRef) {
         : '';
 
     let progressHtml = '';
-    if (b.isCrown) {
-        progressHtml = `<div class="badge-progress crown">${b.currentStreak} ${AppI18n.getLang() === 'zh' ? '天' : 'days'}</div>`;
-    } else if (b.count === 0 && b.targetStreak != null) {
+    if (!b.isCrown && b.count === 0 && b.targetStreak != null) {
         progressHtml = `<div class="badge-progress">${b.currentStreak}/${b.targetStreak}</div>`;
     }
 
@@ -495,7 +576,8 @@ async function renderBadges() {
                     </div>`;
             }
 
-            // Streak badges — use cloud streak if available, else fall back to local
+            // Streak badges — rendered last (after easter eggs when present)
+            let streakHtml = '';
             if (bycat.streak.length) {
                 const currentStreak = cloudStreakData
                     ? (cloudStreakData.current_streak || 0)
@@ -506,8 +588,8 @@ async function renderBadges() {
                 const STREAK_DAYS = { streak_3: 3, streak_5: 5, streak_10: 10, streak_15: 15, streak_30: 30 };
 
                 const streakItems = [{
-                    icon: '👑', name: AppI18n.t('index.badge_max_streak'),
-                    count: 1, tier: 'gold',
+                    badgeCode: 'max_streak', name: AppI18n.t('index.badge_max_streak'),
+                    count: 1, tier: 'streak', isStreak: true,
                     currentStreak: maxStreak, targetStreak: maxStreak, isCrown: true,
                 }];
                 bycat.streak.forEach(b => {
@@ -516,13 +598,13 @@ async function renderBadges() {
                     streakItems.push({
                         badgeCode: b.badge_code, icon: b.icon || '🔥', name: bdName(b),
                         count: achieved ? Math.max(b.count, 1) : 0,
-                        tier: target >= 15 ? 'gold' : (target >= 10 ? 'silver' : 'bronze'),
+                        tier: 'streak', isStreak: true,
                         targetStreak: target, currentStreak,
                     });
                 });
-                container.innerHTML += `
-                    <div class="badge-category">
-                        <div class="badge-category-title">📅 ${AppI18n.t('index.badge_streak_current', { n: currentStreak })}</div>
+                streakHtml = `
+                    <div class="badge-category streak-category">
+                        <div class="badge-category-title streak">📅 ${AppI18n.t('index.badge_streak_current', { n: currentStreak })}</div>
                         <div class="badge-grid">${streakItems.map(b => renderBadgeItemHTML(b, totalRef)).join('')}</div>
                     </div>`;
             }
@@ -539,6 +621,8 @@ async function renderBadges() {
                         <div class="badge-grid">${items.map(b => renderBadgeItemHTML(b, totalRef)).join('')}</div>
                     </div>`;
             }
+
+            if (streakHtml) container.innerHTML += streakHtml;
 
             document.getElementById('total-badge-count').textContent = totalRef.count;
             return;
@@ -570,11 +654,6 @@ async function renderBadges() {
         { badgeCode: 'speed_record', icon: '⚡️', name: AppI18n.t('index.badge_speed'), count: ls('speed_breaks') },
         { badgeCode: 'unlock_game', icon: '🎈', name: AppI18n.t('index.badge_balloon'), count: Math.max(localGames, ls('games_count')) },
     ];
-    container.innerHTML += `
-        <div class="badge-category">
-            <div class="badge-category-title">🌟 ${AppI18n.t('index.badge_core')}</div>
-            <div class="badge-grid">${coreBadges.map(b => renderBadgeItemHTML(b, totalRef)).join('')}</div>
-        </div>`;
 
     const subBadges = [
         { badgeCode: 'english_star', icon: '🔤', name: AppI18n.t('index.badge_english'), count: Math.max(subPerfects.English, ls('eng_badge_count')) },
@@ -590,6 +669,11 @@ async function renderBadges() {
             <div class="badge-category-title">🎓 ${AppI18n.t('index.badge_subject')}</div>
             <div class="badge-grid">${subBadges.map(b => renderBadgeItemHTML(b, totalRef)).join('')}</div>
         </div>`;
+    container.innerHTML += `
+        <div class="badge-category">
+            <div class="badge-category-title">🌟 ${AppI18n.t('index.badge_core')}</div>
+            <div class="badge-grid">${coreBadges.map(b => renderBadgeItemHTML(b, totalRef)).join('')}</div>
+        </div>`;
 
     const currentStreak = parseInt(localStorage.getItem(`current_streak_${u}`) || '0', 10);
     const maxStreak     = Math.max(parseInt(localStorage.getItem(`max_streak_${u}`) || '0', 10), currentStreak);
@@ -599,8 +683,8 @@ async function renderBadges() {
         streakMilestones = [nextTarget - 20, nextTarget - 15, nextTarget - 10, nextTarget - 5, nextTarget];
     }
     const streakBadges = [{
-        icon: '👑', name: AppI18n.t('index.badge_max_streak'),
-        count: 1, tier: 'gold',
+        badgeCode: 'max_streak', name: AppI18n.t('index.badge_max_streak'),
+        count: 1, tier: 'streak', isStreak: true,
         targetStreak: maxStreak, currentStreak: maxStreak, isCrown: true,
     }];
     const streakCodeForDay = { 3: 'streak_3', 5: 'streak_5', 10: 'streak_10', 15: 'streak_15', 30: 'streak_30' };
@@ -609,15 +693,10 @@ async function renderBadges() {
             badgeCode: streakCodeForDay[day] || `streak_${day}`,
             icon: '🔥', name: AppI18n.t('index.streak_milestone', { n: day }),
             count: currentStreak >= day ? 1 : 0,
-            tier: day >= 15 ? 'gold' : (day >= 10 ? 'silver' : 'bronze'),
+            tier: 'streak', isStreak: true,
             targetStreak: day, currentStreak,
         });
     });
-    container.innerHTML += `
-        <div class="badge-category">
-            <div class="badge-category-title">📅 ${AppI18n.t('index.badge_streak_current', { n: currentStreak })}</div>
-            <div class="badge-grid">${streakBadges.map(b => renderBadgeItemHTML(b, totalRef)).join('')}</div>
-        </div>`;
 
     const easterData = [
         { badgeCode: 'early_bird', icon: '🌅', name: AppI18n.t('index.badge_earlybird'), count: ls('easter_earlybird'), tier: 'gold' },
@@ -633,6 +712,12 @@ async function renderBadges() {
                 <div class="badge-grid">${easterData.map(b => renderBadgeItemHTML(b, totalRef)).join('')}</div>
             </div>`;
     }
+
+    container.innerHTML += `
+        <div class="badge-category streak-category">
+            <div class="badge-category-title streak">📅 ${AppI18n.t('index.badge_streak_current', { n: currentStreak })}</div>
+            <div class="badge-grid">${streakBadges.map(b => renderBadgeItemHTML(b, totalRef)).join('')}</div>
+        </div>`;
 
     document.getElementById('total-badge-count').textContent = totalRef.count;
 }
@@ -657,11 +742,8 @@ function executeSwitchUser(name, grade) {
     }
 
     renderDashboardAvatar();
-    document.getElementById('dash-name').textContent   = name;
-    document.getElementById('cn-label').textContent    =
-        grade === 'P3' || grade === 'P4' || grade === 'P5' || grade === 'P6'
-            ? AppI18n.t('index.subject_cn')
-            : AppI18n.t('index.subject_cn_short');
+    document.getElementById('dash-name').textContent = name;
+    updateCnSubjectLabel();
 
     cloudStreakData = null; // reset until cloud fetch resolves
     updateStreakUI();       // immediate render from local while we wait
@@ -709,18 +791,15 @@ async function resolveKidCloudId(name) {
 }
 
 async function loadAndShowLevel(cloudId, name) {
-    const chip     = document.getElementById('level-chip');
-    const chipEmoji = document.getElementById('level-chip-emoji');
-    const chipText  = document.getElementById('level-chip-text');
+    const chip = document.getElementById('level-chip');
 
     if (!chip) return;
 
     // Render immediately from cache to avoid visual flash on language switch.
     const showTier = (currentLevelProfileId === cloudId) ? currentLevelTier : 'Bronze';
     const showLevel = (currentLevelProfileId === cloudId) ? currentLevelNo : 1;
-    chipEmoji.textContent = LEVEL_TIER_EMOJI[showTier] || '🥉';
-    chipText.textContent  = formatLevelChipText(showTier, showLevel);
-    chip.style.display    = 'flex';
+    applyLevelChipContent(showTier, showLevel);
+    chip.style.display = 'flex';
     applyLevelChipTierColor(showTier);
 
     chip.onclick = async () => {
@@ -747,8 +826,7 @@ async function loadAndShowLevel(cloudId, name) {
             currentLevelProfileId = cloudId;
             currentLevelTier = tierName;
             currentLevelNo = data.level_no || 1;
-            chipEmoji.textContent = LEVEL_TIER_EMOJI[tierName] || '🥉';
-            chipText.textContent  = formatLevelChipText(tierName, data.level_no);
+            applyLevelChipContent(tierName, data.level_no);
             applyLevelChipTierColor(tierName);
         }
     } catch (_) { /* silent — chip keeps default */ }
@@ -1054,9 +1132,19 @@ function refreshUserScreenI18n() {
     showScreen('user-screen');
 }
 
+function updateCnSubjectLabel() {
+    const el = document.getElementById('cn-label');
+    if (!el || !currentUser) return;
+    const profile = AUTH.getKidProfiles().find((p) => p.name === currentUser);
+    const level = profile?.chineseLevel === 'HCL' ? 'HCL' : 'CL';
+    const lang = (typeof AppI18n !== 'undefined') ? AppI18n.getLang() : 'en';
+    el.textContent = ProfileCatalog.chineseLabel(level, lang);
+}
+
 function refreshHub() {
     AppI18n.applyTranslations();
     initDate();
+    updateCnSubjectLabel();
     updateStreakUI();
     if (currentUser) renderBadges();
 }
@@ -1073,23 +1161,12 @@ document.addEventListener('DOMContentLoaded', async () => {
         await AUTH.syncKidProfilesFromCloud();
     }
 
-    // Top nav: lang toggle
+    // Top nav: lang toggle (hidden on dashboard; long-press calendar to switch there)
     const langBtn = document.getElementById('lang-toggle');
     langBtn.textContent = AppI18n.t('lang.toggle');
-    langBtn.addEventListener('click', () => {
-        const next = AppI18n.getLang() === 'en' ? 'zh' : 'en';
-        AppI18n.setLang(next);
-        langBtn.textContent = AppI18n.t('lang.toggle');
-        refreshHub();
-        refreshUserScreenI18n();
-        if (!document.getElementById('avatar-modal')?.classList.contains('is-hidden')) {
-            renderAvatarPicker();
-        }
-        if (currentUser) {
-            document.getElementById('dash-name').textContent = currentUser;
-            loadAndShowLevel(currentCloudId, currentUser);
-        }
-    });
+    langBtn.addEventListener('click', toggleAppLanguage);
+    wireCalendarLangToggle();
+    updateLangToggleVisibility();
 
     // Shop button
     document.getElementById('shop-btn').addEventListener('click', () => {

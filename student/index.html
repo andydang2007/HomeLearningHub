@@ -8,18 +8,16 @@
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@600;800;900&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="index.css?v=10.5">
+    <link rel="stylesheet" href="index.css?v=10.16">
     <link rel="stylesheet" href="../assets/css/badge-icons.css">
 </head>
 <body>
 
 <div class="container" id="main-container">
 
-    <!-- Always-visible top navigation -->
-    <div class="top-nav">
+    <!-- Language toggle (all screens) -->
+    <div class="global-tools">
         <button class="top-nav-btn lang-toggle" id="lang-toggle" aria-label="Switch language">中文</button>
-        <div id="school-term-display"></div>
-        <a class="top-nav-btn parent-login-btn" href="../parent/index.html" data-i18n="index.parent_login">🔒 Parent</a>
     </div>
 
     <!-- User picker / name gate (JS renders content dynamically) -->
@@ -62,27 +60,23 @@
     <!-- Main dashboard -->
     <div id="dashboard-screen" class="screen">
 
-        <div class="dashboard-header">
-            <div class="avatar-row">
+        <div class="dashboard-hero">
+            <div class="hero-calendar" id="school-term-display"></div>
+            <div class="hero-identity">
                 <button class="avatar avatar-btn" id="dash-avatar-btn" type="button" aria-label="Change avatar">
                     <div class="avatar" id="dash-avatar">👱‍♀️</div>
                 </button>
-                <div class="name-level-stack">
-                    <h2 id="dash-name">Hello!</h2>
-                </div>
+                <h2 id="dash-name">Hello!</h2>
             </div>
-            <div class="dashboard-header-right">
+            <div class="hero-level">
                 <button class="level-chip" id="level-chip" type="button" title="Open Forge">
-                    <span id="level-chip-emoji">🥉</span>
-                    <span id="level-chip-text">Level 1</span>
+                    <span class="level-chip-tier-row" id="level-chip-tier">Bronze</span>
+                    <span class="level-chip-level-row" id="level-chip-level">Level 1</span>
                 </button>
-                <div class="streak-info-box">
-                    <div class="streak-badge pending" id="dash-streak"></div>
-                </div>
             </div>
         </div>
 
-        <div class="section-title" data-i18n="index.select_subject">Select Subject</div>
+        <div class="section-title section-title--pending" id="section-subject-title">Select a subject to complete Day 1 check-in!</div>
         <div class="grid-cards">
             <button class="card-btn eng" data-action="english-menu" type="button">
                 <span class="emoji">🔤</span>
@@ -94,7 +88,7 @@
             </button>
             <button class="card-btn cn" data-action="chinese-menu" type="button">
                 <span class="emoji" id="cn-emoji">🐼</span>
-                <span id="cn-label" data-i18n="index.subject_cn_short">华文</span>
+                <span id="cn-label">华文</span>
             </button>
             <button class="card-btn sci" data-subject="Science" type="button">
                 <span class="emoji">🌱</span>
@@ -116,7 +110,10 @@
             <div class="badges-container" id="badges-container"></div>
         </div>
 
-        <button class="btn-action switch-user-btn" id="switch-user-btn" type="button" data-i18n="index.switch_user">👤 Switch User</button>
+        <div class="footer-actions">
+            <button class="btn-action footer-btn footer-btn--switch" id="switch-user-btn" type="button" data-i18n="index.switch_user">👤 Switch User</button>
+            <a class="btn-action footer-btn footer-btn--parent parent-login-btn" href="../parent/index.html" data-i18n="index.parent_login">🔒 Parent</a>
+        </div>
     </div>
 
     <!-- Avatar picker modal (student index only) -->

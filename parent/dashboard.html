@@ -306,6 +306,114 @@
             animation: fadeUp 0.25s ease-out;
         }
 
+        .modal-card--profile {
+            max-width: 760px;
+            max-height: min(92vh, 900px);
+            display: flex;
+            flex-direction: column;
+            padding: 24px 22px 20px;
+        }
+
+        .modal-card--profile .modal-title {
+            margin-bottom: 14px;
+            flex-shrink: 0;
+        }
+
+        .modal-profile-scroll {
+            overflow-y: auto;
+            flex: 1;
+            min-height: 0;
+            padding-right: 4px;
+        }
+
+        .modal-layout {
+            display: grid;
+            grid-template-columns: minmax(0, 1fr) minmax(0, 1.05fr);
+            gap: 20px 24px;
+            align-items: start;
+        }
+
+        @media (max-width: 640px) {
+            .modal-layout {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        .modal-profile-side {
+            background: #f8fafc;
+            border: 2px solid #e2e8f0;
+            border-radius: 18px;
+            padding: 14px 12px 12px;
+        }
+
+        .modal-side-heading {
+            margin: 0 0 6px;
+            font-size: 15px;
+            font-weight: 900;
+            color: #0f172a;
+        }
+
+        .modal-side-hint {
+            margin: 0 0 12px;
+            font-size: 12px;
+            font-weight: 700;
+            color: #64748b;
+            line-height: 1.45;
+        }
+
+        .subject-settings-table {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+
+        .subject-settings-head,
+        .subject-settings-row {
+            display: grid;
+            grid-template-columns: minmax(0, 1.1fr) repeat(3, minmax(52px, 1fr));
+            gap: 8px;
+            align-items: center;
+        }
+
+        .subject-settings-head {
+            font-size: 11px;
+            font-weight: 900;
+            color: #64748b;
+            text-transform: uppercase;
+            letter-spacing: 0.04em;
+            padding: 0 2px 4px;
+        }
+
+        .subject-settings-name {
+            font-size: 13px;
+            font-weight: 900;
+            color: #334155;
+        }
+
+        .subject-settings-input {
+            width: 100%;
+            padding: 8px 6px;
+            border: 2px solid #e2e8f0;
+            border-radius: 10px;
+            font-size: 14px;
+            font-weight: 800;
+            font-family: inherit;
+            text-align: center;
+            color: #0f172a;
+            background: white;
+        }
+
+        .subject-settings-input:focus {
+            outline: none;
+            border-color: #7c3aed;
+        }
+
+        .modal-profile-actions {
+            flex-shrink: 0;
+            margin-top: 16px;
+            padding-top: 4px;
+        }
+
         .modal-title {
             font-size: 22px;
             font-weight: 900;
@@ -540,66 +648,80 @@
 
 <!-- Add Profile Modal -->
 <div class="modal-backdrop" id="add-modal">
-    <div class="modal-card">
+    <div class="modal-card modal-card--profile">
         <h3 class="modal-title" id="modal-title">Add Kid Profile</h3>
 
         <div class="msg-error" id="modal-error" style="display:none;"></div>
 
-        <div class="form-group">
-            <label class="form-label" id="modal-name-label" data-i18n="parent.name_label">Nickname</label>
-            <input class="form-input" type="text" id="modal-name"
-                   placeholder="Child's name" maxlength="20" autocomplete="off">
-        </div>
+        <div class="modal-profile-scroll">
+            <div class="modal-layout">
+                <div class="modal-profile-main">
+                    <div class="form-group">
+                        <label class="form-label" id="modal-name-label" data-i18n="parent.name_label">Nickname</label>
+                        <input class="form-input" type="text" id="modal-name"
+                               placeholder="Child's name" maxlength="20" autocomplete="off">
+                    </div>
 
-        <div class="form-group">
-            <label class="form-label" id="modal-grade-label" data-i18n="parent.grade_label">Grade</label>
-            <div class="grade-picker-modal" id="modal-grade-picker">
-                <button class="grade-opt" data-grade="P1">P1</button>
-                <button class="grade-opt" data-grade="P2">P2</button>
-                <button class="grade-opt" data-grade="P3">P3</button>
-                <button class="grade-opt" data-grade="P4">P4</button>
-                <button class="grade-opt" data-grade="P5">P5</button>
-                <button class="grade-opt" data-grade="P6">P6</button>
+                    <div class="form-group">
+                        <label class="form-label" id="modal-grade-label" data-i18n="parent.grade_label">Grade</label>
+                        <div class="grade-picker-modal" id="modal-grade-picker">
+                            <button type="button" class="grade-opt" data-grade="P1">P1</button>
+                            <button type="button" class="grade-opt" data-grade="P2">P2</button>
+                            <button type="button" class="grade-opt" data-grade="P3">P3</button>
+                            <button type="button" class="grade-opt" data-grade="P4">P4</button>
+                            <button type="button" class="grade-opt" data-grade="P5">P5</button>
+                            <button type="button" class="grade-opt" data-grade="P6">P6</button>
+                        </div>
+                    </div>
+
+                    <div class="form-group">
+                        <label class="form-label" id="modal-school-label">School (optional)</label>
+                        <input class="form-input" type="text" id="modal-school"
+                               list="school-suggestions"
+                               placeholder="e.g. Nan Hua Primary / UWC" maxlength="80" autocomplete="off">
+                        <p class="school-hint" id="school-hint">Start typing to see matching schools.</p>
+                    </div>
+
+                    <div class="form-group">
+                        <label class="form-label" id="modal-gender-label">Gender</label>
+                        <div class="gender-picker-modal" id="modal-gender-picker"></div>
+                    </div>
+
+                    <div class="form-group">
+                        <label class="form-label" id="modal-chinese-label">Chinese subject</label>
+                        <div class="chinese-picker-modal" id="modal-chinese-picker"></div>
+                    </div>
+
+                    <div class="form-group">
+                        <label class="form-label" id="modal-avatar-label">Avatar</label>
+                        <div class="avatar-picker" id="modal-avatar-picker"></div>
+                    </div>
+
+                    <div class="form-group" id="modal-kid-pin-group">
+                        <label class="form-label" id="modal-kid-pin-label" data-i18n="parent.child_pin_label">Child PIN (optional)</label>
+                        <input class="form-input" type="password" id="modal-child-pin" inputmode="numeric"
+                               pattern="[0-9]*" maxlength="3" autocomplete="off"
+                               placeholder="3 digits">
+                        <p class="school-hint" id="modal-kid-pin-hint"></p>
+                        <label class="sub-option" id="modal-kid-pin-clear-wrap" style="display:none; margin-top:8px;">
+                            <input type="checkbox" id="modal-kid-pin-clear"> <span id="modal-kid-pin-clear-label" data-i18n="parent.child_pin_clear">Remove child PIN</span>
+                        </label>
+                    </div>
+                </div>
+
+                <aside class="modal-profile-side" id="modal-subject-settings-section">
+                    <h4 class="modal-side-heading" id="modal-subject-settings-heading" data-i18n="parent.subject_settings_heading">Practice targets</h4>
+                    <p class="modal-side-hint" id="modal-subject-settings-hint" data-i18n="parent.subject_settings_hint"></p>
+                    <div id="modal-subject-settings"></div>
+                </aside>
             </div>
         </div>
 
-        <div class="form-group">
-            <label class="form-label" id="modal-school-label">School (optional)</label>
-            <input class="form-input" type="text" id="modal-school"
-                   list="school-suggestions"
-                   placeholder="e.g. Nan Hua Primary / UWC" maxlength="80" autocomplete="off">
-            <p class="school-hint" id="school-hint">Start typing to see matching schools.</p>
+        <div class="modal-profile-actions">
+            <button type="button" class="btn-primary" id="modal-save-btn" data-i18n="parent.save_profile">Save Profile</button>
+            <button type="button" class="btn-secondary" id="modal-cancel-btn" data-i18n="parent.cancel">Cancel</button>
+            <button type="button" class="btn-secondary modal-remove-btn" id="modal-remove-btn" style="display:none; margin-top:8px;" data-i18n="parent.remove_profile">Remove from this device</button>
         </div>
-
-        <div class="form-group">
-            <label class="form-label" id="modal-gender-label">Gender</label>
-            <div class="gender-picker-modal" id="modal-gender-picker"></div>
-        </div>
-
-        <div class="form-group">
-            <label class="form-label" id="modal-chinese-label">Chinese subject</label>
-            <div class="chinese-picker-modal" id="modal-chinese-picker"></div>
-        </div>
-
-        <div class="form-group">
-            <label class="form-label" id="modal-avatar-label">Avatar</label>
-            <div class="avatar-picker" id="modal-avatar-picker"></div>
-        </div>
-
-        <div class="form-group" id="modal-kid-pin-group">
-            <label class="form-label" id="modal-kid-pin-label" data-i18n="parent.child_pin_label">Child PIN (optional)</label>
-            <input class="form-input" type="password" id="modal-child-pin" inputmode="numeric"
-                   pattern="[0-9]*" maxlength="3" autocomplete="off"
-                   placeholder="3 digits">
-            <p class="school-hint" id="modal-kid-pin-hint"></p>
-            <label class="sub-option" id="modal-kid-pin-clear-wrap" style="display:none; margin-top:8px;">
-                <input type="checkbox" id="modal-kid-pin-clear"> <span id="modal-kid-pin-clear-label" data-i18n="parent.child_pin_clear">Remove child PIN</span>
-            </label>
-        </div>
-
-        <button class="btn-primary" id="modal-save-btn" data-i18n="parent.save_profile">Save Profile</button>
-        <button class="btn-secondary" id="modal-cancel-btn" data-i18n="parent.cancel">Cancel</button>
-        <button class="btn-secondary modal-remove-btn" id="modal-remove-btn" type="button" style="display:none; margin-top:8px;" data-i18n="parent.remove_profile">Remove from this device</button>
     </div>
 </div>
 
