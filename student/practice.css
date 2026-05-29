@@ -441,6 +441,11 @@ canvas {
     color: #b45309;
     font-weight: 800;
     margin-bottom: 20px;
+    line-height: 1.45;
+}
+
+.badge-cloud-note--guest {
+    color: #dc2626;
 }
 
 /* ── Finish Screen ── */

@@ -804,9 +804,9 @@ async function loadAndShowLevel(cloudId, name) {
 
     chip.onclick = async () => {
         if (!cloudId) {
-            alert((typeof AppI18n !== 'undefined')
+            showHubToast((typeof AppI18n !== 'undefined')
                 ? AppI18n.t('index.forge_need_register')
-                : 'Register and sync profile to enter Forge.');
+                : 'Register as a parent to save progress and unlock Forge. Tap 🔒 Parent below.');
             return;
         }
         window.location.href =

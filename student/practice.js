@@ -608,8 +608,24 @@ function finishQuiz() {
 }
 
 // ── Badge Modal ───────────────────────────────
+function currentProfileCloudId() {
+    if (typeof AUTH === 'undefined') return '';
+    const profile = AUTH.getKidProfiles().find(p => p.name === curUser);
+    return profile?.cloudId || '';
+}
+
+function updateBadgeCloudNote() {
+    const noteEl = document.getElementById('badge-cloud-note');
+    if (!noteEl) return;
+    const isGuest = !currentProfileCloudId();
+    noteEl.textContent = isGuest ? t('practice.badge_guest_warning') : t('practice.badge_cloud');
+    noteEl.classList.toggle('badge-cloud-note--guest', isGuest);
+}
+
 function showNextBadge() {
     if (badgeQueue.length === 0) { closeBadgeModal(); return; }
+
+    updateBadgeCloudNote();
 
     const b     = badgeQueue.shift();
     const modal = document.querySelector('.epic-modal');
