@@ -1210,6 +1210,13 @@ button.name-btn:active {
     cursor: pointer;
 }
 
+/* Premium/custom PNG tiles: 90% size, centered (emoji default group unchanged). */
+.avatar-pick--image {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
 .avatar-pick:disabled {
     cursor: not-allowed;
 }
@@ -1219,11 +1226,13 @@ button.name-btn:active {
     box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.2) inset;
 }
 
-.avatar-pick img {
-    width: 100%;
-    height: 100%;
-    object-fit: cover;
-    transform: scale(1.05);
+.avatar-pick--image img {
+    width: 90%;
+    height: 90%;
+    object-fit: contain;
+    object-position: center;
+    display: block;
+    flex-shrink: 0;
 }
 
 .avatar-pick-emoji {

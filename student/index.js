@@ -214,8 +214,8 @@ function renderAvatarPicker() {
             const isSelected = selected?.type === 'custom' && selected.file === item.file;
             const pos = CUSTOM_AVATAR_POSITIONS[item.file] || '50% 50%';
             return `
-                <button type="button" class="avatar-pick ${isSelected ? 'selected' : ''}" data-kind="custom" data-file="${item.file}" ${groupLocked ? 'disabled' : ''}>
-                    <img src="${CUSTOM_AVATAR_BASE}${item.file}" alt="${item.file}" style="object-position:${pos};">
+                <button type="button" class="avatar-pick avatar-pick--image ${isSelected ? 'selected' : ''}" data-kind="custom" data-file="${item.file}" ${groupLocked ? 'disabled' : ''}>
+                    <img src="${CUSTOM_AVATAR_BASE}${item.file}" alt="" width="64" height="64" loading="lazy" decoding="async" style="object-position:${pos};">
                 </button>
             `;
         }).join('');
