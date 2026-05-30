@@ -762,23 +762,28 @@ function showGlobalError(msg) {
 }
 
 function showToast(msg) {
-    let toast = document.getElementById('synth-toast');
-    if (!toast) {
-        toast = document.createElement('div');
-        toast.id = 'synth-toast';
-        toast.className = 'synth-toast';
-        document.body.appendChild(toast);
-    }
-    toast.textContent = msg;
-    toast.classList.add('show');
-    clearTimeout(toast._tid);
-    toast._tid = setTimeout(() => toast.classList.remove('show'), 3200);
+    const modal = document.getElementById('synth-notice-modal');
+    const textEl = document.getElementById('synth-notice-text');
+    if (!modal || !textEl) return;
+    textEl.textContent = msg;
+    modal.classList.remove('is-hidden');
+}
+
+function closeSynthNotice() {
+    document.getElementById('synth-notice-modal')?.classList.add('is-hidden');
 }
 
 /* ═══════════════════════════════════════════════════════
    BOOTSTRAP
    ═══════════════════════════════════════════════════════ */
 document.addEventListener('DOMContentLoaded', async () => {
+    document.getElementById('synth-notice-modal')?.addEventListener('click', (e) => {
+        if (e.target.id === 'synth-notice-modal') closeSynthNotice();
+    });
+    document.querySelector('#synth-notice-modal .hub-notice-card')?.addEventListener('click', (e) => {
+        e.stopPropagation();
+    });
+
     // Set up canvas sizes
     resizeAmbCanvas();
     window.addEventListener('resize', resizeAmbCanvas);

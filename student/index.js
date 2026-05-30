@@ -247,7 +247,7 @@ function renderAvatarPicker() {
             </section>
         `;
         if (!avatarPickerIsPremium && g.id === 'default') {
-            return `${sectionHtml}<div class="avatar-premium-hint">🔐 Premium Features</div>`;
+            return `${sectionHtml}<div class="avatar-premium-hint">🔒 Premium Features</div>`;
         }
         return sectionHtml;
     }).join('');
@@ -313,18 +313,16 @@ function updateLangToggleVisibility() {
     tools.classList.toggle('is-hidden', dash.classList.contains('is-visible'));
 }
 
-function showHubToast(msg) {
-    let el = document.getElementById('hub-toast');
-    if (!el) {
-        el = document.createElement('div');
-        el.id = 'hub-toast';
-        el.className = 'hub-toast';
-        document.querySelector('.container')?.appendChild(el);
-    }
-    el.textContent = msg;
-    el.classList.add('show');
-    clearTimeout(showHubToast._timer);
-    showHubToast._timer = setTimeout(() => el.classList.remove('show'), 2200);
+function showHubNotice(msg) {
+    const modal = document.getElementById('hub-notice-modal');
+    const textEl = document.getElementById('hub-notice-text');
+    if (!modal || !textEl) return;
+    textEl.textContent = msg;
+    modal.classList.remove('is-hidden');
+}
+
+function closeHubNotice() {
+    document.getElementById('hub-notice-modal')?.classList.add('is-hidden');
 }
 
 function toggleAppLanguage() {
@@ -341,7 +339,7 @@ function toggleAppLanguage() {
         document.getElementById('dash-name').textContent = currentUser;
         loadAndShowLevel(currentCloudId, currentUser);
     }
-    showHubToast(next === 'zh' ? '语言：中文' : 'Language: English');
+    showHubNotice(next === 'zh' ? '语言：中文' : 'Language: English');
 }
 
 function wireCalendarLangToggle() {
@@ -593,7 +591,7 @@ function renderStreakBreakModal(status) {
             streak: n,
             ts: Date.now(),
         }));
-        showHubToast(t('index.streak_break_ask_toast'));
+        showHubNotice(t('index.streak_break_ask_toast'));
         void handleStreakBreakResolve('accept');
     });
 
@@ -615,7 +613,7 @@ async function handleStreakBreakResolve(action) {
             cloudStreakData = resolveLocalStreakBreak(action);
         }
         if (action === 'shield') {
-            showHubToast(AppI18n.t('index.streak_shield_saved'));
+            showHubNotice(AppI18n.t('index.streak_shield_saved'));
         }
     } catch (e) {
         console.error('[streak-break]', e);
@@ -1014,9 +1012,9 @@ async function loadAndShowLevel(_cloudId, name) {
         const id = await AUTH.resolveKidCloudId(name);
         currentCloudId = id;
         if (!id) {
-            showHubToast((typeof AppI18n !== 'undefined')
+            showHubNotice((typeof AppI18n !== 'undefined')
                 ? AppI18n.t('index.forge_need_register')
-                : 'Register as a parent to save progress and unlock Forge. Tap 🔒 Parent below.');
+                : 'Register as a parent to save progress and unlock Forge. Tap 🔒 Parent on the home screen.');
             return;
         }
         window.location.href =
@@ -1399,6 +1397,13 @@ document.addEventListener('DOMContentLoaded', async () => {
     document.getElementById('avatar-modal-close')?.addEventListener('click', closeAvatarModal);
     document.getElementById('avatar-modal')?.addEventListener('click', (e) => {
         if (e.target.id === 'avatar-modal') closeAvatarModal();
+    });
+
+    document.getElementById('hub-notice-modal')?.addEventListener('click', (e) => {
+        if (e.target.id === 'hub-notice-modal') closeHubNotice();
+    });
+    document.querySelector('#hub-notice-modal .hub-notice-card')?.addEventListener('click', (e) => {
+        e.stopPropagation();
     });
 
     // Switch user from dashboard (guest always; registered only when 2+ profiles)
