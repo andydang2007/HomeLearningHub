@@ -1,4 +1,4 @@
-📦 项目进度总结报告 (V10.5)
+📦 项目进度总结报告 (V10.6)
 📅 更新日期：2026-05-28
 
 🎯 整体状态
@@ -7,6 +7,7 @@
 - **2026-05-27** 增量：家长 PIN Forgot/密码门、徽章合成 Forge 全流程（前端 + RPC 草案）、打卡连击上云、`student` 徽章/等级云端优先、`parent/admin` 运维测试页、Premium 路线图写入本文档。**需在 Supabase 依次执行迁移 017～019（及已存在的 018）后联调验收。**
 - **2026-05-28** 增量：`student/index` 头像系统升级（透明 PNG、分组、Premium 锁定与降级回退）、等级铭牌与顶部导航布局；`shop` 金币图标与 `shop-rewards` 资源整理；家长 PIN/档案删除流程优化；**徽章 PNG 资源**（`assets/images/badges`，16 张透明图，`streak_*` 共用 `streakcrystal.png`）；`common/js/badge-icons.js` 统一图标路径与英文两行断行；首页 / Forge / 练习弹窗接入；`docs/badge-copy.md` 文案对照表。
 - **2026-05-28 晚间** 增量：学生首页 **Hero 三栏布局**（日历 / 头像昵称 / 等级芯片）；打卡提示并入 `#section-subject-title`；日历点击切换语言；连击区 **最高记录框内数字**（随位数缩字、无下方「n天」）；连击徽章统一水晶框、类别排序（连击置末）；华文科目标签按 `chineseLevel` 修复；**Admin 运维控制台**重构（`parent/admin.html/js/css` + 迁移 **020～022**：科目设置 RPC、账户搜索/订阅/回收站/孩子等级编辑）。
+- **2026-05-28 深夜** 增量：**连击中断检测（SGT 开页）** + **Premium 连击护盾**（每个孩子每月 3 个）；学生端 Basic/Premium/护盾弹窗与家长升级引导；家长端 **孩子档案查看弹窗**（等级、连击、近 7 天练习/时长、徽章、🛡️ 本月剩余护盾）；多账户本机 `cloudId`  reconcile；迁移 **023～025**（`profile_streak_shields`、`get_streak_status` / `resolve_streak_break`、`get_kid_profile_summary`；024 修复 `get_family_info` 只读事务）。**需在 Supabase 依次执行 023→024→025 后联调。**
 - **2026-05-25** 增量：白皮书 + 技术文档补产品规则；`ParentGuide.md` 改为中英文对照、纯家长用户口吻。
 - **2026-05-22** 主要工作：**文档收拢 + 产品与数据架构定稿 + B1 前端代码预备**；**未**在 Supabase 执行 `009`，**未**重建数据库。
 - 产品/设计事实来源：`Whitepaper.md`；工程事实来源：`TECHNICAL.md`；家长可读说明：`ParentGuide.md`；入口：`README.md`。
@@ -68,6 +69,24 @@
 | 商店微调 | `student/shop` 布局与 i18n 小修 |
 
 **需在 Supabase 依次执行迁移 020～022 后联调 Admin 与孩子科目设置。**
+
+### 2026-05-28 深夜完成（连击护盾 + 家长档案查看）
+
+| 范围 | 内容 |
+|------|------|
+| 连击中断 | `student/index.js`：开页 SGT 检测 gap>1；Basic 接受清零 / Premium 护盾或耗尽弹窗；`sessionStorage` 家长横幅 hint |
+| 护盾规则 | **每个孩子** Premium 每月 3 个（`profile_streak_shields`）；消耗走 `resolve_streak_break('shield')` |
+| 学生 UI | 连击中断/护盾 modal CSS；游客注册提示（Forge、练习徽章） |
+| 家长 Dashboard | 点击孩子卡片 → **查看弹窗**（再进编辑）；Account 区不展示护盾；升级 modal features 含护盾说明 |
+| 多账户本机 | `auth.js`：`reconcileLocalKidsWithCloud`、`resolveKidCloudId`、切换档案校验 |
+| 数据库迁移 | `023_streak_break_shields.sql`；`024_get_family_info_shield_guard.sql`；`025_kid_profile_summary.sql` |
+| 文档 | `ParentGuide.md` 护盾改为每个孩子每月 3 个、在档案查看剩余 |
+
+**需在 Supabase 依次执行迁移 023→024→025 后联调连击中断与家长档案查看。**
+
+> **📌 后续提醒 — 家长档案查看页待补充指标**  
+> 当前 `get_kid_profile_summary` / 查看弹窗仅含等级、连击、近 7 天练习次数/时长、累计完成次数、徽章数、Premium 护盾剩余。  
+> **将来还应增加**：累计/区间 **练习题数**、**错题数**（及可按科目拆分的关键学习指标），需对接 `learning_sessions` 题量字段与错题表（如 `profile_mistakes` / 会话明细 RPC），并在 i18n 与查看弹窗中与其它 stat 行统一格式（emoji + 一行文案）。
 
 ---
 

@@ -40,7 +40,11 @@ This is chosen at registration. It is separate from choosing Basic or Premium la
 
 两个版本孩子能用的功能是一样的（练习、徽章、商店、学习报告等），**主要区别是订阅费用**。选基础版或高级版，**不会改变**您能添加的孩子人数。
 
+**高级版额外包含连击护盾：** 每个孩子每月 3 次（按新加坡时间自然月重置）。孩子错过 1 天打卡时，可选择消耗 1 个护盾保留连击；基础版连击中断后会从零开始。家长可在每个孩子档案里查看本月剩余护盾。
+
 Both versions include the same learning features for your children. The **main difference is the subscription price**. Basic or Premium does **not** change how many child profiles you can add.
+
+**Premium also includes Streak Shields:** 3 per child per calendar month (Singapore time). If a child misses one check-in day, they can use one shield to keep their streak. On Basic, a broken streak restarts from zero. Remaining shields are shown on each child's profile in the parent dashboard.
 
 ---
 

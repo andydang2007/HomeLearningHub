@@ -245,27 +245,97 @@ window.AUTH = {
         }
     },
 
+    _stripStaleCloudIds(validIds) {
+        const profiles = this.getKidProfiles();
+        let changed = false;
+        profiles.forEach((p) => {
+            const id = String(p.cloudId || '');
+            if (id && !validIds.has(id)) {
+                p.cloudId = '';
+                changed = true;
+            }
+        });
+        if (changed) this._saveKidProfiles(profiles);
+
+        const activeId = localStorage.getItem('active_kid_profile_id') || '';
+        if (activeId && !validIds.has(activeId)) {
+            localStorage.removeItem('active_kid_profile_id');
+        }
+    },
+
     /**
-     * Replace local kid_profiles cache with cloud rows (cloud is source of truth when logged in).
+     * Merge cloud kids into local cache; strip cloudIds from other accounts on shared devices.
+     * @returns {Promise<{ kids: object[], pending: object[], error: string|null }>}
+     */
+    async reconcileLocalKidsWithCloud() {
+        const { kids: cloudRows, error } = await this.fetchCloudKidProfiles();
+        if (error) {
+            return {
+                kids: this.getKidProfiles(),
+                pending: this.getKidsNeedingCloudSync(),
+                error,
+            };
+        }
+
+        const validIds = new Set(
+            cloudRows.map((k) => String(k.id || k.cloudId || '')).filter(Boolean)
+        );
+        this._stripStaleCloudIds(validIds);
+
+        if (cloudRows.length) {
+            this.mergeCloudKidsIntoLocal(cloudRows);
+        }
+
+        return {
+            kids: this.getKidProfiles(),
+            pending: this.getKidsNeedingCloudSync(),
+            error: null,
+        };
+    },
+
+    /**
+     * Resolve a kid's cloud profile id only when a parent is signed in and the kid belongs to that family.
+     * Clears stale local cloudIds from prior accounts on shared devices.
+     */
+    async resolveKidCloudId(name) {
+        const n = String(name || '').trim();
+        if (!n) return '';
+
+        const session = await this.getParentSession();
+        if (!session) return '';
+
+        const { kids, error } = await this.fetchCloudKidProfiles();
+        if (error || !kids.length) return '';
+
+        const validIds = new Set(kids.map((k) => String(k.id)));
+        const profile = this.getKidProfiles().find((p) => p.name === n);
+
+        if (profile?.cloudId && validIds.has(String(profile.cloudId))) {
+            return String(profile.cloudId);
+        }
+
+        const match = kids.find(
+            (k) => (k.display_name || '').trim().toLowerCase() === n.toLowerCase()
+        );
+        if (match?.id) {
+            const id = String(match.id);
+            this.setKidCloudId(n, id);
+            return id;
+        }
+
+        if (profile?.cloudId) {
+            this.setKidCloudId(n, '');
+        }
+        return '';
+    },
+
+    /**
+     * Merge cloud rows into local cache (legacy name — prefer reconcileLocalKidsWithCloud).
      * @returns {Promise<{ kids: object[], error: string|null }>}
      */
     async syncKidProfilesFromCloud() {
-        const { kids, error } = await this.fetchCloudKidProfiles();
-        if (error) return { kids: [], error };
-        if (!kids.length) return { kids: [], error: null };
-
-        const profiles = kids.map((row) => this._normalizeKidProfile({
-            name: row.display_name,
-            grade: row.grade,
-            avatarId: row.avatar_id,
-            gender: row.gender,
-            schoolName: row.school_name,
-            chineseLevel: row.chinese_level,
-            cloudId: row.id,
-            kidPinEnabled: row.kid_pin_enabled,
-        }));
-        this._saveKidProfiles(profiles);
-        return { kids: profiles, error: null };
+        const { kids, error } = await this.reconcileLocalKidsWithCloud();
+        return { kids: kids.filter((p) => p.cloudId), error };
     },
 
     _readFamilySetupPending() {
@@ -345,6 +415,25 @@ window.AUTH = {
             return { info: info || null, error: null };
         } catch (e) {
             return { info: null, error: e.message || 'fetch_failed' };
+        }
+    },
+
+    /**
+     * Parent dashboard: kid level, streak, recent practice, family shield pool.
+     * @returns {Promise<{ summary: object|null, error: string|null }>}
+     */
+    async fetchKidProfileSummary(profileId) {
+        if (!profileId || typeof window.SupabaseClient === 'undefined') {
+            return { summary: null, error: 'no_client' };
+        }
+        try {
+            const { data, error } = await window.SupabaseClient.rpc('get_kid_profile_summary', {
+                p_profile_id: profileId,
+            });
+            if (error) return { summary: null, error: error.message };
+            return { summary: data || null, error: null };
+        } catch (e) {
+            return { summary: null, error: e.message || 'fetch_failed' };
         }
     },
 

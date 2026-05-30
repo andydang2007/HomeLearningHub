@@ -451,7 +451,7 @@ function applyBalloonLogic(errors) {
 }
 
 // ── Finish Quiz ───────────────────────────────
-function finishQuiz() {
+async function finishQuiz() {
     const timeTaken  = Math.floor((Date.now() - startTime) / 1000);
     const isPerfect  = sessionErrors <= 1;
     const today      = getSGTDateString();
@@ -599,6 +599,7 @@ function finishQuiz() {
     localStorage.setItem(`last_checkin_date_${curUser}`, today);
 
     if (badgeQueue.length > 0) {
+        await refreshProfileCloudSynced();
         document.getElementById('badge-modal').classList.remove('is-hidden');
         document.getElementById('badge-modal').classList.add('is-visible');
         showNextBadge();
@@ -608,16 +609,20 @@ function finishQuiz() {
 }
 
 // ── Badge Modal ───────────────────────────────
-function currentProfileCloudId() {
-    if (typeof AUTH === 'undefined') return '';
-    const profile = AUTH.getKidProfiles().find(p => p.name === curUser);
-    return profile?.cloudId || '';
+let profileCloudSynced = false;
+
+async function refreshProfileCloudSynced() {
+    if (typeof AUTH === 'undefined') {
+        profileCloudSynced = false;
+        return;
+    }
+    profileCloudSynced = !!(await AUTH.resolveKidCloudId(curUser));
 }
 
 function updateBadgeCloudNote() {
     const noteEl = document.getElementById('badge-cloud-note');
     if (!noteEl) return;
-    const isGuest = !currentProfileCloudId();
+    const isGuest = !profileCloudSynced;
     noteEl.textContent = isGuest ? t('practice.badge_guest_warning') : t('practice.badge_cloud');
     noteEl.classList.toggle('badge-cloud-note--guest', isGuest);
 }

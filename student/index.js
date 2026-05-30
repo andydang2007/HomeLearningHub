@@ -377,46 +377,244 @@ function initDate() {
         ${termLabelHtml}`;
 }
 
-// Fetch streak from cloud; if first visit, sync local localStorage values up.
-// Populates the module-level `cloudStreakData` and returns it (or null on error).
-async function loadCloudStreak(cloudId) {
+// Fetch streak from cloud; evaluate break status (SGT); sync local cache.
+// Populates module-level `cloudStreakData` and returns it (or null on error).
+function daysBetweenSgtDates(dateStrA, dateStrB) {
+    if (!dateStrA || !dateStrB) return null;
+    const a = new Date(`${dateStrA}T12:00:00`);
+    const b = new Date(`${dateStrB}T12:00:00`);
+    return Math.round((b - a) / 86400000);
+}
+
+function localStreakResolutionKey(user, lastDate) {
+    return `streak_break_resolved_${user}_${lastDate || 'none'}`;
+}
+
+function syncStreakToLocalStorage(status, user) {
+    const u = user || currentUser;
+    if (!u || !status) return;
+    const effective = status.effective_streak ?? status.current_streak ?? 0;
+    localStorage.setItem(`current_streak_${u}`, String(effective));
+    if (status.max_streak != null) {
+        localStorage.setItem(`max_streak_${u}`, String(status.max_streak));
+    }
+    if (status.total_checkin_days != null) {
+        localStorage.setItem(`total_days_${u}`, String(status.total_checkin_days));
+    }
+    if (status.last_checkin_date) {
+        localStorage.setItem(`last_checkin_date_${u}`, status.last_checkin_date);
+        localStorage.setItem(`last_date_${u}`, status.last_checkin_date);
+    }
+}
+
+function evaluateLocalStreakStatus(user) {
+    const u = user || currentUser;
+    const today = getSGTDateString();
+    const last = localStorage.getItem(`last_checkin_date_${u}`)
+              || localStorage.getItem(`last_date_${u}`);
+    const current = parseInt(localStorage.getItem(`current_streak_${u}`) || '0', 10);
+    const maxS = Math.max(
+        parseInt(localStorage.getItem(`max_streak_${u}`) || '0', 10),
+        current
+    );
+    const total = parseInt(localStorage.getItem(`total_days_${u}`) || '0', 10);
+    const gap = last ? daysBetweenSgtDates(last, today) : null;
+    let effective = current;
+    let breakPending = false;
+    let streakAtRisk = 0;
+
+    if (gap != null && gap > 1) {
+        streakAtRisk = current;
+        if (sessionStorage.getItem(localStreakResolutionKey(u, last))) {
+            effective = 0;
+        } else {
+            breakPending = true;
+            effective = 0;
+        }
+    }
+
+    return {
+        current_streak: current,
+        max_streak: maxS,
+        last_checkin_date: last || null,
+        total_checkin_days: total,
+        today_sgt: today,
+        effective_streak: effective,
+        streak_at_risk: streakAtRisk,
+        is_broken: gap != null && gap > 1,
+        break_pending: breakPending,
+        plan_tier: 'basic',
+        shields_remaining: 0,
+        shields_quota: 3,
+        local_only: true,
+    };
+}
+
+function resolveLocalStreakBreak(action, user) {
+    const u = user || currentUser;
+    const last = localStorage.getItem(`last_checkin_date_${u}`)
+              || localStorage.getItem(`last_date_${u}`);
+    if (action === 'accept') {
+        localStorage.setItem(`current_streak_${u}`, '0');
+    }
+    if (last) sessionStorage.setItem(localStreakResolutionKey(u, last), action);
+    return evaluateLocalStreakStatus(u);
+}
+
+async function loadStreakStatus(cloudId) {
     if (!cloudId || typeof window.SupabaseClient === 'undefined') {
-        cloudStreakData = null;
-        return null;
+        cloudStreakData = evaluateLocalStreakStatus();
+        return cloudStreakData;
     }
     const db = window.SupabaseClient;
+    const u = currentUser;
     try {
-        const { data: existing, error } = await db.rpc('get_checkin_streak', {
-            kid_profile_id: cloudId,
-        });
+        let { data, error } = await db.rpc('get_streak_status', { kid_profile_id: cloudId });
         if (error) throw error;
 
-        // If the cloud has no row yet, push local values up so data isn't lost.
-        if (!existing || Object.keys(existing).length === 0) {
-            const u           = currentUser;
-            const localCurrent = parseInt(localStorage.getItem(`current_streak_${u}`) || '0', 10);
-            const localMax     = Math.max(parseInt(localStorage.getItem(`max_streak_${u}`) || '0', 10), localCurrent);
-            const localTotal   = parseInt(localStorage.getItem(`total_days_${u}`) || '0', 10);
-            const localDate    = localStorage.getItem(`last_checkin_date_${u}`)
-                              || localStorage.getItem(`last_date_${u}`)
-                              || null;
-            const { data: synced, error: syncErr } = await db.rpc('upsert_checkin_streak', {
-                kid_profile_id:       cloudId,
-                p_current_streak:     localCurrent,
-                p_max_streak:         localMax,
-                p_last_checkin_date:  localDate,
-                p_total_checkin_days: localTotal,
-            });
-            if (syncErr) throw syncErr;
-            cloudStreakData = synced;
-        } else {
-            cloudStreakData = existing;
+        if (!data || !data.last_checkin_date) {
+            const localDate = localStorage.getItem(`last_checkin_date_${u}`)
+                           || localStorage.getItem(`last_date_${u}`)
+                           || null;
+            if (localDate) {
+                const localCurrent = parseInt(localStorage.getItem(`current_streak_${u}`) || '0', 10);
+                const localMax = Math.max(
+                    parseInt(localStorage.getItem(`max_streak_${u}`) || '0', 10),
+                    localCurrent
+                );
+                const localTotal = parseInt(localStorage.getItem(`total_days_${u}`) || '0', 10);
+                const { error: syncErr } = await db.rpc('upsert_checkin_streak', {
+                    kid_profile_id: cloudId,
+                    p_current_streak: localCurrent,
+                    p_max_streak: localMax,
+                    p_last_checkin_date: localDate,
+                    p_total_checkin_days: localTotal,
+                });
+                if (!syncErr) {
+                    const res = await db.rpc('get_streak_status', { kid_profile_id: cloudId });
+                    if (!res.error) data = res.data;
+                }
+            }
         }
+
+        cloudStreakData = data || evaluateLocalStreakStatus();
+        syncStreakToLocalStorage(cloudStreakData, u);
         return cloudStreakData;
     } catch {
-        cloudStreakData = null;
-        return null;
+        cloudStreakData = evaluateLocalStreakStatus();
+        return cloudStreakData;
     }
+}
+
+function getStreakModalVariant(status) {
+    if (!status?.break_pending) return null;
+    const tier = String(status.plan_tier || 'basic').toLowerCase();
+    const shields = status.shields_remaining ?? 0;
+    if (tier === 'premium' && shields > 0) return 'shield_offer';
+    if (tier === 'premium') return 'shield_empty';
+    return 'basic';
+}
+
+function closeStreakBreakModal() {
+    document.getElementById('streak-break-modal')?.classList.add('is-hidden');
+}
+
+function renderStreakBreakModal(status) {
+    const variant = getStreakModalVariant(status);
+    if (!variant) return;
+
+    const modal = document.getElementById('streak-break-modal');
+    const titleEl = document.getElementById('streak-break-title');
+    const bodyEl = document.getElementById('streak-break-body');
+    const hintEl = document.getElementById('streak-break-hint');
+    const metaEl = document.getElementById('streak-break-meta');
+    const actionsEl = document.getElementById('streak-break-actions');
+    if (!modal || !titleEl || !bodyEl || !actionsEl) return;
+
+    const n = status.streak_at_risk || status.current_streak || 0;
+    const quota = status.shields_quota ?? 3;
+    const rem = status.shields_remaining ?? 0;
+    const t = (key, vars) => AppI18n.t(key, vars);
+
+    hintEl.classList.add('is-hidden');
+    metaEl.classList.add('is-hidden');
+    actionsEl.innerHTML = '';
+
+    if (variant === 'shield_offer') {
+        titleEl.textContent = t('index.streak_shield_title');
+        bodyEl.textContent = t('index.streak_shield_body', { n });
+        metaEl.textContent = t('index.streak_shield_remaining', { rem, quota });
+        metaEl.classList.remove('is-hidden');
+        actionsEl.innerHTML = `
+            <button type="button" class="btn-action btn-action--shield" id="streak-break-use-shield">${t('index.streak_shield_use')}</button>
+            <button type="button" class="btn-action btn-action--secondary" id="streak-break-accept">${t('index.streak_shield_skip')}</button>`;
+    } else if (variant === 'shield_empty') {
+        titleEl.textContent = t('index.streak_shield_empty_title');
+        bodyEl.textContent = t('index.streak_shield_empty_body', { quota });
+        actionsEl.innerHTML = `
+            <button type="button" class="btn-action" id="streak-break-accept">${t('index.streak_break_continue')}</button>`;
+    } else {
+        titleEl.textContent = t('index.streak_break_title');
+        bodyEl.textContent = t('index.streak_break_body', { n });
+        hintEl.textContent = t('index.streak_break_premium_hint', { quota });
+        hintEl.classList.remove('is-hidden');
+        actionsEl.innerHTML = `
+            <button type="button" class="btn-action" id="streak-break-accept">${t('index.streak_break_continue')}</button>
+            <button type="button" class="btn-action btn-action--secondary" id="streak-break-ask-parent">${t('index.streak_break_ask_parent')}</button>`;
+    }
+
+    document.getElementById('streak-break-use-shield')?.addEventListener('click', () => {
+        void handleStreakBreakResolve('shield');
+    });
+    document.getElementById('streak-break-accept')?.addEventListener('click', () => {
+        void handleStreakBreakResolve('accept');
+    });
+    document.getElementById('streak-break-ask-parent')?.addEventListener('click', () => {
+        sessionStorage.setItem('parent_streak_break_hint', JSON.stringify({
+            kidName: currentUser,
+            streak: n,
+            ts: Date.now(),
+        }));
+        showHubToast(t('index.streak_break_ask_toast'));
+        void handleStreakBreakResolve('accept');
+    });
+
+    modal.classList.remove('is-hidden');
+}
+
+async function handleStreakBreakResolve(action) {
+    closeStreakBreakModal();
+    try {
+        if (currentCloudId && typeof window.SupabaseClient !== 'undefined' && !cloudStreakData?.local_only) {
+            const { data, error } = await window.SupabaseClient.rpc('resolve_streak_break', {
+                kid_profile_id: currentCloudId,
+                p_action: action,
+            });
+            if (error) throw error;
+            cloudStreakData = data;
+            syncStreakToLocalStorage(data);
+        } else {
+            cloudStreakData = resolveLocalStreakBreak(action);
+        }
+        if (action === 'shield') {
+            showHubToast(AppI18n.t('index.streak_shield_saved'));
+        }
+    } catch (e) {
+        console.error('[streak-break]', e);
+        cloudStreakData = resolveLocalStreakBreak('accept');
+    }
+    updateStreakUI();
+    await renderBadges();
+}
+
+function maybeShowStreakBreakModal() {
+    if (!cloudStreakData?.break_pending) return;
+    renderStreakBreakModal(cloudStreakData);
+}
+
+/** @deprecated alias */
+async function loadCloudStreak(cloudId) {
+    return loadStreakStatus(cloudId);
 }
 
 function updateStreakUI() {
@@ -580,8 +778,8 @@ async function renderBadges() {
             let streakHtml = '';
             if (bycat.streak.length) {
                 const currentStreak = cloudStreakData
-                    ? (cloudStreakData.current_streak || 0)
-                    : parseInt(localStorage.getItem(`current_streak_${u}`) || '0', 10);
+                    ? (cloudStreakData.effective_streak ?? cloudStreakData.current_streak ?? 0)
+                    : evaluateLocalStreakStatus(u).effective_streak;
                 const maxStreak = cloudStreakData
                     ? (cloudStreakData.max_streak || 0)
                     : Math.max(parseInt(localStorage.getItem(`max_streak_${u}`) || '0', 10), currentStreak);
@@ -675,7 +873,8 @@ async function renderBadges() {
             <div class="badge-grid">${coreBadges.map(b => renderBadgeItemHTML(b, totalRef)).join('')}</div>
         </div>`;
 
-    const currentStreak = parseInt(localStorage.getItem(`current_streak_${u}`) || '0', 10);
+    const currentStreak = (cloudStreakData || evaluateLocalStreakStatus(u)).effective_streak
+        ?? parseInt(localStorage.getItem(`current_streak_${u}`) || '0', 10);
     const maxStreak     = Math.max(parseInt(localStorage.getItem(`max_streak_${u}`) || '0', 10), currentStreak);
     let streakMilestones = [3, 5, 10, 15, 30];
     if (currentStreak >= 30) {
@@ -725,15 +924,12 @@ async function renderBadges() {
 let pendingKidSwitch = null;
 let kidPinValue = '';
 
-function executeSwitchUser(name, grade) {
+async function executeSwitchUser(name, grade) {
     currentUser  = name;
     currentGrade = grade;
     AUTH.setActiveKid(name, grade);
 
-    // Resolve cloudId for the selected profile
-    const profiles = AUTH.getKidProfiles();
-    const profile  = profiles.find(p => p.name === name);
-    currentCloudId = profile?.cloudId || '';
+    currentCloudId = await AUTH.resolveKidCloudId(name);
     // Reset level cache when switching to a different profile.
     if (currentLevelProfileId !== currentCloudId) {
         currentLevelProfileId = currentCloudId;
@@ -748,82 +944,56 @@ function executeSwitchUser(name, grade) {
     cloudStreakData = null; // reset until cloud fetch resolves
     updateStreakUI();       // immediate render from local while we wait
 
-    // Kick off all async cloud loads in parallel; streak UI refreshes once cloud responds.
-    Promise.all([
-        loadCloudStreak(currentCloudId).then(() => updateStreakUI()),
+    await Promise.all([
+        loadStreakStatus(currentCloudId).then(() => updateStreakUI()),
         renderBadges(),
         loadAndShowLevel(currentCloudId, name),
         refreshAvatarPremiumStatus().then(() => enforceAvatarSelectionForCurrentPlan()).then(() => renderDashboardAvatar()),
     ]);
 
+    maybeShowStreakBreakModal();
     showScreen('dashboard-screen');
 }
 
-async function resolveKidCloudId(name) {
-    if (currentCloudId) return currentCloudId;
-    const profile = AUTH.getKidProfiles().find((p) => p.name === name);
-    if (profile?.cloudId) {
-        currentCloudId = profile.cloudId;
-        return currentCloudId;
-    }
-    const activeId = localStorage.getItem('active_kid_profile_id') || '';
-    if (activeId) {
-        currentCloudId = activeId;
-        AUTH.setKidCloudId(name, activeId);
-        return currentCloudId;
-    }
-
-    // Last attempt: if parent session exists, fetch cloud profiles and match by name.
-    try {
-        const session = await AUTH.getParentSession();
-        if (!session) return '';
-        const { kids, error } = await AUTH.fetchCloudKidProfiles();
-        if (error || !Array.isArray(kids)) return '';
-        const match = kids.find((k) => (k.display_name || '').trim().toLowerCase() === String(name || '').trim().toLowerCase());
-        if (!match?.id) return '';
-        const foundId = String(match.id);
-        currentCloudId = foundId;
-        AUTH.setKidCloudId(name, foundId);
-        return foundId;
-    } catch {
-        return '';
-    }
-}
-
-async function loadAndShowLevel(cloudId, name) {
+async function loadAndShowLevel(_cloudId, name) {
     const chip = document.getElementById('level-chip');
 
     if (!chip) return;
 
+    const validId = await AUTH.resolveKidCloudId(name);
+    currentCloudId = validId;
+
     // Render immediately from cache to avoid visual flash on language switch.
-    const showTier = (currentLevelProfileId === cloudId) ? currentLevelTier : 'Bronze';
-    const showLevel = (currentLevelProfileId === cloudId) ? currentLevelNo : 1;
+    const showTier = (currentLevelProfileId === validId) ? currentLevelTier : 'Bronze';
+    const showLevel = (currentLevelProfileId === validId) ? currentLevelNo : 1;
     applyLevelChipContent(showTier, showLevel);
     chip.style.display = 'flex';
     applyLevelChipTierColor(showTier);
 
     chip.onclick = async () => {
-        if (!cloudId) {
+        const id = await AUTH.resolveKidCloudId(name);
+        currentCloudId = id;
+        if (!id) {
             showHubToast((typeof AppI18n !== 'undefined')
                 ? AppI18n.t('index.forge_need_register')
                 : 'Register as a parent to save progress and unlock Forge. Tap 🔒 Parent below.');
             return;
         }
         window.location.href =
-            `synthesis.html?kid=${encodeURIComponent(cloudId)}&name=${encodeURIComponent(name)}`;
+            `synthesis.html?kid=${encodeURIComponent(id)}&name=${encodeURIComponent(name)}`;
     };
 
-    if (!cloudId || typeof window.SupabaseClient === 'undefined') return;
+    if (!validId || typeof window.SupabaseClient === 'undefined') return;
 
     try {
         const { data } = await window.SupabaseClient
             .from('profile_badge_levels')
             .select('level_no, tier_name')
-            .eq('profile_id', cloudId)
+            .eq('profile_id', validId)
             .single();
         if (data) {
             const tierName = data.tier_name || 'Bronze';
-            currentLevelProfileId = cloudId;
+            currentLevelProfileId = validId;
             currentLevelTier = tierName;
             currentLevelNo = data.level_no || 1;
             applyLevelChipContent(tierName, data.level_no);
@@ -1158,7 +1328,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     const session = await AUTH.getParentSession();
     if (session) {
-        await AUTH.syncKidProfilesFromCloud();
+        await AUTH.reconcileLocalKidsWithCloud();
     }
 
     // Top nav: lang toggle (hidden on dashboard; long-press calendar to switch there)

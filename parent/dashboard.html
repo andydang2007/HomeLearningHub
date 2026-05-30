@@ -87,6 +87,67 @@
         .kid-info .kid-name  { font-size: 17px; font-weight: 900; color: #0f172a; }
         .kid-info .kid-grade { font-size: 13px; font-weight: 800; color: #64748b; }
 
+        .modal-card--view {
+            max-width: 420px;
+            text-align: left;
+        }
+
+        .kid-view-header {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 6px;
+            margin-bottom: 16px;
+        }
+
+        .kid-view-avatar { font-size: 48px; line-height: 1; }
+
+        .kid-view-title {
+            margin: 0;
+            text-align: center;
+        }
+
+        .kid-view-subtitle {
+            margin: 0;
+            font-size: 13px;
+            font-weight: 800;
+            color: #64748b;
+            text-align: center;
+        }
+
+        .kid-view-body {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            margin-bottom: 18px;
+        }
+
+        .kid-view-stat {
+            font-size: 14px;
+            font-weight: 800;
+            color: #334155;
+            line-height: 1.45;
+            margin: 0;
+        }
+
+        .kid-view-loading,
+        .kid-view-error,
+        .kid-view-local {
+            font-size: 14px;
+            font-weight: 800;
+            color: #64748b;
+            line-height: 1.5;
+            margin: 0;
+        }
+
+        .kid-view-error { color: #b91c1c; }
+
+        .kid-view-actions {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+
         .no-kids-msg {
             color: #94a3b8;
             font-size: 15px;
@@ -146,6 +207,65 @@
             color: #64748b;
             margin: 0 0 14px;
             line-height: 1.4;
+        }
+
+        .streak-break-parent-banner {
+            margin-bottom: 16px;
+            padding: 14px 16px;
+            background: linear-gradient(135deg, #fffbeb 0%, #fef3c7 100%);
+            border: 3px solid #fde68a;
+            border-radius: 16px;
+        }
+
+        .streak-break-parent-banner.is-hidden {
+            display: none !important;
+        }
+
+        .is-hidden {
+            display: none !important;
+        }
+
+        .streak-break-parent-banner-text {
+            margin: 0 0 12px;
+            font-size: 14px;
+            font-weight: 800;
+            color: #92400e;
+            line-height: 1.45;
+        }
+
+        .streak-break-parent-banner-actions {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+        }
+
+        .streak-break-parent-banner-actions .btn-primary,
+        .streak-break-parent-banner-actions .btn-secondary {
+            flex: 1 1 auto;
+            min-width: 120px;
+            font-size: 13px;
+            padding: 10px 12px;
+        }
+
+        .upgrade-benefits-list {
+            text-align: left;
+            margin: 0 0 16px;
+            padding: 12px 14px 12px 28px;
+            background: #f8fafc;
+            border-radius: 12px;
+            border: 2px solid #e2e8f0;
+            font-size: 13px;
+            font-weight: 800;
+            color: #475569;
+            line-height: 1.5;
+        }
+
+        .upgrade-benefits-list li {
+            margin-bottom: 6px;
+        }
+
+        .upgrade-benefits-list li:last-child {
+            margin-bottom: 0;
         }
 
         .account-actions {
@@ -527,6 +647,14 @@
 
     <div class="msg-error" id="msg-error"></div>
 
+    <div class="streak-break-parent-banner is-hidden" id="streak-break-parent-banner">
+        <p class="streak-break-parent-banner-text" id="streak-break-parent-banner-text"></p>
+        <div class="streak-break-parent-banner-actions">
+            <button type="button" class="btn-primary" id="streak-break-banner-upgrade" data-i18n="parent.streak_break_banner_btn">Learn about Premium</button>
+            <button type="button" class="btn-secondary" id="streak-break-banner-dismiss" data-i18n="parent.streak_break_banner_dismiss">Later</button>
+        </div>
+    </div>
+
     <!-- Kids list -->
     <div class="section-heading" data-i18n="parent.dashboard_heading">👧 Kids Profiles</div>
     <p class="kids-hint" id="kids-hint" data-i18n="parent.tap_to_edit">Tap a profile to view or edit</p>
@@ -564,6 +692,11 @@
 <div class="modal-backdrop" id="upgrade-modal">
     <div class="modal-card">
         <h3 class="modal-title" id="upgrade-modal-title">Upgrade to Premium</h3>
+        <ul class="upgrade-benefits-list" id="upgrade-benefits-list">
+            <li data-i18n="parent.upgrade_benefit_shields">3 Streak Shields per month (miss 1 day, keep your streak)</li>
+            <li data-i18n="parent.upgrade_benefit_avatars">More avatar choices for kids</li>
+            <li data-i18n="parent.upgrade_benefit_reports">Detailed learning reports &amp; PDF export</li>
+        </ul>
         <div class="msg-error" id="upgrade-modal-error" style="display:none;"></div>
 
         <!-- Account type — shown only for Individual Basic -->
@@ -647,6 +780,23 @@
 </div>
 
 <!-- Add Profile Modal -->
+<!-- Kid profile view modal -->
+<div class="modal-backdrop" id="kid-view-modal">
+    <div class="modal-card modal-card--view">
+        <div class="kid-view-header">
+            <div class="kid-view-avatar" id="kid-view-avatar"></div>
+            <h3 class="modal-title kid-view-title" id="kid-view-title"></h3>
+            <p class="kid-view-subtitle" id="kid-view-subtitle"></p>
+        </div>
+        <div id="kid-view-body" class="kid-view-body"></div>
+        <div class="kid-view-actions">
+            <button type="button" class="btn-primary" id="kid-view-edit-btn" data-i18n="parent.kid_view_edit">Edit Profile</button>
+            <button type="button" class="btn-secondary" id="kid-view-close-btn" data-i18n="parent.kid_view_close">Close</button>
+        </div>
+    </div>
+</div>
+
+<!-- Add / edit profile modal -->
 <div class="modal-backdrop" id="add-modal">
     <div class="modal-card modal-card--profile">
         <h3 class="modal-title" id="modal-title">Add Kid Profile</h3>

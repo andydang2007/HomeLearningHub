@@ -8,7 +8,7 @@
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@600;800;900&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="index.css?v=10.16">
+    <link rel="stylesheet" href="index.css?v=10.17">
     <link rel="stylesheet" href="../assets/css/badge-icons.css">
 </head>
 <body>
@@ -113,6 +113,17 @@
         <div class="footer-actions">
             <button class="btn-action footer-btn footer-btn--switch" id="switch-user-btn" type="button" data-i18n="index.switch_user">👤 Switch User</button>
             <a class="btn-action footer-btn footer-btn--parent parent-login-btn" href="../parent/index.html" data-i18n="index.parent_login">🔒 Parent</a>
+        </div>
+    </div>
+
+    <!-- Streak break modal -->
+    <div class="streak-break-overlay is-hidden" id="streak-break-modal" role="dialog" aria-modal="true">
+        <div class="streak-break-card">
+            <h3 class="streak-break-title" id="streak-break-title"></h3>
+            <p class="streak-break-body" id="streak-break-body"></p>
+            <p class="streak-break-hint is-hidden" id="streak-break-hint"></p>
+            <p class="streak-break-meta is-hidden" id="streak-break-meta"></p>
+            <div class="streak-break-actions" id="streak-break-actions"></div>
         </div>
     </div>
 

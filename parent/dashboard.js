@@ -11,6 +11,7 @@ let editingOriginalName = '';
 let editingCloudId    = '';
 let editingKidPinEnabled = false;
 let modalSubjectSettings = null;
+let viewingKidName = '';
 const CORE_SUBJECTS = ['english', 'math', 'science', 'chinese'];
 const PRACTICE_QUESTIONS = 15;
 const DEFAULT_BASE_MIN_CORRECT = 11;
@@ -63,7 +64,10 @@ function applyDashboardI18n() {
     if (title) {
         title.textContent = t(modalMode === 'edit' ? 'parent.modal_edit' : 'parent.modal_add');
     }
-    renderAccountCard().then(() => renderKidList());
+    renderKidList();
+    if (cachedFamilyInfo) {
+        renderAccountCard();
+    }
 }
 
 function applyParentModalI18n() {
@@ -264,6 +268,12 @@ function showModalError(msg) {
     el.style.display = 'block';
 }
 
+function tierLabel(name) {
+    const key = `index.tier_${String(name || 'Bronze').toLowerCase()}`;
+    const tr = t(key);
+    return tr !== key ? tr : (name || 'Bronze');
+}
+
 function renderKidList() {
     const profiles = AUTH.getKidProfiles();
     const list     = document.getElementById('kid-list');
@@ -288,17 +298,103 @@ function renderKidList() {
     list.querySelectorAll('.kid-card').forEach((card) => {
         const name = card.dataset.name;
         card.addEventListener('click', () => {
-            openModalForEdit(name);
+            openKidViewModal(name);
         });
         card.addEventListener('keydown', (e) => {
             if (e.key === 'Enter' || e.key === ' ') {
                 e.preventDefault();
-                openModalForEdit(name);
+                openKidViewModal(name);
             }
         });
     });
 
     document.getElementById('add-kid-btn').disabled = profiles.length >= maxKidsAllowed(cachedFamilyInfo);
+}
+
+function closeKidViewModal() {
+    document.getElementById('kid-view-modal')?.classList.remove('open');
+    viewingKidName = '';
+}
+
+function renderKidViewLocal(profile) {
+    const body = document.getElementById('kid-view-body');
+    const subtitle = document.getElementById('kid-view-subtitle');
+    if (subtitle) subtitle.textContent = escapeHtml(profileSubtitle(profile));
+    if (body) {
+        body.innerHTML = `<p class="kid-view-local">${escapeHtml(t('parent.kid_view_local_only'))}</p>`;
+    }
+}
+
+function renderKidViewSummary(profile, summary) {
+    const body = document.getElementById('kid-view-body');
+    const subtitle = document.getElementById('kid-view-subtitle');
+    if (subtitle) subtitle.textContent = escapeHtml(profileSubtitle(profile));
+    if (!body || !summary) return;
+
+    const streak = summary.effective_streak ?? summary.current_streak ?? 0;
+    const maxStreak = summary.max_streak ?? 0;
+    const lines = [
+        t('parent.kid_view_level', {
+            n: summary.level_no ?? 1,
+            tier: tierLabel(summary.tier_name),
+        }),
+        t('parent.kid_view_streak', { n: streak, max: maxStreak }),
+        t('parent.kid_view_checkin_days', { n: summary.total_checkin_days ?? 0 }),
+        t('parent.kid_view_practice_7d', { n: summary.sessions_7d ?? 0 }),
+        t('parent.kid_view_minutes_7d', { n: summary.minutes_7d ?? 0 }),
+        t('parent.kid_view_sessions_total', { n: summary.sessions_total ?? 0 }),
+        t('parent.kid_view_badges', { n: summary.badges_lifetime ?? 0 }),
+    ];
+
+    if (summary.plan_tier === 'premium') {
+        lines.push(t('parent.kid_view_shield_left', {
+            n: summary.streak_shields_remaining ?? 0,
+        }));
+    }
+
+    body.innerHTML = lines.map((line) => `<p class="kid-view-stat">${escapeHtml(line)}</p>`).join('');
+}
+
+async function openKidViewModal(name) {
+    const profile = AUTH.getKidProfiles().find((p) => p.name === name);
+    if (!profile) return;
+
+    viewingKidName = name;
+    const modal = document.getElementById('kid-view-modal');
+    const title = document.getElementById('kid-view-title');
+    const avatar = document.getElementById('kid-view-avatar');
+    const body = document.getElementById('kid-view-body');
+    const subtitle = document.getElementById('kid-view-subtitle');
+
+    if (title) title.textContent = profile.name;
+    if (avatar) avatar.textContent = ProfileCatalog.emojiForId(profile.avatarId);
+    if (subtitle) subtitle.textContent = escapeHtml(profileSubtitle(profile));
+    if (body) body.innerHTML = `<p class="kid-view-loading">${escapeHtml(t('parent.kid_view_loading'))}</p>`;
+    modal?.classList.add('open');
+
+    if (!profile.cloudId) {
+        renderKidViewLocal(profile);
+        return;
+    }
+
+    const { summary, error } = await AUTH.fetchKidProfileSummary(profile.cloudId);
+    if (error || !summary) {
+        if (body) body.innerHTML = `<p class="kid-view-error">${escapeHtml(t('parent.kid_view_error'))}</p>`;
+        return;
+    }
+    renderKidViewSummary(profile, summary);
+}
+
+function wireKidViewModal() {
+    document.getElementById('kid-view-close-btn')?.addEventListener('click', closeKidViewModal);
+    document.getElementById('kid-view-edit-btn')?.addEventListener('click', () => {
+        const name = viewingKidName;
+        closeKidViewModal();
+        if (name) openModalForEdit(name);
+    });
+    document.getElementById('kid-view-modal')?.addEventListener('click', (e) => {
+        if (e.target.id === 'kid-view-modal') closeKidViewModal();
+    });
 }
 
 async function ensureFamilyInfoCached() {
@@ -808,13 +904,20 @@ function formatBillingDate(iso) {
 // ── Account card state machine ────────────────────────────────────────────────
 async function renderAccountCard() {
     const { info, error } = await AUTH.fetchFamilyInfo();
-    if (error || !info) return;
-    cachedFamilyInfo = info;
+    if (info) cachedFamilyInfo = info;
 
-    const isFamily      = isFamilyAccount(info);
-    const isPremium     = info.plan_tier === 'premium';
-    const pendingCancel = info.pending_change_kind === 'cancel';
-    const endDate       = info.pending_effective_at || info.billing_ends_at;
+    const data = info || cachedFamilyInfo;
+    if (!data) {
+        if (error) showError(error);
+        const statusLine = document.getElementById('account-status-line');
+        if (statusLine) statusLine.textContent = t('parent.account_load_failed');
+        return;
+    }
+
+    const isFamily      = isFamilyAccount(data);
+    const isPremium     = data.plan_tier === 'premium';
+    const pendingCancel = data.pending_change_kind === 'cancel';
+    const endDate       = data.pending_effective_at || data.billing_ends_at;
 
     const acctLabel = t(isFamily ? 'parent.account_type_multi' : 'parent.account_type_single');
     const planLabel = t(isPremium ? 'parent.plan_premium_short' : 'parent.plan_basic_short');
@@ -1050,16 +1153,59 @@ async function syncCloudKidsOnLoad(parentUserId) {
         }
     }
 
-    const { kids, error } = await AUTH.syncKidProfilesFromCloud();
-    if (!error && kids.length) {
-        renderKidList();
+    const { pending, error } = await AUTH.reconcileLocalKidsWithCloud();
+    if (error) {
+        showError(error);
         return;
     }
 
-    const pending = AUTH.getKidsNeedingCloudSync();
+    renderKidList();
+
     if (pending.length > 0 && !AUTH.isKidImportDismissed(parentUserId)) {
         showImportModal(pending.length, parentUserId);
     }
+}
+
+async function maybeShowStreakBreakParentBanner() {
+    const raw = sessionStorage.getItem('parent_streak_break_hint');
+    if (!raw) return;
+
+    let hint;
+    try {
+        hint = JSON.parse(raw);
+    } catch {
+        sessionStorage.removeItem('parent_streak_break_hint');
+        return;
+    }
+
+    if (!hint?.kidName) {
+        sessionStorage.removeItem('parent_streak_break_hint');
+        return;
+    }
+
+    const { info, error } = await AUTH.fetchFamilyInfo();
+    if (error || info?.plan_tier === 'premium') {
+        sessionStorage.removeItem('parent_streak_break_hint');
+        return;
+    }
+
+    const banner = document.getElementById('streak-break-parent-banner');
+    const textEl = document.getElementById('streak-break-parent-banner-text');
+    if (!banner || !textEl) return;
+
+    textEl.textContent = t('parent.streak_break_banner', { name: hint.kidName });
+    banner.classList.remove('is-hidden');
+
+    document.getElementById('streak-break-banner-upgrade')?.addEventListener('click', () => {
+        banner.classList.add('is-hidden');
+        sessionStorage.removeItem('parent_streak_break_hint');
+        openUpgradeModal();
+    }, { once: true });
+
+    document.getElementById('streak-break-banner-dismiss')?.addEventListener('click', () => {
+        banner.classList.add('is-hidden');
+        sessionStorage.removeItem('parent_streak_break_hint');
+    }, { once: true });
 }
 
 function leaveParentArea() {
@@ -1095,8 +1241,10 @@ document.addEventListener('DOMContentLoaded', async () => {
     renderKidList();
     await syncCloudKidsOnLoad(session.user.id);
     await renderAccountCard();
+    await maybeShowStreakBreakParentBanner();
     wireSubscriptionUi();
     wireKidLimitModal();
+    wireKidViewModal();
     await loadSchoolSuggestions();
     document.getElementById('modal-school')?.addEventListener('input', (e) => {
         renderSchoolSuggestions(e.target.value);
