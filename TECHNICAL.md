@@ -18,14 +18,14 @@
 | `README.md` | 项目入口与文档导航 |
 | `Whitepaper.md` | 产品/设计事实来源：核心功能、商业逻辑、界面、徽章、商店、奖励规则 |
 | `TECHNICAL.md` | 工程事实来源：架构、数据存储、迁移、RPC、实现状态 |
-| `progress.md` | 迭代日志与下一步任务 |
+| `PROGRESS.md` | 迭代日志与下一步任务 |
 | `.cursorrules` | AI 执行规则与安全边界 |
 
 如果文档冲突：
 
 1. 产品规则以 `Whitepaper.md` 为准。
 2. 技术实现以 `TECHNICAL.md` 和 `.cursorrules` 为准。
-3. 当前进度以 `progress.md` 为准。
+3. 当前进度以 `PROGRESS.md` 为准。
 
 ## 3. 界面与 i18n
 
@@ -132,7 +132,7 @@ HomeLearningHub/
 ├── _legacy_backup/
 ├── Whitepaper.md
 ├── TECHNICAL.md
-└── progress.md
+└── PROGRESS.md
 ```
 
 当前注意：
