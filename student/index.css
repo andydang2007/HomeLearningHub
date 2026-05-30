@@ -279,6 +279,19 @@ body {
     box-shadow: none;
 }
 
+.footer-actions--single .footer-btn--parent {
+    flex: 1;
+}
+
+.registered-empty-msg {
+    margin: 12px 0 20px;
+    color: #64748b;
+    font-size: 15px;
+    font-weight: 800;
+    line-height: 1.5;
+    text-align: center;
+}
+
 /* ── User picker ── */
 .user-screen-title {
     margin: 0 0 5px;

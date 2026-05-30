@@ -17,15 +17,18 @@
 |------|------|
 | `ParentGuide.md` | **家长指南**：写给使用本系统的家长，将来挂家长端「帮助 / 说明书」入口；功能开关旁的「?」也会跳到这份文档对应段落 |
 | `PROGRESS.md` | 当前进度、已知问题、下一阶段任务 |
+| `dev/qa.html` | **视觉 QA 场景演练台**：切换游客/单孩/多孩/Basic/Premium/连击等场景，亲眼验收界面（本地 `http.server`） |
+| `npm test` | Playwright E2E 冒烟（不能代替 `dev/qa.html` 视觉验收；见 `PROGRESS.md`） |
 | `.cursorrules` | AI 编码规则、模型适用性评估、安全与文件边界 |
 | `Business.md` | 历史商业计划归档，内容已并入 `Whitepaper.md` |
 
 ## 当前状态
 
-- Phase A 已完成：家长 Auth、PIN 门、孩子本机 Profile、学生端动态 Profile。
-- Phase B1 代码已在本地准备，但 Supabase 迁移 `009_b1_kid_profile_sync.sql` 尚未执行，因此不能视为已验证完成。
-- 题库从 Supabase `questions` 拉取。
-- 错题本目前仍在本地 `localStorage.hub_mistakes`，后续 B2 上云。
+- Phase A 已完成：家长 Auth、PIN 门、孩子本机 Profile、学生端 Hub、Forge、连击与护盾。
+- Supabase 迁移 **001～025** 已在数据库执行（核心 schema 见 **010**，后续为 011～025 补丁）。
+- 标准练习 `student/practice.html` 已从 Supabase `questions` 拉题，但练习结算 RPC、每日限制上云、错题本仍待接完。
+- 距家庭内测试用：主要是 **题库灌入** + **Practice 页面重建**；Stripe 支付计划试用后再做。
+- 错题本目前仍在本地 `localStorage.hub_mistakes`，后续上云。
 - 商店资产与兑换仍需 RPC/账本化，前端不能直接写余额。
 
 ## 命名规则

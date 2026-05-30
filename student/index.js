@@ -8,6 +8,8 @@ let currentLevelProfileId = '';
 let currentLevelTier = 'Bronze';
 let currentLevelNo = 1;
 let avatarPickerIsPremium = false;
+/** Set at bootstrap: parent Supabase session present → cloud-managed profiles. */
+let hubParentLoggedIn = false;
 
 const LEVEL_TIER_EMOJI = { Bronze: '🥉', Silver: '🥈', Gold: '🥇', Diamond: '💎', Legend: '⭐' };
 const CUSTOM_AVATAR_FILES = [
@@ -130,6 +132,13 @@ function renderDashboardAvatar() {
 async function refreshAvatarPremiumStatus() {
     avatarPickerIsPremium = false;
     try {
+        if (typeof window.QA_HARNESS !== 'undefined' && window.QA_HARNESS.isActive()) {
+            const fo = window.QA_HARNESS.getFamilyInfoOverride();
+            if (fo?.plan_tier === 'premium') {
+                avatarPickerIsPremium = true;
+                return;
+            }
+        }
         if (typeof AUTH === 'undefined' || typeof AUTH.getParentSession !== 'function') return;
         const session = await AUTH.getParentSession();
         if (!session || typeof AUTH.fetchFamilyInfo !== 'function') return;
@@ -464,6 +473,9 @@ function resolveLocalStreakBreak(action, user) {
 async function loadStreakStatus(cloudId) {
     if (!cloudId || typeof window.SupabaseClient === 'undefined') {
         cloudStreakData = evaluateLocalStreakStatus();
+        if (typeof window.QA_HARNESS !== 'undefined' && window.QA_HARNESS.isActive()) {
+            cloudStreakData = window.QA_HARNESS.mergeStreakStatus(cloudStreakData);
+        }
         return cloudStreakData;
     }
     const db = window.SupabaseClient;
@@ -498,10 +510,16 @@ async function loadStreakStatus(cloudId) {
         }
 
         cloudStreakData = data || evaluateLocalStreakStatus();
+        if (typeof window.QA_HARNESS !== 'undefined' && window.QA_HARNESS.isActive()) {
+            cloudStreakData = window.QA_HARNESS.mergeStreakStatus(cloudStreakData);
+        }
         syncStreakToLocalStorage(cloudStreakData, u);
         return cloudStreakData;
     } catch {
         cloudStreakData = evaluateLocalStreakStatus();
+        if (typeof window.QA_HARNESS !== 'undefined' && window.QA_HARNESS.isActive()) {
+            cloudStreakData = window.QA_HARNESS.mergeStreakStatus(cloudStreakData);
+        }
         return cloudStreakData;
     }
 }
@@ -924,6 +942,27 @@ async function renderBadges() {
 let pendingKidSwitch = null;
 let kidPinValue = '';
 
+/** Guest trial: switch + local add. Registered: switch only when 2+ profiles (add via parent). */
+function shouldShowSwitchUserBtn() {
+    if (!hubParentLoggedIn) return true;
+    return AUTH.getKidProfiles().length > 1;
+}
+
+function canAddProfileOnStudentHub() {
+    if (hubParentLoggedIn) return false;
+    return AUTH.getKidProfiles().length < 3;
+}
+
+function updateSwitchUserVisibility() {
+    const btn = document.getElementById('switch-user-btn');
+    const footer = document.querySelector('.footer-actions');
+    if (!btn) return;
+    const show = shouldShowSwitchUserBtn();
+    btn.hidden = !show;
+    btn.style.display = show ? '' : 'none';
+    footer?.classList.toggle('footer-actions--single', !show);
+}
+
 async function executeSwitchUser(name, grade) {
     currentUser  = name;
     currentGrade = grade;
@@ -952,6 +991,7 @@ async function executeSwitchUser(name, grade) {
     ]);
 
     maybeShowStreakBreakModal();
+    updateSwitchUserVisibility();
     showScreen('dashboard-screen');
 }
 
@@ -1144,14 +1184,26 @@ function buildUserScreen() {
     const screen    = document.getElementById('user-screen');
 
     if (profiles.length === 0) {
-        renderNameGate(screen);
+        if (hubParentLoggedIn) {
+            renderRegisteredEmptyState(screen);
+        } else {
+            renderNameGate(screen);
+        }
     } else {
         renderProfilePicker(screen, profiles);
     }
 }
 
+function renderRegisteredEmptyState(screen) {
+    screen.innerHTML = `
+        <h2 class="user-screen-title" data-i18n="index.who_learning"></h2>
+        <p class="registered-empty-msg" data-i18n="index.registered_no_profiles"></p>
+        <a class="btn-action" href="../parent/dashboard.html" data-i18n="index.go_parent_dashboard"></a>`;
+    AppI18n.applyTranslations();
+}
+
 function renderProfilePicker(screen, profiles) {
-    const canAdd = profiles.length < 3;
+    const canAdd = canAddProfileOnStudentHub();
     const addBtn = canAdd
         ? `<button type="button" class="name-btn-add" id="show-name-gate-btn" data-i18n="index.add_profile"></button>`
         : '';
@@ -1253,6 +1305,7 @@ function renderNameGate(screen) {
     });
 
     startBtn.addEventListener('click', () => {
+        if (hubParentLoggedIn) return;
         const name = nameInput.value.trim();
         if (name.length < 2) return;
         const ok = AUTH.addKidProfile({
@@ -1326,8 +1379,8 @@ document.addEventListener('DOMContentLoaded', async () => {
     initDate();
     wireKidPinScreen();
 
-    const session = await AUTH.getParentSession();
-    if (session) {
+    hubParentLoggedIn = !!(await AUTH.getParentSession());
+    if (hubParentLoggedIn) {
         await AUTH.reconcileLocalKidsWithCloud();
     }
 
@@ -1348,8 +1401,9 @@ document.addEventListener('DOMContentLoaded', async () => {
         if (e.target.id === 'avatar-modal') closeAvatarModal();
     });
 
-    // Switch user from dashboard
+    // Switch user from dashboard (guest always; registered only when 2+ profiles)
     document.getElementById('switch-user-btn').addEventListener('click', () => {
+        if (!shouldShowSwitchUserBtn()) return;
         buildUserScreen();
         showScreen('user-screen');
     });
@@ -1376,6 +1430,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     });
 
     // Determine initial view
+    updateSwitchUserVisibility();
     const active = AUTH.getActiveKid();
     if (active) {
         executeSwitchUser(active.name, active.grade);

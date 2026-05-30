@@ -412,7 +412,10 @@ window.AUTH = {
             const { data, error } = await window.SupabaseClient.rpc('get_family_info');
             if (error) return { info: null, error: error.message };
             const info = data && typeof data === 'string' ? JSON.parse(data) : data;
-            return { info: info || null, error: null };
+            const merged = (typeof window.QA_HARNESS !== 'undefined' && window.QA_HARNESS.isActive())
+                ? window.QA_HARNESS.mergeFamilyInfo(info)
+                : info;
+            return { info: merged || null, error: null };
         } catch (e) {
             return { info: null, error: e.message || 'fetch_failed' };
         }
@@ -424,15 +427,30 @@ window.AUTH = {
      */
     async fetchKidProfileSummary(profileId) {
         if (!profileId || typeof window.SupabaseClient === 'undefined') {
+            if (typeof window.QA_HARNESS !== 'undefined' && window.QA_HARNESS.isActive()) {
+                return { summary: window.QA_HARNESS.mergeKidSummary(null), error: null };
+            }
             return { summary: null, error: 'no_client' };
         }
         try {
             const { data, error } = await window.SupabaseClient.rpc('get_kid_profile_summary', {
                 p_profile_id: profileId,
             });
-            if (error) return { summary: null, error: error.message };
-            return { summary: data || null, error: null };
+            if (error) {
+                if (typeof window.QA_HARNESS !== 'undefined' && window.QA_HARNESS.isActive()) {
+                    return { summary: window.QA_HARNESS.mergeKidSummary(null), error: null };
+                }
+                return { summary: null, error: error.message };
+            }
+            let summary = data || null;
+            if (typeof window.QA_HARNESS !== 'undefined' && window.QA_HARNESS.isActive()) {
+                summary = window.QA_HARNESS.mergeKidSummary(summary);
+            }
+            return { summary, error: null };
         } catch (e) {
+            if (typeof window.QA_HARNESS !== 'undefined' && window.QA_HARNESS.isActive()) {
+                return { summary: window.QA_HARNESS.mergeKidSummary(null), error: null };
+            }
             return { summary: null, error: e.message || 'fetch_failed' };
         }
     },

@@ -398,7 +398,9 @@ function wireKidViewModal() {
 }
 
 async function ensureFamilyInfoCached() {
-    if (cachedFamilyInfo) return cachedFamilyInfo;
+    if (cachedFamilyInfo && !(typeof window.QA_HARNESS !== 'undefined' && window.QA_HARNESS.isActive())) {
+        return cachedFamilyInfo;
+    }
     const { info, error } = await AUTH.fetchFamilyInfo();
     if (!error && info) cachedFamilyInfo = info;
     return cachedFamilyInfo;

@@ -1,0 +1,61 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>QA 场景演练台 — Home Learning Hub</title>
+    <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@600;800;900&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="qa.css">
+</head>
+<body>
+    <div class="qa-wrap">
+        <header class="qa-header">
+            <h1>🧪 QA 场景演练台</h1>
+            <p class="qa-lead">选择场景 → 应用 → 打开学生端/家长端亲眼检查界面。无需每次去 Admin 改账户。</p>
+            <p class="qa-note" id="qa-host-note"></p>
+        </header>
+
+        <div class="qa-active" id="qa-active-panel" hidden>
+            <span>当前场景：</span>
+            <strong id="qa-active-name">—</strong>
+            <button type="button" class="qa-btn qa-btn--ghost" id="qa-clear-btn">清除场景</button>
+        </div>
+
+        <div class="qa-filters">
+            <button type="button" class="qa-filter active" data-filter="all">全部</button>
+            <button type="button" class="qa-filter" data-filter="guest">游客</button>
+            <button type="button" class="qa-filter" data-filter="account">账户类型</button>
+            <button type="button" class="qa-filter" data-filter="streak">连击</button>
+        </div>
+
+        <div class="qa-grid" id="qa-scenario-grid"></div>
+
+        <section class="qa-launch" id="qa-launch-panel" hidden>
+            <h2>打开页面检查</h2>
+            <p class="qa-launch-hint" id="qa-launch-hint"></p>
+            <div class="qa-launch-btns">
+                <a class="qa-btn qa-btn--primary" id="qa-open-student" href="../student/index.html" target="_blank">学生 Hub</a>
+                <a class="qa-btn qa-btn--primary" id="qa-open-parent" href="../parent/dashboard.html" target="_blank">家长 Dashboard</a>
+                <a class="qa-btn qa-btn--secondary" id="qa-open-forge" href="#" target="_blank">Forge 合成</a>
+                <a class="qa-btn qa-btn--secondary" id="qa-open-register" href="../parent/index.html" target="_blank">家长注册/登录</a>
+            </div>
+        </section>
+
+        <section class="qa-help">
+            <h2>说明</h2>
+            <ul>
+                <li><strong>游客场景</strong>：无需登录家长，直接开学生 Hub。</li>
+                <li><strong>账户场景</strong>：请先 <a href="../parent/index.html">登录家长</a>，再应用场景；界面上的 Basic/Premium、单孩/多孩为<strong>模拟覆盖</strong>，不改 Supabase 真实订阅。</li>
+                <li><strong>连击场景</strong>：打开学生 Hub 后应自动出现连击相关弹窗。</li>
+                <li><strong>Playwright</strong>（<code>npm test</code>）是无人值守冒烟测试，不能代替本页的视觉验收。</li>
+            </ul>
+        </section>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+    <script src="../common/js/supabase-client.js"></script>
+    <script src="../common/js/qa-harness.js"></script>
+    <script src="../common/js/auth.js"></script>
+    <script src="qa.js"></script>
+</body>
+</html>
